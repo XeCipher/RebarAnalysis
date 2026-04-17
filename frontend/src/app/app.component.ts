@@ -293,7 +293,7 @@ export class AppComponent {
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'rebar_analysis.csv';
+    a.download = 'report.csv';
     a.click();
     window.URL.revokeObjectURL(url);
   }

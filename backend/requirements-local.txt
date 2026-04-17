@@ -1,8 +1,0 @@
-Flask
-flask-cors
-opencv-python-headless
-numpy
-google-genai
-Pillow
-python-dotenv
-scipy
