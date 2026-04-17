@@ -1,8 +1,9 @@
-opencv-python-headless
-numpy
-google-genai
-Pillow
-python-dotenv
 Flask
 flask-cors
+opencv-python-headless
+numpy==1.26.4
+google-genai==0.3.0
+Pillow
+python-dotenv
 scipy
+gunicorn
