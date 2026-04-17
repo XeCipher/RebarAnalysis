@@ -1,0 +1,19 @@
+# OS Files
+.DS_Store
+Thumbs.db
+
+# Python / Backend
+backend/.env
+backend/__pycache__/
+backend/temp_uploads/
+*.py[cod]
+
+# Angular / Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.angular/
+
+# Giant Files
+*.mp4
+*.mov
+*.avi

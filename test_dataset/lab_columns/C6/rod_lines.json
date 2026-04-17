@@ -1,0 +1,45 @@
+{
+  "reset": false,
+  "lines": [
+    {
+      "from": 1,
+      "to": 2,
+      "status": "Minor Mismatch"
+    },
+    {
+      "from": 2,
+      "to": 3,
+      "status": "Not Acceptable"
+    },
+    {
+      "from": 3,
+      "to": 4,
+      "status": "Not Acceptable"
+    },
+    {
+      "from": 4,
+      "to": 5,
+      "status": "Not Acceptable"
+    },
+    {
+      "from": 5,
+      "to": 6,
+      "status": "Acceptable"
+    },
+    {
+      "from": 6,
+      "to": 7,
+      "status": "Not Acceptable"
+    },
+    {
+      "from": 7,
+      "to": 8,
+      "status": "Not Acceptable"
+    },
+    {
+      "from": 8,
+      "to": 1,
+      "status": "Not Acceptable"
+    }
+  ]
+}
