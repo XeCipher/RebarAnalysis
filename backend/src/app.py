@@ -110,8 +110,11 @@ def send_email_report():
         table = data.get('table', [])
         img_b64 = data.get('image', '').split(',')[-1] # Remove the "data:image/jpeg;base64," prefix
 
-        SENDER_EMAIL = "pradnya.patil.sitpune@gmail.com" 
-        SENDER_PASS = "dzbk iiiv vxhn adip"
+        SENDER_EMAIL = os.environ.get("SENDER_EMAIL")
+        SENDER_PASS = os.environ.get("SENDER_PASS")
+
+        if not SENDER_EMAIL or not SENDER_PASS:
+            return jsonify({"status": "error", "message": "Server email credentials not configured"}), 500
 
         msg = MIMEMultipart('related')
         msg['Subject'] = f"Rebar Inspection Alert: Column {column_number} - Score {score}%"
