@@ -1,11 +1,11 @@
 Parameter,Design Spec,Site Actual,Status
-"Number of rods","8","8","Acceptable"
-"Radius of rods (avg)","8.0 mm","9.89 mm","Not Acceptable"
-"Distance R1 to R2","154.0 mm","176.92 mm","Minor Mismatch"
-"Distance R2 to R3","125.0 mm","190.60 mm","Not Acceptable"
-"Distance R3 to R4","125.0 mm","165.60 mm","Not Acceptable"
-"Distance R4 to R5","125.0 mm","199.78 mm","Not Acceptable"
-"Distance R5 to R6","154.0 mm","158.69 mm","Acceptable"
-"Distance R6 to R7","125.0 mm","200.19 mm","Not Acceptable"
-"Distance R7 to R8","125.0 mm","168.05 mm","Not Acceptable"
-"Distance R8 to R1","125.0 mm","220.51 mm","Not Acceptable"
+Number of rods,8,8,Acceptable
+Radius of rods (avg),8.0 mm,12.76 mm,Not Acceptable
+Distance R1 to R2,100.0 mm,176.92 mm,Minor Mismatch
+Distance R2 to R3,100.0 mm,181.16 mm,Not Acceptable
+Distance R3 to R4,100.0 mm,148.91 mm,Not Acceptable
+Distance R4 to R5,150.0 mm,185.37 mm,Not Acceptable
+Distance R5 to R6,100.0 mm,158.69 mm,Acceptable
+Distance R6 to R7,100.0 mm,191.42 mm,Not Acceptable
+Distance R7 to R8,100.0 mm,155.55 mm,Not Acceptable
+Distance R8 to R1,150.0 mm,199.60 mm,Not Acceptable
