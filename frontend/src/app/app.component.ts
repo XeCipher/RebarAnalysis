@@ -4,7 +4,7 @@ import { HttpClient } from '@angular/common/http';
 import { LucideAngularModule, Upload, ScanLine, Ruler, CheckCircle2, AlertCircle, Trash2, Undo2, ArrowRight, Layers, ArrowUpDown, FileJson } from 'lucide-angular';
 import { FormsModule } from '@angular/forms';
 
-const API_BASE_URL = 'https://rebaranalysis-backend.onrender.com';
+const API_BASE_URL = 'https://rebaranalysis.onrender.com';
 
 interface ComparisonRow {
   parameter: string;
