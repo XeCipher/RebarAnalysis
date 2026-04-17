@@ -6,4 +6,3 @@ google-genai
 Pillow
 python-dotenv
 scipy
-gunicorn

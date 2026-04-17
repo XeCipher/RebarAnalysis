@@ -1,3 +1,12 @@
+# Virtual Environments
+venv/
+.venv/
+env/
+bin/
+include/
+lib/
+share/
+
 # OS Files
 .DS_Store
 Thumbs.db
