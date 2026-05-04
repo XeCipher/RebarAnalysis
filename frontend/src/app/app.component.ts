@@ -1,10 +1,12 @@
-import { Component, ElementRef, ViewChild } from '@angular/core';
+import { Component, ElementRef, ViewChild, isDevMode } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { LucideAngularModule, Upload, ScanLine, Ruler, CheckCircle2, AlertCircle, Trash2, Undo2, ArrowRight, Layers, ArrowUpDown, FileJson } from 'lucide-angular';
 import { FormsModule } from '@angular/forms';
 
-const API_BASE_URL = 'https://rebaranalysis.onrender.com';
+const API_BASE_URL = isDevMode() 
+  ? 'http://localhost:5000' 
+  : 'https://rebaranalysis.onrender.com';
 
 interface ComparisonRow {
   parameter: string;

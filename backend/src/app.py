@@ -24,16 +24,14 @@ import gemini_service
 import scoring_utils
 
 app = Flask(__name__)
-allowed_origin = os.environ.get("ALLOWED_ORIGIN")
-if allowed_origin:
-    CORS(app, resources={r"/*": {
-        "origins": allowed_origin.split(','),
-        "methods": ["GET", "POST", "OPTIONS"],
-        "allow_headers": ["Content-Type"]
-    }})
-else:
-    # Fallback to allow all if not specified (for local development)
-    CORS(app, resources={r"/*": {"origins": "*"}})
+CORS(app, resources={r"/*": {
+    "origins": [
+        "http://localhost:4200",                 # Local Angular dev server
+        "https://rebaranalysis.vercel.app"       # Production Vercel app
+    ],
+    "methods": ["GET", "POST", "OPTIONS"],
+    "allow_headers": ["Content-Type"]
+}})
 
 UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'temp_uploads')
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
