@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 API_KEY = os.getenv("GOOGLE_API_KEY")
-MODEL = 'gemini-3.1-flash-lite-preview'
+MODEL = 'gemini-flash-lite-latest'
 
 # --- TOP VIEW PROMPT ---
 PROMPT_TOP = """
