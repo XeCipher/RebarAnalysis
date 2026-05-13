@@ -26,11 +26,11 @@ if %errorlevel% neq 0 (
 if not exist "backend\.env" (
     echo [SETUP] First time setup: Please enter your credentials.
     echo.
-    set /p GOOGLE_API_KEY="Google Gemini API Key          : "
-    set /p SENDER_EMAIL="Sender Email Address (Gmail)   : "
-    set /p SENDER_PASS="Sender App Password (16 chars) : "
+    set /p GEMPRISM_API_KEY="GemPrism Gateway Token (e.g. gp_live_...) : "
+    set /p SENDER_EMAIL="Sender Email Address (Gmail)              : "
+    set /p SENDER_PASS="Sender App Password (16 chars)            : "
 
-    echo GOOGLE_API_KEY=!GOOGLE_API_KEY!> backend\.env
+    echo GEMPRISM_API_KEY=!GEMPRISM_API_KEY!> backend\.env
     echo SENDER_EMAIL=!SENDER_EMAIL!>> backend\.env
     echo SENDER_PASS=!SENDER_PASS!>> backend\.env
     echo.

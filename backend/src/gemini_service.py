@@ -6,8 +6,11 @@ import re
 from dotenv import load_dotenv
 
 load_dotenv()
-API_KEY = os.getenv("GOOGLE_API_KEY")
-MODEL = 'gemini-flash-lite-latest'
+
+GEMPRISM_API_KEY = os.getenv("GEMPRISM_API_KEY")
+GEMPRISM_BASE_URL = os.getenv("GEMPRISM_BASE_URL", "https://gemprism.vercel.app")
+
+MODEL = 'gemini-flash-latest'
 
 # --- TOP VIEW PROMPT ---
 PROMPT_TOP = """
@@ -111,7 +114,10 @@ The column consists of 4 main vertical rods, one at each corner.
 def _get_json_from_gemini(model, prompt, img_list):
     """Helper to call Gemini and parse JSON safely."""
     try:
-        client = genai.Client(api_key=API_KEY)
+        client = genai.Client(
+            api_key=GEMPRISM_API_KEY,
+            http_options={'base_url': f"{GEMPRISM_BASE_URL}/api/proxy"}
+        )
         
         # Ensure contents is a list of [prompt, image1, image2...]
         contents = [prompt]
