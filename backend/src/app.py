@@ -16,29 +16,26 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.mime.image import MIMEImage
 
-# Modules
+# Modules (Only heavy pure-Python services left!)
 import analysis_service
 import side_view_service  
-import gemini_service
-import scoring_utils
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {
-    "origins": [
-        "http://localhost:4200",                 # Local Angular dev server
-        "https://rebaranalysis.vercel.app"       # Production Vercel app
-    ],
+    "origins": ["http://localhost:4200", "https://rebaranalysis.vercel.app"],
     "methods": ["GET", "POST", "OPTIONS"],
     "allow_headers": ["Content-Type"]
 }})
 
 @app.route('/', methods=['GET'])
 def health_check():
-    return "Rebar Analysis API is Running!", 200
+    # Fixes Render's 50s spin up delay since frontend automatically hits this on land!
+    return "Rebar Analysis API Awake & Warmed Up!", 200
 
-# --- AUTO-DETECT ENDPOINT (FAST AI HYBRID) ---
-@app.route('/auto-detect', methods=['POST', 'OPTIONS'])
-def auto_detect():
+# --- REFINE POINTS (FORMERLY AUTO-DETECT) ---
+# Gemini points are now calculated in frontend to save bandwidth. This just applies math.
+@app.route('/refine-points', methods=['POST', 'OPTIONS'])
+def refine_points():
     if request.method == 'OPTIONS': return jsonify({'status': 'ok'}), 200
     try:
         import cv2
@@ -49,32 +46,14 @@ def auto_detect():
             
         file_bytes = request.files['image'].read()
         view_mode = request.form.get('view_mode', 'top')
+        gemini_normalized_points = json.loads(request.form.get('gemini_points', '[]'))
         
-        # Decode the high-res image once for OpenCV refinement
+        # Decode high-res image
         img_array = cv2.imdecode(np.frombuffer(file_bytes, np.uint8), cv2.IMREAD_COLOR)
         if img_array is None:
             return jsonify({"status": "error", "message": "Could not decode image"}), 400
-            
-        # --- SPEED OPTIMIZATION ---
-        # Gemini processes huge images very slowly. We compress and scale the image 
-        # down to a max width/height of 600px before sending it to the AI.
-        h, w = img_array.shape[:2]
-        max_ai_dim = 600.0
-        scale = max_ai_dim / max(h, w) if max(h, w) > max_ai_dim else 1.0
-        
-        if scale < 1.0:
-            ai_img = cv2.resize(img_array, (int(w * scale), int(h * scale)), interpolation=cv2.INTER_AREA)
-        else:
-            ai_img = img_array
-            
-        # Compress to JPEG to minimize network payload
-        _, buffer = cv2.imencode('.jpg', ai_img, [int(cv2.IMWRITE_JPEG_QUALITY), 75])
-        fast_bytes = buffer.tobytes()
 
-        # 1. Gemini AI: Contextually map the rods (Blazing fast now)
-        gemini_normalized_points = gemini_service.get_auto_detect_points(fast_bytes, view_mode)
-        
-        # 2. OpenCV: Refine to exact pixel centers on the ORIGINAL HIGH-RES image
+        # OpenCV: Refine to exact pixel centers
         points = []
         if gemini_normalized_points:
             if view_mode == 'top':
@@ -85,93 +64,89 @@ def auto_detect():
         return jsonify({"status": "success", "points": points})
         
     except Exception as e:
-        print(f"Auto-Detect Error: {e}")
+        print(f"Refinement Error: {e}")
         return jsonify({"status": "error", "message": str(e)}), 500
 
-# --- TOP VIEW ---
-@app.route('/analyze', methods=['POST', 'OPTIONS'])
-def analyze_top():
+# --- TOP VIEW CV ANALYSIS ---
+# Massive Performance increase - LLM offloaded entirely.
+@app.route('/analyze-cv', methods=['POST', 'OPTIONS'])
+def analyze_top_cv():
     if request.method == 'OPTIONS': return jsonify({'status': 'ok'}), 200
     try:
-        # Lazy load heavy dependencies
         import cv2
         import numpy as np
 
         if 'real_image' not in request.files:
             return jsonify({"status": "error", "message": "No real_image provided"}), 400
 
-        real_img = request.files['real_image']
-        design_img = request.files.get('design_image')
-        
+        real_bytes = request.files['real_image'].read()
         rod_points = json.loads(request.form.get('rod_points', '[]'))
         ref_points = json.loads(request.form.get('ref_points', '[]'))
         ref_length = float(request.form.get('ref_length', 0))
 
-        # Zero Disk I/O: Read directly into memory
-        real_bytes = real_img.read()
-        design_bytes = design_img.read() if design_img else None
-        
-        # Decode the byte stream into an OpenCV array
         img_array = cv2.imdecode(np.frombuffer(real_bytes, np.uint8), cv2.IMREAD_COLOR)
         if img_array is None:
              return jsonify({"status": "error", "message": "Could not decode image"}), 400
 
-        # Parallelize heavy workloads using ThreadPoolExecutor
-        with concurrent.futures.ThreadPoolExecutor() as executor:
-            # 1. CV Analysis Task
-            future_cv = executor.submit(
-                analysis_service.process_image,
-                img_array, rod_points, ref_points, ref_length
-            )
-
-            # 2. Gemini Design Extraction Task
-            if design_bytes:
-                future_design = executor.submit(
-                    gemini_service.extract_design_data,
-                    design_bytes
-                )
-            else:
-                future_design = None
-
-            # 3. Gemini Defect Detection Task
-            rod_count = len(rod_points)
-            future_defect = executor.submit(
-                gemini_service.detect_defects_for_revit,
-                real_bytes, design_bytes, rod_count
-            )
-
-            # Wait for and collect the parallel results
-            annotated_img, actual_data, has_scale = future_cv.result()
-            
-            if future_design:
-                design_data = future_design.result()
-            else:
-                design_data = {"count": 0, "radius_mm": 0, "spacings_mm": []}
-                
-            revit_data = future_defect.result()
-
-        # 4. Scoring logic (Instantaneous)
-        score, table = scoring_utils.calculate_similarity_and_table(
-            design_data, actual_data, has_scale
+        # Run Heavy Matrix Math calculations
+        annotated_img, actual_data, has_scale = analysis_service.process_image(
+            img_array, rod_points, ref_points, ref_length
         )
 
-        # Optimization: Drop JPEG quality to 80% to vastly speed up base64 encoding & network transfer
+        encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 80]
+        _, buffer = cv2.imencode('.jpg', annotated_img, encode_param)
+        img_base64 = base64.b64encode(buffer).decode('utf-8')
+
+        # Frontend will combine this mathematically derived data with the AI data!
+        return jsonify({
+            "status": "success",
+            "annotated_image": f"data:image/jpeg;base64,{img_base64}",
+            "actual_data": actual_data,
+            "has_scale": has_scale
+        })
+
+    except Exception as e:
+        print(f"Top View CV Error: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+# --- SIDE VIEW CV ANALYSIS ---
+@app.route('/analyze-cv/side', methods=['POST', 'OPTIONS'])
+def analyze_side_cv():
+    if request.method == 'OPTIONS': return jsonify({'status': 'ok'}), 200
+    try:
+        import cv2
+        import numpy as np
+
+        if 'real_image' not in request.files:
+            return jsonify({"status": "error", "message": "No real_image provided"}), 400
+
+        real_bytes = request.files['real_image'].read()
+        rod_points = json.loads(request.form.get('rod_points', '[]'))
+        ref_points = json.loads(request.form.get('ref_points', '[]'))
+        ref_length = float(request.form.get('ref_length', 0))
+
+        img_array = cv2.imdecode(np.frombuffer(real_bytes, np.uint8), cv2.IMREAD_COLOR)
+        if img_array is None:
+             return jsonify({"status": "error", "message": "Could not decode image"}), 400
+
+        annotated_img, actual_data, has_scale = side_view_service.process_side_view(
+            img_array, rod_points, ref_points, ref_length
+        )
+
         encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 80]
         _, buffer = cv2.imencode('.jpg', annotated_img, encode_param)
         img_base64 = base64.b64encode(buffer).decode('utf-8')
 
         return jsonify({
             "status": "success",
-            "score": score,
-            "comparison_table": table,
             "annotated_image": f"data:image/jpeg;base64,{img_base64}",
-            "revit_data": revit_data,
-            "raw_design_data": design_data,
-            "raw_actual_data": actual_data
+            "actual_data": actual_data,
+            "has_scale": has_scale
         })
 
     except Exception as e:
-        print(f"Top Error: {e}")
+        print(f"Side View CV Error: {e}")
         return jsonify({"status": "error", "message": str(e)}), 500
 
 
@@ -246,78 +221,6 @@ def send_email_report():
         return jsonify({"status": "success", "message": "Email sent successfully"}), 200
     except Exception as e:
         print(f"Email Error: {e}")
-        return jsonify({"status": "error", "message": str(e)}), 500
-
-# --- SIDE VIEW ---
-@app.route('/analyze/side', methods=['POST', 'OPTIONS'])
-def analyze_side():
-    if request.method == 'OPTIONS': return jsonify({'status': 'ok'}), 200
-    try:
-        # Lazy load heavy dependencies
-        import cv2
-        import numpy as np
-
-        if 'real_image' not in request.files:
-            return jsonify({"status": "error", "message": "No real_image provided"}), 400
-
-        real_img = request.files['real_image']
-        design_img = request.files.get('design_image') 
-        
-        rod_points = json.loads(request.form.get('rod_points', '[]'))
-        ref_points = json.loads(request.form.get('ref_points', '[]'))
-        ref_length = float(request.form.get('ref_length', 0))
-
-        # Zero Disk I/O
-        real_bytes = real_img.read()
-        design_bytes = design_img.read() if design_img else None
-        
-        # Decode image for CV
-        img_array = cv2.imdecode(np.frombuffer(real_bytes, np.uint8), cv2.IMREAD_COLOR)
-        if img_array is None:
-             return jsonify({"status": "error", "message": "Could not decode image"}), 400
-
-        # Parallel Execution
-        with concurrent.futures.ThreadPoolExecutor() as executor:
-            future_cv = executor.submit(
-                side_view_service.process_side_view,
-                img_array, rod_points, ref_points, ref_length
-            )
-
-            if design_bytes:
-                future_design = executor.submit(
-                    gemini_service.extract_side_design_data,
-                    design_bytes
-                )
-            else:
-                future_design = None
-
-            annotated_img, results, has_scale = future_cv.result()
-            
-            if future_design:
-                design_data = future_design.result()
-            else:
-                design_data = {"spacing_mm": 0}
-
-        score, table = scoring_utils.calculate_side_view_score(
-            design_data, results, has_scale
-        )
-
-        # Optimization: Drop JPEG quality to 80% to vastly speed up transfer
-        encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 80]
-        _, buffer = cv2.imencode('.jpg', annotated_img, encode_param)
-        img_base64 = base64.b64encode(buffer).decode('utf-8')
-
-        return jsonify({
-            "status": "success",
-            "score": score,
-            "comparison_table": table,
-            "annotated_image": f"data:image/jpeg;base64,{img_base64}",
-            "raw_design_data": design_data,
-            "raw_actual_data": results
-        })
-
-    except Exception as e:
-        print(f"Side View Error: {e}")
         return jsonify({"status": "error", "message": str(e)}), 500
 
 if __name__ == '__main__':

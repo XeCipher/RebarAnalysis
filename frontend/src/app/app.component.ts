@@ -1,22 +1,14 @@
-import { Component, ElementRef, ViewChild, isDevMode, ChangeDetectionStrategy, ChangeDetectorRef, OnDestroy } from '@angular/core';
+import { Component, ElementRef, ViewChild, ChangeDetectionStrategy, ChangeDetectorRef, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { LucideAngularModule, Upload, ScanLine, Ruler, CheckCircle2, AlertCircle, Trash2, Undo2, ArrowRight, Layers, ArrowUpDown, FileJson, Wand2, Info } from 'lucide-angular';
 import { FormsModule } from '@angular/forms';
-import { Subscription } from 'rxjs';
+import { forkJoin, from, Subscription } from 'rxjs';
+import { environment } from '../environments/environment';
+import { GeminiService } from './services/gemini.service';
+import { ScoringService, ComparisonRow } from './services/scoring.service';
 
-const API_BASE_URL = isDevMode() 
-  ? 'http://localhost:5000' 
-  : 'https://rebaranalysis.onrender.com';
-
-interface ComparisonRow {
-  parameter: string;
-  design: string;
-  actual: string;
-  status: 'Acceptable' | 'Minor Mismatch' | 'Not Acceptable' | 'NA';
-}
-
-interface ApiResponse {
+export interface ApiResponse {
   status: string;
   score: number;
   comparison_table: ComparisonRow[];
@@ -32,16 +24,14 @@ interface ApiResponse {
   styleUrls: ['./app.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush 
 })
-export class AppComponent implements OnDestroy {
+export class AppComponent implements OnInit, OnDestroy {
   icons = { Upload, ScanLine, Ruler, CheckCircle2, AlertCircle, Trash2, Undo2, ArrowRight, Layers, ArrowUpDown, FileJson, Wand2, Info };
 
   // State
   viewMode: 'top' | 'side' = 'top';
-  
   realImageFile: File | null = null;
   designImageFile: File | null = null;
   realImagePreview: string | null = null;
-  
   mode: 'rods' | 'ref' = 'rods';
   
   rodPoints: number[][] = [];
@@ -53,11 +43,10 @@ export class AppComponent implements OnDestroy {
   
   isAnalyzing = false;
   isAutoDetecting = false;
-  autoDetectSub: Subscription | null = null;
+  analysisSub: Subscription | null = null;
   
   result: ApiResponse | null = null;
   errorMsg: string | null = null;
-  
   revitData: any = null;
 
   // Email notification state
@@ -77,12 +66,37 @@ export class AppComponent implements OnDestroy {
 
   @ViewChild('imageRef') imageElement!: ElementRef<HTMLImageElement>;
 
-  constructor(private http: HttpClient, private cdr: ChangeDetectorRef) {}
+  constructor(
+    private http: HttpClient, 
+    private cdr: ChangeDetectorRef,
+    private gemini: GeminiService,
+    private scoring: ScoringService
+  ) {}
+
+  ngOnInit() {
+    // 1. Backend Wake-up Ping (Fixes Render 50s cold start delay)
+    this.http.get(environment.apiBaseUrl + '/', { responseType: 'text' }).subscribe({
+      next: () => console.log('Backend warmed up successfully.'),
+      error: () => console.log('Ping sent to wake up backend.')
+    });
+
+    // 2. Setup Google Analytics dynamically (Safely fallback if omitted from environment)
+    const analyticsId = (environment as any).googleAnalyticsId;
+    if (analyticsId) {
+      const script = document.createElement('script');
+      script.async = true;
+      script.src = `https://www.googletagmanager.com/gtag/js?id=${analyticsId}`;
+      document.head.appendChild(script);
+
+      (window as any).dataLayer = (window as any).dataLayer || [];
+      function gtag(...args: any[]) { (window as any).dataLayer.push(args); }
+      gtag('js', new Date());
+      gtag('config', analyticsId);
+    }
+  }
 
   ngOnDestroy() {
-    if (this.autoDetectSub) {
-      this.autoDetectSub.unsubscribe();
-    }
+    if (this.analysisSub) this.analysisSub.unsubscribe();
   }
 
   setViewMode(mode: 'top' | 'side') {
@@ -94,6 +108,7 @@ export class AppComponent implements OnDestroy {
 
   fullReset() {
     this.cancelAutoDetect();
+    this.cancelAnalysis();
     this.realImageFile = null;
     this.designImageFile = null;
     this.realImagePreview = null;
@@ -107,12 +122,10 @@ export class AppComponent implements OnDestroy {
     this.revitData = null;
     this.mode = 'rods';
     this.errorMsg = null;
-    
     this.columnNumber = '';
     this.authorityEmail = '';
     this.isEmailSending = false;
     this.emailSent = false;
-    
     this.cdr.markForCheck();
   }
 
@@ -125,8 +138,6 @@ export class AppComponent implements OnDestroy {
         reader.onload = (e: any) => {
           this.realImagePreview = e.target.result;
           this.resetMarkings();
-          
-          // Automatically trigger Auto-Detect the moment image is uploaded
           setTimeout(() => {
             this.mode = 'rods';
             this.autoDetect();
@@ -149,7 +160,6 @@ export class AppComponent implements OnDestroy {
 
   onImageClick(event: MouseEvent) {
     if (!this.realImagePreview) return;
-
     if (this.viewMode === 'side' && this.mode === 'rods' && this.rodPoints.length >= 2) {
       alert("For Side View spacing, please mark exactly 2 horizontal bars.");
       return;
@@ -176,11 +186,9 @@ export class AppComponent implements OnDestroy {
     this.cdr.markForCheck();
   }
 
-  // --- Drag and Drop Point Manipulation ---
   onPointerDown(event: PointerEvent, index: number, type: 'rod' | 'ref') {
     event.preventDefault();
     event.stopPropagation();
-    
     this.draggingPointIndex = index;
     this.draggingPointType = type;
     this.dragStartX = event.clientX;
@@ -202,9 +210,7 @@ export class AppComponent implements OnDestroy {
     const dx = event.clientX - this.dragStartX;
     const dy = event.clientY - this.dragStartY;
 
-    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
-      this.hasMoved = true;
-    }
+    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) this.hasMoved = true;
 
     if (this.hasMoved) {
       const img = this.imageElement.nativeElement;
@@ -235,29 +241,20 @@ export class AppComponent implements OnDestroy {
     if (this.draggingPointIndex === null) return;
     event.preventDefault();
     event.stopPropagation();
-    
     (event.target as HTMLElement).releasePointerCapture(event.pointerId);
 
     if (!this.hasMoved) {
-      // Swift tap -> Remove the point
-      if (type === 'rod') {
-        this.rodPoints = this.rodPoints.filter((_, i) => i !== index);
-      } else {
-        this.refPoints = this.refPoints.filter((_, i) => i !== index);
-      }
+      if (type === 'rod') this.rodPoints = this.rodPoints.filter((_, i) => i !== index);
+      else this.refPoints = this.refPoints.filter((_, i) => i !== index);
       this.cdr.markForCheck();
     }
-
     this.draggingPointIndex = null;
     this.draggingPointType = null;
   }
 
   undoLast() {
-    if (this.mode === 'rods' && this.rodPoints.length > 0) {
-      this.rodPoints = this.rodPoints.slice(0, -1);
-    } else if (this.mode === 'ref' && this.refPoints.length > 0) {
-      this.refPoints = this.refPoints.slice(0, -1);
-    }
+    if (this.mode === 'rods' && this.rodPoints.length > 0) this.rodPoints = this.rodPoints.slice(0, -1);
+    else if (this.mode === 'ref' && this.refPoints.length > 0) this.refPoints = this.refPoints.slice(0, -1);
     this.cdr.markForCheck();
   }
 
@@ -266,54 +263,56 @@ export class AppComponent implements OnDestroy {
     this.cdr.markForCheck();
   }
 
-  autoDetect() {
+  async autoDetect() {
     if (!this.realImageFile) return;
-
-    // Cancel any ongoing auto-detect request
-    if (this.isAutoDetecting && this.autoDetectSub) {
-      this.autoDetectSub.unsubscribe();
-    }
-
     this.isAutoDetecting = true;
     this.cdr.markForCheck();
 
-    const formData = new FormData();
-    formData.append('image', this.realImageFile);
-    formData.append('view_mode', this.viewMode);
+    try {
+      const tinyB64 = await this.gemini.fileToBase64(this.realImageFile);
+      const aiPoints = await this.gemini.getAutoDetectPoints(tinyB64, this.viewMode);
+      
+      const formData = new FormData();
+      formData.append('image', this.realImageFile);
+      formData.append('view_mode', this.viewMode);
+      formData.append('gemini_points', JSON.stringify(aiPoints));
 
-    this.autoDetectSub = this.http.post<any>(`${API_BASE_URL}/auto-detect`, formData).subscribe({
-      next: (res) => {
-        if (res.status === 'success' && res.points) {
-           // Completely overwrite previous dots with the new accurate points
-           this.rodPoints = res.points;
+      this.http.post<any>(`${environment.apiBaseUrl}/refine-points`, formData).subscribe({
+        next: (res) => {
+          if (res.status === 'success' && res.points) this.rodPoints = res.points;
+          this.isAutoDetecting = false;
+          this.cdr.markForCheck();
+        },
+        error: (err) => {
+          console.error(err);
+          this.isAutoDetecting = false;
+          this.cdr.markForCheck();
         }
-        this.isAutoDetecting = false;
-        this.cdr.markForCheck();
-      },
-      error: (err) => {
-        console.error(err);
-        this.isAutoDetecting = false;
-        alert("Auto-detect failed. Ensure the backend is running.");
-        this.cdr.markForCheck();
-      }
-    });
+      });
+    } catch (e) {
+      console.error(e);
+      this.isAutoDetecting = false;
+      this.cdr.markForCheck();
+    }
   }
 
   cancelAutoDetect() {
-    if (this.autoDetectSub) {
-      this.autoDetectSub.unsubscribe();
-    }
     this.isAutoDetecting = false;
     this.cdr.markForCheck();
   }
 
-  analyze() {
-    if (!this.realImageFile) return;
-    if (this.rodPoints.length < 2) {
-      alert("Please mark points on the image first.");
-      return;
+  cancelAnalysis() {
+    this.isAnalyzing = false;
+    if (this.analysisSub) {
+      this.analysisSub.unsubscribe();
+      this.analysisSub = null;
     }
-    
+    this.cdr.markForCheck();
+  }
+
+  async analyze() {
+    if (!this.realImageFile) return;
+    if (this.rodPoints.length < 2) { alert("Please mark points on the image first."); return; }
     if (!this.designImageFile) {
       const proceed = confirm("No Design Drawing uploaded. Comparison score will be based on geometry only. Continue?");
       if (!proceed) return;
@@ -327,47 +326,78 @@ export class AppComponent implements OnDestroy {
     this.isEmailSending = false;
     this.cdr.markForCheck();
     
+    // Setup Parallel Processing Data
     const formData = new FormData();
     formData.append('real_image', this.realImageFile);
-    if (this.designImageFile) {
-        formData.append('design_image', this.designImageFile);
-    }
-    
     formData.append('rod_points', JSON.stringify(this.rodPoints));
     formData.append('ref_points', JSON.stringify(this.refPoints));
     formData.append('ref_length', this.refPoints.length === 2 ? this.refLengthInput.toString() : '0');
-    formData.append('rod_count', this.rodPoints.length.toString());
 
-    const endpoint = this.viewMode === 'top' ? '/analyze' : '/analyze/side';
+    const endpoint = this.viewMode === 'top' ? '/analyze-cv' : '/analyze-cv/side';
+    
+    // 1. Backend CV Observable
+    const cvObs = this.http.post<any>(`${environment.apiBaseUrl}${endpoint}`, formData);
 
-    this.http.post<ApiResponse>(`${API_BASE_URL}${endpoint}`, formData)
-      .subscribe({
-        next: (res) => {
-          this.result = res;
-          if (res.revit_data) {
-            this.revitData = res.revit_data;
-          }
+    // 2. Gemini Design Extraction Promise
+    let designPromise = Promise.resolve({ count: 0, radius_mm: 0, spacings_mm: [] } as any);
+    let designB64 = '';
+    if (this.designImageFile) {
+      designB64 = await this.gemini.fileToBase64(this.designImageFile);
+      designPromise = this.gemini.extractDesignData(designB64, this.viewMode);
+    }
+
+    // 3. Gemini Defect Search Promise
+    let defectPromise = Promise.resolve({ reset: true, rod: null } as any);
+    if (this.viewMode === 'top' && this.designImageFile) {
+      const realB64 = await this.gemini.fileToBase64(this.realImageFile);
+      defectPromise = this.gemini.detectDefects(realB64, designB64, this.rodPoints.length);
+    }
+
+    // Execute Concurrently & Store Subscription for easy cancellation
+    this.analysisSub = forkJoin({
+      cvRes: cvObs,
+      designData: from(designPromise),
+      defectData: from(defectPromise)
+    }).subscribe({
+      next: ({ cvRes, designData, defectData }) => {
+        if (cvRes?.status !== 'success') {
+          this.errorMsg = "Computer Vision processing failed.";
           this.isAnalyzing = false;
           this.cdr.markForCheck();
-        },
-        error: (err) => {
-          console.error(err);
-          this.errorMsg = `Server Error: ${err.message || 'Unknown Error'}. Is the backend running?`;
-          this.isAnalyzing = false;
-          this.cdr.markForCheck();
+          return;
         }
-      });
+
+        // Calculate score locally on frontend
+        let scoreData;
+        if (this.viewMode === 'top') {
+          scoreData = this.scoring.calculateTopScore(designData, cvRes.actual_data, cvRes.has_scale);
+        } else {
+          scoreData = this.scoring.calculateSideScore(designData, cvRes.actual_data, cvRes.has_scale);
+        }
+
+        this.result = {
+          status: 'success',
+          score: scoreData.score,
+          comparison_table: scoreData.table,
+          annotated_image: cvRes.annotated_image,
+        };
+        
+        this.revitData = defectData;
+        this.isAnalyzing = false;
+        this.cdr.markForCheck();
+      },
+      error: (err) => {
+        console.error(err);
+        this.errorMsg = `Analysis Error: ${err.message || 'Server timeout or network failure.'}`;
+        this.isAnalyzing = false;
+        this.cdr.markForCheck();
+      }
+    });
   }
 
   sendEmailReport() {
-    if (!this.columnNumber) {
-      alert("Please enter the Column Number (e.g., C1).");    
-      return;                                                 
-    }
-    if (!this.authorityEmail) {
-      alert("Please enter the Authority's Email Address.");
-      return;
-    }
+    if (!this.columnNumber) { alert("Please enter the Column Number (e.g., C1)."); return; }
+    if (!this.authorityEmail) { alert("Please enter the Authority's Email Address."); return; }
     if (!this.result) return;
 
     this.isEmailSending = true;
@@ -381,13 +411,10 @@ export class AppComponent implements OnDestroy {
       image: this.result.annotated_image
     };
 
-    this.http.post<any>(`${API_BASE_URL}/send-email-report`, payload).subscribe({
+    this.http.post<any>(`${environment.apiBaseUrl}/send-email-report`, payload).subscribe({
       next: (res) => {
-        if (res.status === 'success') {
-          this.emailSent = true;
-        } else {
-          alert("Failed to send email: " + res.message);
-        }
+        if (res.status === 'success') this.emailSent = true;
+        else alert("Failed to send email: " + res.message);
         this.isEmailSending = false;
         this.cdr.markForCheck();
       },
@@ -400,9 +427,7 @@ export class AppComponent implements OnDestroy {
     });
   }
 
-  trackByIndex(index: number): number {
-    return index;
-  }
+  trackByIndex(index: number): number { return index; }
 
   downloadRevitJson() {
     if (!this.revitData) return;
@@ -410,9 +435,7 @@ export class AppComponent implements OnDestroy {
     const blob = new Blob([jsonString], { type: 'application/json' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url;
-    a.download = 'highlight_rod.json';
-    a.click();
+    a.href = url; a.download = 'highlight_rod.json'; a.click();
     window.URL.revokeObjectURL(url);
   }
 
@@ -424,11 +447,7 @@ export class AppComponent implements OnDestroy {
     for (const row of this.result.comparison_table) {
       const match = row.parameter.match(distanceRegex);
       if (match) {
-        lines.push({
-          from: parseInt(match[1]),
-          to: parseInt(match[2]),
-          status: row.status
-        });
+        lines.push({ from: parseInt(match[1]), to: parseInt(match[2]), status: row.status });
       }
     }
 
@@ -437,9 +456,7 @@ export class AppComponent implements OnDestroy {
     const blob = new Blob([jsonString], { type: 'application/json' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url;
-    a.download = 'rod_lines.json';
-    a.click();
+    a.href = url; a.download = 'rod_lines.json'; a.click();
     window.URL.revokeObjectURL(url);
   }
 
@@ -447,17 +464,13 @@ export class AppComponent implements OnDestroy {
     if (!this.result) return;
     const headers = ['Parameter', 'Design Spec', 'Site Actual', 'Status'];
     const rows = this.result.comparison_table.map(row => [row.parameter, row.design, row.actual, row.status]
-        .map(val => `"${val}"`)
-        .join(',')
-    );
+        .map(val => `"${val}"`).join(','));
 
     const csvContent = [headers.join(','), ...rows].join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url;
-    a.download = 'report.csv';
-    a.click();
+    a.href = url; a.download = 'report.csv'; a.click();
     window.URL.revokeObjectURL(url);
   }
 
