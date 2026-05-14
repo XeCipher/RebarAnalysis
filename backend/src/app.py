@@ -32,8 +32,6 @@ CORS(app, resources={r"/*": {
     "allow_headers": ["Content-Type"]
 }})
 
-# Note: UPLOAD_FOLDER is entirely removed. We process everything in-memory now!
-
 @app.route('/', methods=['GET'])
 def health_check():
     return "Rebar Analysis API is Running!", 200
@@ -105,7 +103,9 @@ def analyze_top():
             design_data, actual_data, has_scale
         )
 
-        _, buffer = cv2.imencode('.jpg', annotated_img)
+        # Optimization: Drop JPEG quality to 80% to vastly speed up base64 encoding & network transfer
+        encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 80]
+        _, buffer = cv2.imencode('.jpg', annotated_img, encode_param)
         img_base64 = base64.b64encode(buffer).decode('utf-8')
 
         return jsonify({
@@ -250,7 +250,9 @@ def analyze_side():
             design_data, results, has_scale
         )
 
-        _, buffer = cv2.imencode('.jpg', annotated_img)
+        # Optimization: Drop JPEG quality to 80% to vastly speed up transfer
+        encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 80]
+        _, buffer = cv2.imencode('.jpg', annotated_img, encode_param)
         img_base64 = base64.b64encode(buffer).decode('utf-8')
 
         return jsonify({

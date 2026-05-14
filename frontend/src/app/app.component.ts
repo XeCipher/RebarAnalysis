@@ -1,4 +1,4 @@
-import { Component, ElementRef, ViewChild, isDevMode } from '@angular/core';
+import { Component, ElementRef, ViewChild, isDevMode, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { LucideAngularModule, Upload, ScanLine, Ruler, CheckCircle2, AlertCircle, Trash2, Undo2, ArrowRight, Layers, ArrowUpDown, FileJson } from 'lucide-angular';
@@ -28,7 +28,8 @@ interface ApiResponse {
   standalone: true,
   imports: [CommonModule, LucideAngularModule, FormsModule],
   templateUrl: './app.component.html',
-  styleUrls: ['./app.component.scss']
+  styleUrls: ['./app.component.scss'],
+  changeDetection: ChangeDetectionStrategy.OnPush // Optimization: drastically reduces re-renders
 })
 export class AppComponent {
   icons = { Upload, ScanLine, Ruler, CheckCircle2, AlertCircle, Trash2, Undo2, ArrowRight, Layers, ArrowUpDown, FileJson };
@@ -43,7 +44,7 @@ export class AppComponent {
   mode: 'rods' | 'ref' = 'rods';
   
   rodPoints: number[][] = [];
-  refPoints: number[][] =[];
+  refPoints: number[][] = [];
   refLengthInput: number = 100;
   
   imgNatWidth: number = 0;
@@ -63,7 +64,7 @@ export class AppComponent {
 
   @ViewChild('imageRef') imageElement!: ElementRef<HTMLImageElement>;
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient, private cdr: ChangeDetectorRef) {}
 
   setViewMode(mode: 'top' | 'side') {
     if (this.viewMode !== mode) {
@@ -80,8 +81,9 @@ export class AppComponent {
   }
 
   resetMarkings() {
+    // Immutable updates for OnPush change detection
     this.rodPoints = [];
-    this.refPoints =[];
+    this.refPoints = [];
     this.result = null;
     this.revitData = null;
     this.mode = 'rods';
@@ -92,6 +94,8 @@ export class AppComponent {
     this.authorityEmail = '';
     this.isEmailSending = false;
     this.emailSent = false;
+    
+    this.cdr.markForCheck();
   }
 
   onFileSelected(event: any, type: 'real' | 'design') {
@@ -108,6 +112,7 @@ export class AppComponent {
       } else {
         this.designImageFile = file;
       }
+      this.cdr.markForCheck();
     }
   }
 
@@ -115,6 +120,7 @@ export class AppComponent {
     const img = event.target as HTMLImageElement;
     this.imgNatWidth = img.naturalWidth;
     this.imgNatHeight = img.naturalHeight;
+    this.cdr.markForCheck();
   }
 
   onImageClick(event: MouseEvent) {
@@ -136,22 +142,29 @@ export class AppComponent {
     const x = Math.round((event.clientX - rect.left) * scaleX);
     const y = Math.round((event.clientY - rect.top) * scaleY);
 
+    // Using spread operator for immutable state updates (crucial for OnPush)
     if (this.mode === 'rods') {
-      this.rodPoints.push([x, y]);
+      this.rodPoints = [...this.rodPoints, [x, y]];
     } else {
       if (this.refPoints.length < 2) {
-        this.refPoints.push([x, y]);
+        this.refPoints = [...this.refPoints, [x, y]];
       }
     }
+    this.cdr.markForCheck();
   }
 
   undoLast() {
-    if (this.mode === 'rods') this.rodPoints.pop();
-    else this.refPoints.pop();
+    if (this.mode === 'rods' && this.rodPoints.length > 0) {
+      this.rodPoints = this.rodPoints.slice(0, -1);
+    } else if (this.mode === 'ref' && this.refPoints.length > 0) {
+      this.refPoints = this.refPoints.slice(0, -1);
+    }
+    this.cdr.markForCheck();
   }
 
   setMode(m: 'rods' | 'ref') {
     this.mode = m;
+    this.cdr.markForCheck();
   }
 
   analyze() {
@@ -167,12 +180,12 @@ export class AppComponent {
     }
 
     this.isAnalyzing = true;
-    
     this.errorMsg = null;
     this.result = null;
     this.revitData = null;
     this.emailSent = false;
     this.isEmailSending = false;
+    this.cdr.markForCheck();
     
     const formData = new FormData();
     formData.append('real_image', this.realImageFile);
@@ -195,16 +208,17 @@ export class AppComponent {
             this.revitData = res.revit_data;
           }
           this.isAnalyzing = false;
+          this.cdr.markForCheck();
         },
         error: (err) => {
           console.error(err);
           this.errorMsg = `Server Error: ${err.message || 'Unknown Error'}. Is the backend running?`;
           this.isAnalyzing = false;
+          this.cdr.markForCheck();
         }
       });
   }
 
-  // Email notification function
   sendEmailReport() {
     if (!this.columnNumber) {
       alert("Please enter the Column Number (e.g., C1).");    
@@ -217,6 +231,7 @@ export class AppComponent {
     if (!this.result) return;
 
     this.isEmailSending = true;
+    this.cdr.markForCheck();
     
     const payload = {
       column_number: this.columnNumber,
@@ -234,13 +249,20 @@ export class AppComponent {
           alert("Failed to send email: " + res.message);
         }
         this.isEmailSending = false;
+        this.cdr.markForCheck();
       },
       error: (err) => {
         alert("Server error while sending email.");
         console.error(err);
         this.isEmailSending = false;
+        this.cdr.markForCheck();
       }
     });
+  }
+
+  // Optimize ngFor rendering
+  trackByIndex(index: number): number {
+    return index;
   }
 
   downloadRevitJson() {
@@ -257,7 +279,7 @@ export class AppComponent {
 
   downloadRodLinesJson() {
     if (!this.result) return;
-    const lines: { from: number; to: number; status: string }[] =[];
+    const lines: { from: number; to: number; status: string }[] = [];
     const distanceRegex = /Distance R(\d+) to R(\d+)/i;
 
     for (const row of this.result.comparison_table) {
@@ -285,7 +307,7 @@ export class AppComponent {
   downloadCSV() {
     if (!this.result) return;
     const headers = ['Parameter', 'Design Spec', 'Site Actual', 'Status'];
-    const rows = this.result.comparison_table.map(row =>[row.parameter, row.design, row.actual, row.status]
+    const rows = this.result.comparison_table.map(row => [row.parameter, row.design, row.actual, row.status]
         .map(val => `"${val}"`)
         .join(',')
     );

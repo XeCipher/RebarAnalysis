@@ -2,31 +2,40 @@
 @tailwind components;
 @tailwind utilities;
 
+html {
+  scroll-behavior: smooth;
+}
+
 body {
   @apply bg-slate-50 text-slate-800 antialiased;
 }
 
 /* Scrollbar Polish */
-::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-track { @apply bg-slate-100; }
 ::-webkit-scrollbar-thumb { @apply bg-slate-300 rounded hover:bg-slate-400; }
 
 .card {
-  @apply bg-white rounded-xl shadow-sm border border-slate-200 p-6;
+  @apply bg-white rounded-xl shadow-sm border border-slate-200 p-5 sm:p-6 transition-all;
 }
 
 .btn {
-  @apply px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center gap-2;
-  &:disabled { @apply opacity-50 cursor-not-allowed; }
+  @apply px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center gap-2 outline-none;
+  &:disabled { @apply opacity-60 cursor-not-allowed transform-none; }
 }
 
-.btn-primary { @apply bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-500/30; }
-.btn-outline { @apply border border-slate-300 hover:bg-slate-50 text-slate-700; }
-.btn-mode { @apply bg-slate-100 text-slate-600 hover:bg-slate-200; }
-.btn-mode.active { @apply bg-indigo-100 text-indigo-700 border-indigo-200 border; }
+.btn-primary { @apply bg-blue-600 text-white hover:bg-blue-700 hover:shadow-lg shadow-blue-500/30; }
+.btn-outline { @apply border border-slate-300 hover:bg-slate-50 text-slate-700 shadow-sm; }
+.btn-mode { @apply bg-slate-100 text-slate-600 hover:bg-slate-200 border border-transparent; }
+.btn-mode.active { @apply bg-blue-50 text-blue-700 border-blue-200 shadow-inner; }
 
-.status-badge { @apply px-2 py-1 rounded-full text-xs font-bold uppercase tracking-wider; }
-.status-ok { @apply bg-green-100 text-green-700; }
-.status-warn { @apply bg-yellow-100 text-yellow-700; }
-.status-bad { @apply bg-red-100 text-red-700; }
-.status-na { @apply bg-slate-100 text-slate-500; }
+.status-badge { @apply inline-flex items-center px-2.5 py-1 rounded-full text-[10px] sm:text-xs font-bold uppercase tracking-wider whitespace-nowrap; }
+.status-ok { @apply bg-green-100 text-green-700 border border-green-200; }
+.status-warn { @apply bg-yellow-100 text-yellow-700 border border-yellow-200; }
+.status-bad { @apply bg-red-100 text-red-700 border border-red-200; }
+.status-na { @apply bg-slate-100 text-slate-500 border border-slate-200; }
+
+/* Mobile Touch Utilities */
+.touch-manipulation {
+  touch-action: manipulation;
+}

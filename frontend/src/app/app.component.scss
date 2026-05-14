@@ -1,17 +1,81 @@
-.image-wrapper { position: relative; display: inline-block; cursor: crosshair; line-height: 0; }
+.image-wrapper { 
+    position: relative; 
+    display: inline-block; 
+    cursor: crosshair; 
+    line-height: 0; 
+}
 
 /* Dots */
-.dot-rod { position: absolute; width: 20px; height: 20px; background-color: rgba(239, 68, 68, 0.9); border: 2px solid white; border-radius: 50%; transform: translate(-50%, -50%); pointer-events: none; display: flex; align-items: center; justify-content: center; color: white; font-size: 10px; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.3); z-index: 10; }
-.dot-ref { position: absolute; width: 16px; height: 16px; background-color: rgba(59, 130, 246, 0.9); border: 2px solid white; border-radius: 50%; transform: translate(-50%, -50%); pointer-events: none; box-shadow: 0 2px 4px rgba(0,0,0,0.3); z-index: 10; }
+.dot-rod { 
+    position: absolute; 
+    width: 20px; 
+    height: 20px; 
+    background-color: rgba(239, 68, 68, 0.95); 
+    border: 2px solid white; 
+    border-radius: 50%; 
+    transform: translate(-50%, -50%); 
+    pointer-events: none; 
+    display: flex; 
+    align-items: center; 
+    justify-content: center; 
+    color: white; 
+    font-size: 10px; 
+    font-weight: bold; 
+    box-shadow: 0 2px 5px rgba(0,0,0,0.4); 
+    z-index: 10; 
+    transition: all 0.2s;
+}
+
+.dot-ref { 
+    position: absolute; 
+    width: 16px; 
+    height: 16px; 
+    background-color: rgba(59, 130, 246, 0.95); 
+    border: 2px solid white; 
+    border-radius: 50%; 
+    transform: translate(-50%, -50%); 
+    pointer-events: none; 
+    box-shadow: 0 2px 5px rgba(0,0,0,0.4); 
+    z-index: 10; 
+    transition: all 0.2s;
+}
+
+/* Mobile Adjustments for visual clarity */
+@media (max-width: 640px) {
+    .dot-rod {
+        width: 16px;
+        height: 16px;
+        font-size: 8px;
+        border-width: 1.5px;
+    }
+    .dot-ref {
+        width: 12px;
+        height: 12px;
+        border-width: 1.5px;
+    }
+}
 
 /* Animations */
-.animate-fade-in { animation: fadeIn 0.5s ease-out forwards; }
-@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); }}
+.animate-fade-in { 
+    animation: fadeIn 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards; 
+}
+
+@keyframes fadeIn { 
+    from { 
+        opacity: 0; 
+        transform: translateY(8px); 
+    } 
+    to { 
+        opacity: 1; 
+        transform: translateY(0); 
+    }
+}
 
 /* View Toggle Button */
 .view-btn {
-  @apply px-4 py-1.5 rounded-md text-sm font-medium transition-all flex items-center gap-2 text-slate-600 hover:text-slate-900;
+  @apply px-4 py-2 sm:py-1.5 rounded-md text-sm font-medium transition-all duration-200 flex items-center justify-center gap-2 text-slate-600 hover:text-slate-900 active:scale-95;
 }
+
 .active-view {
-  @apply bg-white shadow-sm text-primary ring-1 ring-black/5;
+  @apply bg-white shadow-sm text-primary ring-1 ring-slate-200/50;
 }
