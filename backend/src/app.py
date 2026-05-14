@@ -1,14 +1,17 @@
 import sys
 import os
+import cv2
+import numpy as np
+import base64
+import json
+import threading
+import concurrent.futures
 
 # Add src to path to ensure imports work
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-import base64
-import json
-import concurrent.futures
 
 # Email Imports
 import smtplib
@@ -38,9 +41,6 @@ def health_check():
 def refine_points():
     if request.method == 'OPTIONS': return jsonify({'status': 'ok'}), 200
     try:
-        import cv2
-        import numpy as np
-
         if 'image' not in request.files:
             return jsonify({"status": "error", "message": "No image provided"}), 400
             
@@ -73,9 +73,6 @@ def refine_points():
 def analyze_top_cv():
     if request.method == 'OPTIONS': return jsonify({'status': 'ok'}), 200
     try:
-        import cv2
-        import numpy as np
-
         if 'real_image' not in request.files:
             return jsonify({"status": "error", "message": "No real_image provided"}), 400
 
@@ -115,9 +112,6 @@ def analyze_top_cv():
 def analyze_side_cv():
     if request.method == 'OPTIONS': return jsonify({'status': 'ok'}), 200
     try:
-        import cv2
-        import numpy as np
-
         if 'real_image' not in request.files:
             return jsonify({"status": "error", "message": "No real_image provided"}), 400
 
@@ -213,14 +207,22 @@ def send_email_report():
             img_attachment.add_header('Content-ID', '<annotated_img>')
             msg.attach(img_attachment)
 
-        with smtplib.SMTP('smtp.gmail.com', 587) as server:
-            server.starttls()
-            server.login(SENDER_EMAIL, SENDER_PASS)
-            server.send_message(msg)
+        def send_email_async(message, email, password):
+            try:
+                with smtplib.SMTP('smtp.gmail.com', 587) as server:
+                    server.starttls()
+                    server.login(email, password)
+                    server.send_message(message)
+            except Exception as e:
+                print(f"Async Email Dispatch Error: {e}")
 
-        return jsonify({"status": "success", "message": "Email sent successfully"}), 200
+        # Dispatch email logic heavily optimized on a completely separate thread
+        # This will unblock UI state instantaneously while Gmail backend connects via SMTP.
+        threading.Thread(target=send_email_async, args=(msg, SENDER_EMAIL, SENDER_PASS)).start()
+
+        return jsonify({"status": "success", "message": "Email dispatch initiated successfully"}), 200
     except Exception as e:
-        print(f"Email Error: {e}")
+        print(f"Email Controller Error: {e}")
         return jsonify({"status": "error", "message": str(e)}), 500
 
 if __name__ == '__main__':

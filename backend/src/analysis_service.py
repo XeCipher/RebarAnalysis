@@ -1,5 +1,6 @@
 import numpy as np
 import math
+import cv2
 
 # --- Constants ---
 ROI_SIZE = 120
@@ -15,9 +16,13 @@ COLOR_REF_LINE = (255, 255, 0)         # Cyan
 COLOR_TEXT = (255, 255, 255)           # White
 COLOR_TEXT_OUTLINE = (0, 0, 0)         # Black
 
+# Pre-compute ray-casting angles for maximum performance
+ANGLES = [(i / NUM_RAYS_FOR_RADIUS) * 2 * math.pi for i in range(NUM_RAYS_FOR_RADIUS)]
+COS_ANGLES = [math.cos(a) for a in ANGLES]
+SIN_ANGLES = [math.sin(a) for a in ANGLES]
+
 def draw_outlined_text(img, text, pos, font_scale, thickness=2, color=COLOR_TEXT, outline_color=COLOR_TEXT_OUTLINE):
     """Draws text with a thick outline for high contrast (like subtitles)."""
-    import cv2
     font = cv2.FONT_HERSHEY_SIMPLEX
     x, y = int(pos[0]), int(pos[1])
     
@@ -28,7 +33,6 @@ def draw_outlined_text(img, text, pos, font_scale, thickness=2, color=COLOR_TEXT
 
 def draw_label_with_box(img, text, center_pos, font_scale=0.5, bg_alpha=0.6):
     """Draws text inside a semi-transparent box centered at pos."""
-    import cv2
     font = cv2.FONT_HERSHEY_SIMPLEX
     thickness = 1
     (text_w, text_h), baseline = cv2.getTextSize(text, font, font_scale, thickness)
@@ -53,10 +57,9 @@ def draw_label_with_box(img, text, center_pos, font_scale=0.5, bg_alpha=0.6):
 
 def find_rod_circle(image, seed_point):
     """
-    Robustly detects the rod edge and radius using HSV color segmentation and Ray-Casting.
+    Robustly detects the rod edge and radius using Canny Edge detection and Ray-Casting.
     Returns: (center_point, radius, is_fallback)
     """
-    import cv2
     seed_x, seed_y = int(seed_point[0]), int(seed_point[1])
     
     # Define Region of Interest (ROI) limits
@@ -67,107 +70,73 @@ def find_rod_circle(image, seed_point):
     y_end = min(y_start + ROI_SIZE, image.shape[0])
     
     # Check if ROI is valid
-    if x_end - x_start < 10 or y_end - y_start < 10:
+    if x_end - x_start < 20 or y_end - y_start < 20:
         return seed_point, DEFAULT_ROD_RADIUS_PX, True
 
     # Extract ROI
     roi = image[y_start:y_end, x_start:x_end]
-    
-    # Convert to HSV color space
-    hsv_roi = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
-    
-    # Calculate local coordinates of the seed point inside ROI
     roi_seed_x = seed_x - x_start
     roi_seed_y = seed_y - y_start
     
-    # Adaptive Color Sampling (take median of 5x5 area around click)
-    patch_y_min = max(0, roi_seed_y - 2)
-    patch_y_max = min(hsv_roi.shape[0], roi_seed_y + 3)
-    patch_x_min = max(0, roi_seed_x - 2)
-    patch_x_max = min(hsv_roi.shape[1], roi_seed_x + 3)
+    gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
     
-    patch = hsv_roi[patch_y_min:patch_y_max, patch_x_min:patch_x_max]
+    # Bilateral filter preserves sharp edges while heavily blurring concrete noise/rust
+    blurred = cv2.bilateralFilter(gray, 9, 75, 75)
     
-    if patch.size == 0:
-        return seed_point, DEFAULT_ROD_RADIUS_PX, True
-
-    h_med = np.median(patch[:,:,0])
-    s_med = np.median(patch[:,:,1])
-    v_med = np.median(patch[:,:,2])
+    # Adaptive Otsu thresholding finds the optimal cutoff between the dark rod and background
+    high_thresh, _ = cv2.threshold(blurred, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    low_thresh = 0.5 * high_thresh
+    edges = cv2.Canny(blurred, low_thresh, high_thresh)
     
-    # Define dynamic HSV range - CRITICAL FIX: Ensure dtype=np.uint8
-    h_range, s_range, v_range = 20, 70, 70
-    
-    lower_vals = [int(max(0, h_med - h_range)), int(max(0, s_med - s_range)), int(max(0, v_med - v_range))]
-    upper_vals = [int(min(180, h_med + h_range)), int(min(255, s_med + s_range)), int(min(255, v_med + v_range))]
-    
-    lower_range = np.array(lower_vals, dtype=np.uint8)
-    upper_range = np.array(upper_vals, dtype=np.uint8)
-    
-    # Create mask
-    mask = cv2.inRange(hsv_roi, lower_range, upper_range)
-    
-    # Clean up noise
-    kernel = np.ones((3, 3), np.uint8)
-    mask_cleaned = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel, iterations=2)
-    
-    # Find contours
-    contours, _ = cv2.findContours(mask_cleaned, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    
-    if not contours:
-        return seed_point, DEFAULT_ROD_RADIUS_PX, True
-    
-    # Find largest contour (likely the rod)
-    best_contour = max(contours, key=cv2.contourArea)
-    M = cv2.moments(best_contour)
-    
-    if M["m00"] == 0:
-        return seed_point, DEFAULT_ROD_RADIUS_PX, True
-        
-    # Calculate refined center from moments
-    refined_cx_roi = int(M["m10"] / M["m00"])
-    refined_cy_roi = int(M["m01"] / M["m00"])
-    
-    # Ray-casting to find actual radius
+    # Ray-casting to find actual radius using the pre-computed angles
     radii_found = []
-    for angle_step in range(NUM_RAYS_FOR_RADIUS):
-        angle = (angle_step / NUM_RAYS_FOR_RADIUS) * 2 * math.pi
+    for i in range(NUM_RAYS_FOR_RADIUS):
+        cos_a = COS_ANGLES[i]
+        sin_a = SIN_ANGLES[i]
         
-        for r in range(1, int(ROI_SIZE/2)):
-            tx = int(refined_cx_roi + r * math.cos(angle))
-            ty = int(refined_cy_roi + r * math.sin(angle))
+        # Start at r=4 to ignore any immediate micro-noise directly on the click point
+        for r in range(4, half_roi):
+            tx = int(roi_seed_x + r * cos_a)
+            ty = int(roi_seed_y + r * sin_a)
             
             # Check bounds
-            if not (0 <= tx < mask_cleaned.shape[1] and 0 <= ty < mask_cleaned.shape[0]):
+            if not (0 <= tx < edges.shape[1] and 0 <= ty < edges.shape[0]):
                 break
                 
-            # If we hit a black pixel (background), we found the edge
-            if mask_cleaned[ty, tx] == 0:
+            # If we hit an edge pixel (Canny contour), we found the boundary
+            if edges[ty, tx] > 0:
                 radii_found.append(r)
                 break
     
     # Determine final radius
-    if not radii_found or len(radii_found) < (NUM_RAYS_FOR_RADIUS * 0.4):
-        # Fallback if detection wasn't confident
+    if not radii_found or len(radii_found) < (NUM_RAYS_FOR_RADIUS * 0.25):
+        # Fallback if detection wasn't confident (broken edges)
         return seed_point, DEFAULT_ROD_RADIUS_PX, True
         
-    final_radius = np.median(radii_found)
+    # Sort and take the median of the inner 60% of found edges.
+    # This prevents the circle from bloating outwards due to rust stains or concrete craters.
+    radii_found.sort()
+    valid_radii = radii_found[:int(len(radii_found) * 0.6)]
     
-    # Convert local ROI coordinates back to global image coordinates
-    final_global_center = (refined_cx_roi + x_start, refined_cy_roi + y_start)
+    if not valid_radii:
+        return seed_point, DEFAULT_ROD_RADIUS_PX, True
+        
+    final_radius = np.median(valid_radii)
     
-    return final_global_center, final_radius, False
+    # Enforce minimum physical radius
+    if final_radius < 5:
+        final_radius = 5
+        
+    return seed_point, final_radius, False
 
 def process_image(img_array, rod_points, ref_points, ref_length_mm):
     """
     Main orchestrator logic.
     """
-    import cv2
     annotated_img = img_array.copy()
     
     # 1. Detect Rods
     detected_circles = [] 
-    
     for pt in rod_points:
         seed = (int(pt[0]), int(pt[1]))
         result = find_rod_circle(img_array, seed)
@@ -284,14 +253,14 @@ def refine_gemini_points(img_array, gemini_data):
     Takes normalized coordinates from Gemini [0.0 - 1.0] and refines them 
     to the exact pixel center of the dark rod using localized OpenCV thresholding and MinEnclosingCircle.
     """
-    import cv2
-    import numpy as np
-    
     h, w = img_array.shape[:2]
     refined_points = []
     
     # Use a tightly constricted window (approx 4% of image size) so we only see the rod tip, not the shaft
     window_size = max(40, int(max(h, w) * 0.04)) 
+    
+    # Pre-instantiate CLAHE for lightning fast localized contrast enhancements
+    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
     
     for pt in gemini_data:
         cx = int(pt.get('x', 0.5) * w)
@@ -310,7 +279,10 @@ def refine_gemini_points(img_array, gemini_data):
             continue
             
         gray = cv2.cvtColor(patch, cv2.COLOR_BGR2GRAY)
-        blurred = cv2.GaussianBlur(gray, (5, 5), 0)
+        
+        # Apply CLAHE to dramatically improve contrast in highly shaded or brightly lit areas
+        gray_clahe = clahe.apply(gray)
+        blurred = cv2.GaussianBlur(gray_clahe, (5, 5), 0)
         
         # Otsu's binarization automatically finds the perfect threshold to separate the dark metal tip from the background
         _, thresh = cv2.threshold(blurred, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)

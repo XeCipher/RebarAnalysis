@@ -1,5 +1,6 @@
 import numpy as np
 import math
+import cv2
 
 # --- Visual Constants ---
 COLOR_BAR_CENTER = (0, 255, 255)  # Yellow
@@ -19,7 +20,6 @@ ADAPTATION_RATE = 0.1
 MORPH_KERNEL_WIDTH = 15 
 
 def draw_text_with_bg(img, text, pos, font_scale=0.6, thickness=1):
-    import cv2
     font = cv2.FONT_HERSHEY_SIMPLEX
     x, y = int(pos[0]), int(pos[1])
     (w, h), baseline = cv2.getTextSize(text, font, font_scale, thickness)
@@ -53,7 +53,6 @@ def enhance_horizontal_structures(gray_img):
     """
     Apply Morphological Opening to isolate horizontal features.
     """
-    import cv2
     kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (MORPH_KERNEL_WIDTH, 1))
     processed = cv2.morphologyEx(gray_img, cv2.MORPH_OPEN, kernel, iterations=1)
     processed = cv2.GaussianBlur(processed, (5, 5), 0)
@@ -156,7 +155,6 @@ def fit_line_standard(points):
         return 0, ys[0]
 
 def process_side_view(img_array, rod_points, ref_points=None, ref_length=0):
-    import cv2
     if img_array is None: return None, {}, False
     
     annotated_img = img_array.copy()
@@ -251,9 +249,6 @@ def refine_side_gemini_points(img_array, gemini_data):
     Takes AI context points and snaps the Y-coordinate to the strongest horizontal edge line 
     (the physical tie bar/stirrup) in the localized area.
     """
-    import cv2
-    import numpy as np
-    
     h, w = img_array.shape[:2]
     refined = []
     
