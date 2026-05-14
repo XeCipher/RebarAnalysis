@@ -32,7 +32,7 @@ A site engineer uploads a photograph of a reinforced concrete column along with 
 | Frontend | Angular 17, TypeScript, Tailwind CSS |
 | Backend | Python, Flask, Flask-CORS |
 | Computer Vision | OpenCV, NumPy, SciPy |
-| AI / LLM | Google Gemini 3.1 Flash Lite |
+| AI / LLM | Gemini Flash (via GemPrism Gateway) |
 | BIM Integration | Autodesk Revit, Dynamo (Python) |
 | Hosting | Vercel (Frontend), Render (Backend) |
 | Notifications | Gmail SMTP (smtplib) |
@@ -190,21 +190,25 @@ Both JSON files are generated and downloadable directly from the result page on 
 
 ```
 RebarAnalysis/
+├── run.bat
 ├── backend/
 │   ├── src/
 │   │   ├── app.py                  # Flask API (routes, email)
 │   │   ├── analysis_service.py     # OpenCV top-view analysis
 │   │   ├── side_view_service.py    # OpenCV side-view analysis
-│   │   ├── gemini_service.py       # Gemini AI integration
 │   │   └── scoring_utils.py        # Compliance scoring logic
 │   ├── .env.example
 │   └── requirements.txt
 │
 ├── frontend/
-│   └── src/app/
-│       ├── app.component.ts        # Main logic
-│       ├── app.component.html      # UI template
-│       └── app.component.scss      # Styles
+│   └── src/
+│       ├── app/
+│       │   ├── app.component.ts        # Main logic
+│       │   ├── app.component.html      # UI template
+│       │   └── app.component.scss      # Styles
+│       │
+│       └── environments/
+│           └── environment.ts          # Development environment config
 │
 └── test_dataset/
     ├── lab_columns/                # C1–C8 test images and outputs
@@ -241,10 +245,9 @@ venv\Scripts\activate        # Windows
 pip install -r requirements.txt
 ```
 
-Create a `.env` file (see `.env.example`):
+Create a `backend/.env` file:
 
 ```
-GOOGLE_API_KEY=your_gemini_api_key_here
 SENDER_EMAIL=your_gmail_address@gmail.com
 SENDER_APP_PASSWORD=your_gmail_app_password
 ```
@@ -259,6 +262,19 @@ python app.py
 ```
 
 ### Frontend
+
+Create a `frontend/src/environments/environment.ts` file:
+
+```
+export const environment = {
+  production: false,
+  gemprismApiKey: 'gp_live_TOKEN',
+  gemprismBaseUrl: 'https://gemprism.vercel.app',
+  apiBaseUrl: 'http://localhost:5000'
+};
+```
+
+Start the backend:
 
 ```bash
 cd frontend
