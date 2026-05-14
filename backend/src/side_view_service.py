@@ -245,3 +245,48 @@ def process_side_view(img_array, rod_points, ref_points=None, ref_length=0):
         draw_text_with_bg(annotated_img, label_text, (measure_x + 10, int((y1+y2)/2)), 0.8, 2)
 
     return annotated_img, results, (px_per_mm is not None)
+
+def refine_side_gemini_points(img_array, gemini_data):
+    """
+    Takes AI context points and snaps the Y-coordinate to the strongest horizontal edge line 
+    (the physical tie bar/stirrup) in the localized area.
+    """
+    import cv2
+    import numpy as np
+    
+    h, w = img_array.shape[:2]
+    refined = []
+    
+    # We allow a wide horizontal window, but a restricted vertical search space
+    window_size = max(60, int(h * 0.05))
+    
+    for pt in gemini_data:
+        cx = int(pt.get('x', 0.5) * w)
+        cy = int(pt.get('y', 0.5) * h)
+        
+        y1 = max(0, cy - window_size)
+        y2 = min(h, cy + window_size)
+        x1 = max(0, cx - window_size * 2)
+        x2 = min(w, cx + window_size * 2)
+        
+        patch = img_array[y1:y2, x1:x2]
+        if patch.size == 0:
+            refined.append([cx, cy])
+            continue
+            
+        gray = cv2.cvtColor(patch, cv2.COLOR_BGR2GRAY)
+        blurred = cv2.GaussianBlur(gray, (5, 5), 0)
+        edges = cv2.Canny(blurred, 50, 150)
+        
+        # Sum edges horizontally to find the row with the strongest horizontal line
+        row_sums = np.sum(edges, axis=1)
+        best_local_y = np.argmax(row_sums)
+        
+        if row_sums[best_local_y] > 0:
+            refined.append([cx, y1 + int(best_local_y)])
+        else:
+            refined.append([cx, cy])
+            
+    # Sort strictly Top-to-Bottom for side view
+    refined.sort(key=lambda p: p[1])
+    return refined

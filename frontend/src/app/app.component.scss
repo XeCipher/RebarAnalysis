@@ -14,7 +14,9 @@
     border: 2px solid white; 
     border-radius: 50%; 
     transform: translate(-50%, -50%); 
-    pointer-events: none; 
+    pointer-events: auto; /* Required for native pointer events */
+    cursor: grab;
+    touch-action: none; /* Disables standard zooming & dragging of viewport on mobile */
     display: flex; 
     align-items: center; 
     justify-content: center; 
@@ -23,7 +25,12 @@
     font-weight: bold; 
     box-shadow: 0 2px 5px rgba(0,0,0,0.4); 
     z-index: 10; 
-    transition: all 0.2s;
+    transition: transform 0.1s;
+}
+
+.dot-rod:active {
+    cursor: grabbing;
+    transform: translate(-50%, -50%) scale(1.15); /* Pop effect when user holds the dot */
 }
 
 .dot-ref { 
@@ -34,23 +41,30 @@
     border: 2px solid white; 
     border-radius: 50%; 
     transform: translate(-50%, -50%); 
-    pointer-events: none; 
+    pointer-events: auto;
+    cursor: grab;
+    touch-action: none;
     box-shadow: 0 2px 5px rgba(0,0,0,0.4); 
     z-index: 10; 
-    transition: all 0.2s;
+    transition: transform 0.1s;
+}
+
+.dot-ref:active {
+    cursor: grabbing;
+    transform: translate(-50%, -50%) scale(1.15);
 }
 
 /* Mobile Adjustments for visual clarity */
 @media (max-width: 640px) {
     .dot-rod {
-        width: 16px;
-        height: 16px;
-        font-size: 8px;
+        width: 18px; /* Slightly larger on mobile to assist tapping and dragging */
+        height: 18px;
+        font-size: 9px;
         border-width: 1.5px;
     }
     .dot-ref {
-        width: 12px;
-        height: 12px;
+        width: 14px;
+        height: 14px;
         border-width: 1.5px;
     }
 }

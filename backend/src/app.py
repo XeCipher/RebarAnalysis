@@ -36,6 +36,58 @@ CORS(app, resources={r"/*": {
 def health_check():
     return "Rebar Analysis API is Running!", 200
 
+# --- AUTO-DETECT ENDPOINT (FAST AI HYBRID) ---
+@app.route('/auto-detect', methods=['POST', 'OPTIONS'])
+def auto_detect():
+    if request.method == 'OPTIONS': return jsonify({'status': 'ok'}), 200
+    try:
+        import cv2
+        import numpy as np
+
+        if 'image' not in request.files:
+            return jsonify({"status": "error", "message": "No image provided"}), 400
+            
+        file_bytes = request.files['image'].read()
+        view_mode = request.form.get('view_mode', 'top')
+        
+        # Decode the high-res image once for OpenCV refinement
+        img_array = cv2.imdecode(np.frombuffer(file_bytes, np.uint8), cv2.IMREAD_COLOR)
+        if img_array is None:
+            return jsonify({"status": "error", "message": "Could not decode image"}), 400
+            
+        # --- SPEED OPTIMIZATION ---
+        # Gemini processes huge images very slowly. We compress and scale the image 
+        # down to a max width/height of 600px before sending it to the AI.
+        h, w = img_array.shape[:2]
+        max_ai_dim = 600.0
+        scale = max_ai_dim / max(h, w) if max(h, w) > max_ai_dim else 1.0
+        
+        if scale < 1.0:
+            ai_img = cv2.resize(img_array, (int(w * scale), int(h * scale)), interpolation=cv2.INTER_AREA)
+        else:
+            ai_img = img_array
+            
+        # Compress to JPEG to minimize network payload
+        _, buffer = cv2.imencode('.jpg', ai_img, [int(cv2.IMWRITE_JPEG_QUALITY), 75])
+        fast_bytes = buffer.tobytes()
+
+        # 1. Gemini AI: Contextually map the rods (Blazing fast now)
+        gemini_normalized_points = gemini_service.get_auto_detect_points(fast_bytes, view_mode)
+        
+        # 2. OpenCV: Refine to exact pixel centers on the ORIGINAL HIGH-RES image
+        points = []
+        if gemini_normalized_points:
+            if view_mode == 'top':
+                points = analysis_service.refine_gemini_points(img_array, gemini_normalized_points)
+            else:
+                points = side_view_service.refine_side_gemini_points(img_array, gemini_normalized_points)
+                
+        return jsonify({"status": "success", "points": points})
+        
+    except Exception as e:
+        print(f"Auto-Detect Error: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
 # --- TOP VIEW ---
 @app.route('/analyze', methods=['POST', 'OPTIONS'])
 def analyze_top():

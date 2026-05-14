@@ -248,3 +248,108 @@ def process_image(img_array, rod_points, ref_points, ref_length_mm):
     has_scale = (px_per_mm is not None)
     
     return annotated_img, rod_data, has_scale
+
+def sort_points_clockwise(points):
+    """
+    Sorts a list of [x, y] points in a clockwise order starting precisely from the Top-Left corner.
+    """
+    if not points:
+        return []
+        
+    # Calculate geometric centroid
+    cx = sum(p[0] for p in points) / len(points)
+    cy = sum(p[1] for p in points) / len(points)
+    
+    def angle_from_centroid(p):
+        # math.atan2(y, x) maps Top to -pi/2, Right to 0, Bottom to pi/2, Left to pi.
+        # This naturally flows clockwise when sorted.
+        return math.atan2(p[1] - cy, p[0] - cx)
+        
+    sorted_pts = sorted(points, key=angle_from_centroid)
+    
+    # Locate the absolute top-left point by finding minimum (x + y) value
+    top_left_idx = 0
+    min_sum = float('inf')
+    
+    for i, p in enumerate(sorted_pts):
+        if (p[0] + p[1]) < min_sum:
+            min_sum = (p[0] + p[1])
+            top_left_idx = i
+            
+    # Rotate the sorted array so the Top-Left point becomes Index 0
+    return sorted_pts[top_left_idx:] + sorted_pts[:top_left_idx]
+
+def refine_gemini_points(img_array, gemini_data):
+    """
+    Takes normalized coordinates from Gemini [0.0 - 1.0] and refines them 
+    to the exact pixel center of the dark rod using localized OpenCV thresholding and MinEnclosingCircle.
+    """
+    import cv2
+    import numpy as np
+    
+    h, w = img_array.shape[:2]
+    refined_points = []
+    
+    # Use a tightly constricted window (approx 4% of image size) so we only see the rod tip, not the shaft
+    window_size = max(40, int(max(h, w) * 0.04)) 
+    
+    for pt in gemini_data:
+        cx = int(pt.get('x', 0.5) * w)
+        cy = int(pt.get('y', 0.5) * h)
+        
+        # Bound the local micro-window
+        x1 = max(0, cx - window_size // 2)
+        y1 = max(0, cy - window_size // 2)
+        x2 = min(w, cx + window_size // 2)
+        y2 = min(h, cy + window_size // 2)
+        
+        patch = img_array[y1:y2, x1:x2]
+        
+        if patch.size == 0:
+            refined_points.append([cx, cy])
+            continue
+            
+        gray = cv2.cvtColor(patch, cv2.COLOR_BGR2GRAY)
+        blurred = cv2.GaussianBlur(gray, (5, 5), 0)
+        
+        # Otsu's binarization automatically finds the perfect threshold to separate the dark metal tip from the background
+        _, thresh = cv2.threshold(blurred, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+        
+        # Find dark blobs in the window
+        contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        
+        best_local_cx, best_local_cy = cx, cy
+        found_valid = False
+        
+        if contours:
+            # Filter extremely small noise dots
+            valid_cnts = [c for c in contours if cv2.contourArea(c) > 10]
+            if valid_cnts:
+                patch_center = (window_size // 2, window_size // 2)
+                
+                # We want the contour that is closest to the Gemini prediction (the center of our patch)
+                def dist_to_center(c):
+                    M = cv2.moments(c)
+                    if M["m00"] == 0: return 999999
+                    mcx = int(M["m10"] / M["m00"])
+                    mcy = int(M["m01"] / M["m00"])
+                    return (mcx - patch_center[0])**2 + (mcy - patch_center[1])**2
+                    
+                best_c = min(valid_cnts, key=dist_to_center)
+                
+                # Minimum Enclosing Circle provides a mathematically perfect center for circular rod tips
+                (center_x, center_y), radius = cv2.minEnclosingCircle(best_c)
+                
+                # Transform back to full image coordinates
+                best_local_cx = x1 + int(center_x)
+                best_local_cy = y1 + int(center_y)
+                found_valid = True
+        
+        if found_valid:
+            refined_points.append([best_local_cx, best_local_cy])
+        else:
+            # Fallback
+            refined_points.append([cx, cy]) 
+            
+    # Return the points sorted strictly clockwise starting from Top-Left
+    return sort_points_clockwise(refined_points)

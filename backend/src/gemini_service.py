@@ -113,6 +113,40 @@ The column consists of 4 main vertical rods, one at each corner.
 }
 """
 
+# --- AUTO DETECT PROMPTS (HYBRID CV-AI) ---
+PROMPT_AUTO_DETECT_TOP = """
+You are an expert AI vision system. Analyze this Site Photograph of a concrete block.
+Identify the center points of all protruding rusty rebar rods. 
+There are usually exactly 4 or exactly 8 rods in these images.
+Return their exact coordinates as normalized floats between 0.000 and 1.000.
+(x=0.0 is the left edge, x=1.0 is the right edge, y=0.0 is the top edge, y=1.0 is the bottom edge).
+Ignore chalk marks, wooden planks, and background objects. Only mark the actual protruding rebar rods.
+
+Output Structure (Strict JSON):
+{
+  "rods": [
+    {"x": 0.250, "y": 0.300},
+    {"x": 0.750, "y": 0.300}
+  ]
+}
+"""
+
+PROMPT_AUTO_DETECT_SIDE = """
+You are an expert AI vision system. Analyze this Site Photograph of a concrete column from the side elevation.
+Identify the center points of exactly TWO prominent horizontal bars (stirrups / ties).
+Pick two clear distinct bars separated by a gap vertically.
+Return their exact coordinates as normalized floats between 0.000 and 1.000.
+(x=0.0 is the left edge, x=1.0 is the right edge, y=0.0 is the top edge, y=1.0 is the bottom edge).
+
+Output Structure (Strict JSON):
+{
+  "rods": [
+    {"x": 0.500, "y": 0.350},
+    {"x": 0.500, "y": 0.650}
+  ]
+}
+"""
+
 def _get_json_from_gemini(model, prompt, img_list):
     """Helper to call Gemini and parse JSON safely, forcing application/json type."""
     try:
@@ -175,3 +209,14 @@ def detect_defects_for_revit(real_image_bytes, design_image_bytes=None, rod_coun
     if not data:
         return {"reset": True, "rod": None}
     return data
+
+def get_auto_detect_points(image_bytes, view_mode='top'):
+    """
+    Uses Gemini Vision to map the coordinates of the rods contextually.
+    Returns a list of dicts: [{"x": float, "y": float}, ...]
+    """
+    prompt = PROMPT_AUTO_DETECT_SIDE if view_mode == 'side' else PROMPT_AUTO_DETECT_TOP
+    data = _get_json_from_gemini(MODEL, prompt, Image.open(io.BytesIO(image_bytes)))
+    if data and 'rods' in data:
+        return data['rods']
+    return []

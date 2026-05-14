@@ -1,8 +1,9 @@
-import { Component, ElementRef, ViewChild, isDevMode, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
+import { Component, ElementRef, ViewChild, isDevMode, ChangeDetectionStrategy, ChangeDetectorRef, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
-import { LucideAngularModule, Upload, ScanLine, Ruler, CheckCircle2, AlertCircle, Trash2, Undo2, ArrowRight, Layers, ArrowUpDown, FileJson } from 'lucide-angular';
+import { LucideAngularModule, Upload, ScanLine, Ruler, CheckCircle2, AlertCircle, Trash2, Undo2, ArrowRight, Layers, ArrowUpDown, FileJson, Wand2, Info } from 'lucide-angular';
 import { FormsModule } from '@angular/forms';
+import { Subscription } from 'rxjs';
 
 const API_BASE_URL = isDevMode() 
   ? 'http://localhost:5000' 
@@ -29,10 +30,10 @@ interface ApiResponse {
   imports: [CommonModule, LucideAngularModule, FormsModule],
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.scss'],
-  changeDetection: ChangeDetectionStrategy.OnPush // Optimization: drastically reduces re-renders
+  changeDetection: ChangeDetectionStrategy.OnPush 
 })
-export class AppComponent {
-  icons = { Upload, ScanLine, Ruler, CheckCircle2, AlertCircle, Trash2, Undo2, ArrowRight, Layers, ArrowUpDown, FileJson };
+export class AppComponent implements OnDestroy {
+  icons = { Upload, ScanLine, Ruler, CheckCircle2, AlertCircle, Trash2, Undo2, ArrowRight, Layers, ArrowUpDown, FileJson, Wand2, Info };
 
   // State
   viewMode: 'top' | 'side' = 'top';
@@ -51,6 +52,9 @@ export class AppComponent {
   imgNatHeight: number = 0;
   
   isAnalyzing = false;
+  isAutoDetecting = false;
+  autoDetectSub: Subscription | null = null;
+  
   result: ApiResponse | null = null;
   errorMsg: string | null = null;
   
@@ -62,9 +66,24 @@ export class AppComponent {
   isEmailSending: boolean = false;
   emailSent: boolean = false;
 
+  // Drag Drop Variables
+  draggingPointIndex: number | null = null;
+  draggingPointType: 'rod' | 'ref' | null = null;
+  dragStartX = 0;
+  dragStartY = 0;
+  dragStartPointX = 0;
+  dragStartPointY = 0;
+  hasMoved = false;
+
   @ViewChild('imageRef') imageElement!: ElementRef<HTMLImageElement>;
 
   constructor(private http: HttpClient, private cdr: ChangeDetectorRef) {}
+
+  ngOnDestroy() {
+    if (this.autoDetectSub) {
+      this.autoDetectSub.unsubscribe();
+    }
+  }
 
   setViewMode(mode: 'top' | 'side') {
     if (this.viewMode !== mode) {
@@ -74,6 +93,7 @@ export class AppComponent {
   }
 
   fullReset() {
+    this.cancelAutoDetect();
     this.realImageFile = null;
     this.designImageFile = null;
     this.realImagePreview = null;
@@ -81,7 +101,6 @@ export class AppComponent {
   }
 
   resetMarkings() {
-    // Immutable updates for OnPush change detection
     this.rodPoints = [];
     this.refPoints = [];
     this.result = null;
@@ -89,7 +108,6 @@ export class AppComponent {
     this.mode = 'rods';
     this.errorMsg = null;
     
-    // Reset Email State
     this.columnNumber = '';
     this.authorityEmail = '';
     this.isEmailSending = false;
@@ -107,6 +125,12 @@ export class AppComponent {
         reader.onload = (e: any) => {
           this.realImagePreview = e.target.result;
           this.resetMarkings();
+          
+          // Automatically trigger Auto-Detect the moment image is uploaded
+          setTimeout(() => {
+            this.mode = 'rods';
+            this.autoDetect();
+          }, 150);
         };
         reader.readAsDataURL(file);
       } else {
@@ -142,7 +166,6 @@ export class AppComponent {
     const x = Math.round((event.clientX - rect.left) * scaleX);
     const y = Math.round((event.clientY - rect.top) * scaleY);
 
-    // Using spread operator for immutable state updates (crucial for OnPush)
     if (this.mode === 'rods') {
       this.rodPoints = [...this.rodPoints, [x, y]];
     } else {
@@ -151,6 +174,82 @@ export class AppComponent {
       }
     }
     this.cdr.markForCheck();
+  }
+
+  // --- Drag and Drop Point Manipulation ---
+  onPointerDown(event: PointerEvent, index: number, type: 'rod' | 'ref') {
+    event.preventDefault();
+    event.stopPropagation();
+    
+    this.draggingPointIndex = index;
+    this.draggingPointType = type;
+    this.dragStartX = event.clientX;
+    this.dragStartY = event.clientY;
+    
+    const pt = type === 'rod' ? this.rodPoints[index] : this.refPoints[index];
+    this.dragStartPointX = pt[0];
+    this.dragStartPointY = pt[1];
+    this.hasMoved = false;
+
+    (event.target as HTMLElement).setPointerCapture(event.pointerId);
+  }
+
+  onPointerMove(event: PointerEvent) {
+    if (this.draggingPointIndex === null) return;
+    event.preventDefault();
+    event.stopPropagation();
+
+    const dx = event.clientX - this.dragStartX;
+    const dy = event.clientY - this.dragStartY;
+
+    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
+      this.hasMoved = true;
+    }
+
+    if (this.hasMoved) {
+      const img = this.imageElement.nativeElement;
+      const rect = img.getBoundingClientRect();
+      const scaleX = img.naturalWidth / rect.width;
+      const scaleY = img.naturalHeight / rect.height;
+
+      const newX = this.dragStartPointX + (dx * scaleX);
+      const newY = this.dragStartPointY + (dy * scaleY);
+
+      const clampedX = Math.round(Math.max(0, Math.min(newX, img.naturalWidth)));
+      const clampedY = Math.round(Math.max(0, Math.min(newY, img.naturalHeight)));
+
+      if (this.draggingPointType === 'rod') {
+        const newPoints = [...this.rodPoints];
+        newPoints[this.draggingPointIndex] = [clampedX, clampedY];
+        this.rodPoints = newPoints;
+      } else {
+        const newPoints = [...this.refPoints];
+        newPoints[this.draggingPointIndex] = [clampedX, clampedY];
+        this.refPoints = newPoints;
+      }
+      this.cdr.markForCheck();
+    }
+  }
+
+  onPointerUp(event: PointerEvent, index: number, type: 'rod' | 'ref') {
+    if (this.draggingPointIndex === null) return;
+    event.preventDefault();
+    event.stopPropagation();
+    
+    (event.target as HTMLElement).releasePointerCapture(event.pointerId);
+
+    if (!this.hasMoved) {
+      // Swift tap -> Remove the point
+      if (type === 'rod') {
+        this.rodPoints = this.rodPoints.filter((_, i) => i !== index);
+      } else {
+        this.refPoints = this.refPoints.filter((_, i) => i !== index);
+      }
+      this.cdr.markForCheck();
+    }
+
+    this.draggingPointIndex = null;
+    this.draggingPointType = null;
   }
 
   undoLast() {
@@ -164,6 +263,47 @@ export class AppComponent {
 
   setMode(m: 'rods' | 'ref') {
     this.mode = m;
+    this.cdr.markForCheck();
+  }
+
+  autoDetect() {
+    if (!this.realImageFile) return;
+
+    // Cancel any ongoing auto-detect request
+    if (this.isAutoDetecting && this.autoDetectSub) {
+      this.autoDetectSub.unsubscribe();
+    }
+
+    this.isAutoDetecting = true;
+    this.cdr.markForCheck();
+
+    const formData = new FormData();
+    formData.append('image', this.realImageFile);
+    formData.append('view_mode', this.viewMode);
+
+    this.autoDetectSub = this.http.post<any>(`${API_BASE_URL}/auto-detect`, formData).subscribe({
+      next: (res) => {
+        if (res.status === 'success' && res.points) {
+           // Completely overwrite previous dots with the new accurate points
+           this.rodPoints = res.points;
+        }
+        this.isAutoDetecting = false;
+        this.cdr.markForCheck();
+      },
+      error: (err) => {
+        console.error(err);
+        this.isAutoDetecting = false;
+        alert("Auto-detect failed. Ensure the backend is running.");
+        this.cdr.markForCheck();
+      }
+    });
+  }
+
+  cancelAutoDetect() {
+    if (this.autoDetectSub) {
+      this.autoDetectSub.unsubscribe();
+    }
+    this.isAutoDetecting = false;
     this.cdr.markForCheck();
   }
 
@@ -260,7 +400,6 @@ export class AppComponent {
     });
   }
 
-  // Optimize ngFor rendering
   trackByIndex(index: number): number {
     return index;
   }
