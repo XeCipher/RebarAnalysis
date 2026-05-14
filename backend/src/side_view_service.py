@@ -1,4 +1,3 @@
-import cv2
 import numpy as np
 import math
 
@@ -20,6 +19,7 @@ ADAPTATION_RATE = 0.1
 MORPH_KERNEL_WIDTH = 15 
 
 def draw_text_with_bg(img, text, pos, font_scale=0.6, thickness=1):
+    import cv2
     font = cv2.FONT_HERSHEY_SIMPLEX
     x, y = int(pos[0]), int(pos[1])
     (w, h), baseline = cv2.getTextSize(text, font, font_scale, thickness)
@@ -53,6 +53,7 @@ def enhance_horizontal_structures(gray_img):
     """
     Apply Morphological Opening to isolate horizontal features.
     """
+    import cv2
     kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (MORPH_KERNEL_WIDTH, 1))
     processed = cv2.morphologyEx(gray_img, cv2.MORPH_OPEN, kernel, iterations=1)
     processed = cv2.GaussianBlur(processed, (5, 5), 0)
@@ -154,12 +155,12 @@ def fit_line_standard(points):
     else:
         return 0, ys[0]
 
-def process_side_view(image_path, rod_points, ref_points=None, ref_length=0):
-    img = cv2.imread(image_path)
-    if img is None: return None, {}, False
+def process_side_view(img_array, rod_points, ref_points=None, ref_length=0):
+    import cv2
+    if img_array is None: return None, {}, False
     
-    annotated_img = img.copy()
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    annotated_img = img_array.copy()
+    gray = cv2.cvtColor(img_array, cv2.COLOR_BGR2GRAY)
     
     # --- X-RAY IMAGE ---
     morph_gray = enhance_horizontal_structures(gray)
@@ -205,7 +206,7 @@ def process_side_view(image_path, rod_points, ref_points=None, ref_length=0):
             bar_lines.append((m, c))
             
             # D. Draw Infinite Line
-            h_img, w_img = img.shape[:2]
+            h_img, w_img = img_array.shape[:2]
             y_start_screen = int(c)
             y_end_screen = int(m * w_img + c)
             

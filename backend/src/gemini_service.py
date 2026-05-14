@@ -1,8 +1,10 @@
 from google import genai
+from google.genai import types
 from PIL import Image
 import os
 import json
 import re
+import io
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -112,14 +114,13 @@ The column consists of 4 main vertical rods, one at each corner.
 """
 
 def _get_json_from_gemini(model, prompt, img_list):
-    """Helper to call Gemini and parse JSON safely."""
+    """Helper to call Gemini and parse JSON safely, forcing application/json type."""
     try:
         client = genai.Client(
             api_key=GEMPRISM_API_KEY,
             http_options={'base_url': f"{GEMPRISM_BASE_URL}/api/proxy"}
         )
         
-        # Ensure contents is a list of [prompt, image1, image2...]
         contents = [prompt]
         if isinstance(img_list, list):
             contents.extend(img_list)
@@ -128,41 +129,44 @@ def _get_json_from_gemini(model, prompt, img_list):
 
         response = client.models.generate_content(
             model=model, 
-            contents=contents
+            contents=contents,
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json"
+            )
         )
         text = response.text
         
-        # Regex to find JSON block within potential conversational text
-        json_match = re.search(r'\{.*\}', text, re.DOTALL)
-        
-        if json_match:
-            clean_json_string = json_match.group(0)
-            return json.loads(clean_json_string)
-        else:
-            print(f"Gemini Warning: No JSON found in response: {text}")
-            return None
+        try:
+            return json.loads(text)
+        except json.JSONDecodeError:
+            json_match = re.search(r'\{.*\}', text, re.DOTALL)
+            if json_match:
+                return json.loads(json_match.group(0))
+            else:
+                print(f"Gemini Warning: No JSON found in response: {text}")
+                return None
     except Exception as e:
         print(f"Gemini Error: {e}")
         return None
 
-def extract_design_data(design_image_path):
-    """Top View Extraction"""
-    data = _get_json_from_gemini(MODEL, PROMPT_TOP, Image.open(design_image_path))
+def extract_design_data(design_image_bytes):
+    """Top View Extraction. Expects raw bytes."""
+    data = _get_json_from_gemini(MODEL, PROMPT_TOP, Image.open(io.BytesIO(design_image_bytes)))
     return data if data else {"count": 0, "radius_mm": 0, "spacings_mm": []}
 
-def extract_side_design_data(design_image_path):
-    """Side View Extraction"""
-    data = _get_json_from_gemini(MODEL, PROMPT_SIDE, Image.open(design_image_path))
+def extract_side_design_data(design_image_bytes):
+    """Side View Extraction. Expects raw bytes."""
+    data = _get_json_from_gemini(MODEL, PROMPT_SIDE, Image.open(io.BytesIO(design_image_bytes)))
     return data if data else {"spacing_mm": 0}
 
-def detect_defects_for_revit(real_image_path, design_image_path=None, rod_count=8):
+def detect_defects_for_revit(real_image_bytes, design_image_bytes=None, rod_count=8):
     """
     Analyzes the Real Image to find a specific misplaced rod for Revit highlighting.
-    Returns JSON: { "reset": bool, "rod": int }
+    Returns JSON: { "reset": bool, "rod": int }. Expects raw bytes.
     """
-    images = [Image.open(real_image_path)]
-    if design_image_path:
-        images.append(Image.open(design_image_path))
+    images = [Image.open(io.BytesIO(real_image_bytes))]
+    if design_image_bytes:
+        images.append(Image.open(io.BytesIO(design_image_bytes)))
 
     prompt = PROMPT_DEFECT_4 if rod_count == 4 else PROMPT_DEFECT
         

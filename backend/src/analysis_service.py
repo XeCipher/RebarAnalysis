@@ -1,4 +1,3 @@
-import cv2
 import numpy as np
 import math
 
@@ -18,6 +17,7 @@ COLOR_TEXT_OUTLINE = (0, 0, 0)         # Black
 
 def draw_outlined_text(img, text, pos, font_scale, thickness=2, color=COLOR_TEXT, outline_color=COLOR_TEXT_OUTLINE):
     """Draws text with a thick outline for high contrast (like subtitles)."""
+    import cv2
     font = cv2.FONT_HERSHEY_SIMPLEX
     x, y = int(pos[0]), int(pos[1])
     
@@ -28,6 +28,7 @@ def draw_outlined_text(img, text, pos, font_scale, thickness=2, color=COLOR_TEXT
 
 def draw_label_with_box(img, text, center_pos, font_scale=0.5, bg_alpha=0.6):
     """Draws text inside a semi-transparent box centered at pos."""
+    import cv2
     font = cv2.FONT_HERSHEY_SIMPLEX
     thickness = 1
     (text_w, text_h), baseline = cv2.getTextSize(text, font, font_scale, thickness)
@@ -55,6 +56,7 @@ def find_rod_circle(image, seed_point):
     Robustly detects the rod edge and radius using HSV color segmentation and Ray-Casting.
     Returns: (center_point, radius, is_fallback)
     """
+    import cv2
     seed_x, seed_y = int(seed_point[0]), int(seed_point[1])
     
     # Define Region of Interest (ROI) limits
@@ -160,6 +162,7 @@ def process_image(img_array, rod_points, ref_points, ref_length_mm):
     """
     Main orchestrator logic.
     """
+    import cv2
     annotated_img = img_array.copy()
     
     # 1. Detect Rods

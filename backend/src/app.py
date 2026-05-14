@@ -6,10 +6,9 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-import cv2
-import numpy as np
 import base64
 import json
+import concurrent.futures
 
 # Email Imports
 import smtplib
@@ -33,8 +32,7 @@ CORS(app, resources={r"/*": {
     "allow_headers": ["Content-Type"]
 }})
 
-UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'temp_uploads')
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+# Note: UPLOAD_FOLDER is entirely removed. We process everything in-memory now!
 
 @app.route('/', methods=['GET'])
 def health_check():
@@ -45,6 +43,10 @@ def health_check():
 def analyze_top():
     if request.method == 'OPTIONS': return jsonify({'status': 'ok'}), 200
     try:
+        # Lazy load heavy dependencies
+        import cv2
+        import numpy as np
+
         if 'real_image' not in request.files:
             return jsonify({"status": "error", "message": "No real_image provided"}), 400
 
@@ -55,35 +57,50 @@ def analyze_top():
         ref_points = json.loads(request.form.get('ref_points', '[]'))
         ref_length = float(request.form.get('ref_length', 0))
 
-        real_path = os.path.join(UPLOAD_FOLDER, "temp_real.jpg")
-        real_img.save(real_path)
+        # Zero Disk I/O: Read directly into memory
+        real_bytes = real_img.read()
+        design_bytes = design_img.read() if design_img else None
         
-        img_array = cv2.imread(real_path)
+        # Decode the byte stream into an OpenCV array
+        img_array = cv2.imdecode(np.frombuffer(real_bytes, np.uint8), cv2.IMREAD_COLOR)
         if img_array is None:
              return jsonify({"status": "error", "message": "Could not decode image"}), 400
 
-        # 1. CV Analysis
-        annotated_img, actual_data, has_scale = analysis_service.process_image(
-            img_array, rod_points, ref_points, ref_length
-        )
+        # Parallelize heavy workloads using ThreadPoolExecutor
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            # 1. CV Analysis Task
+            future_cv = executor.submit(
+                analysis_service.process_image,
+                img_array, rod_points, ref_points, ref_length
+            )
 
-        # 2. Gemini Analysis
-        design_data = {"count": 0, "radius_mm": 0, "spacings_mm":[]}
-        revit_data = {"reset": True, "rod": None} # Default Revit Data
-        
-        # Determine Design Data
-        if design_img:
-            design_path = os.path.join(UPLOAD_FOLDER, "temp_design.jpg")
-            design_img.save(design_path)
-            design_data = gemini_service.extract_design_data(design_path)
-        else:
-            design_path = None
+            # 2. Gemini Design Extraction Task
+            if design_bytes:
+                future_design = executor.submit(
+                    gemini_service.extract_design_data,
+                    design_bytes
+                )
+            else:
+                future_design = None
 
-        # 3. Gemini Defect Detection for Revit
-        rod_count = len(rod_points)
-        revit_data = gemini_service.detect_defects_for_revit(real_path, design_path, rod_count)
+            # 3. Gemini Defect Detection Task
+            rod_count = len(rod_points)
+            future_defect = executor.submit(
+                gemini_service.detect_defects_for_revit,
+                real_bytes, design_bytes, rod_count
+            )
 
-        # 4. Scoring
+            # Wait for and collect the parallel results
+            annotated_img, actual_data, has_scale = future_cv.result()
+            
+            if future_design:
+                design_data = future_design.result()
+            else:
+                design_data = {"count": 0, "radius_mm": 0, "spacings_mm": []}
+                
+            revit_data = future_defect.result()
+
+        # 4. Scoring logic (Instantaneous)
         score, table = scoring_utils.calculate_similarity_and_table(
             design_data, actual_data, has_scale
         )
@@ -105,6 +122,7 @@ def analyze_top():
         print(f"Top Error: {e}")
         return jsonify({"status": "error", "message": str(e)}), 500
 
+
 # --- EMAIL NOTIFICATION ENDPOINT ---
 @app.route('/send-email-report', methods=['POST', 'OPTIONS'])
 def send_email_report():
@@ -115,7 +133,7 @@ def send_email_report():
         authority_email = data.get('email')
         score = data.get('score')
         table = data.get('table', [])
-        img_b64 = data.get('image', '').split(',')[-1] # Remove the "data:image/jpeg;base64," prefix
+        img_b64 = data.get('image', '').split(',')[-1] 
 
         SENDER_EMAIL = os.environ.get("SENDER_EMAIL")
         SENDER_PASS = os.environ.get("SENDER_PASS")
@@ -128,7 +146,6 @@ def send_email_report():
         msg['From'] = SENDER_EMAIL
         msg['To'] = authority_email
 
-        # Build HTML Email Body with the compliance table
         html_body = f"""
         <html>
           <body>
@@ -141,7 +158,6 @@ def send_email_report():
               </tr>
         """
         for row in table:
-            # Color code the status
             status_color = "#d32f2f" if row['status'] == "Not Acceptable" else "#f57c00" if row['status'] == "Minor Mismatch" else "#388e3c"
             html_body += f"""<tr>
                 <td>{row['parameter']}</td>
@@ -164,14 +180,12 @@ def send_email_report():
         msg_alt.attach(MIMEText("Please view this email in an HTML compatible client.", 'plain'))
         msg_alt.attach(MIMEText(html_body, 'html'))
 
-        # Embed Image
         if img_b64:
             img_data = base64.b64decode(img_b64)
             img_attachment = MIMEImage(img_data)
             img_attachment.add_header('Content-ID', '<annotated_img>')
             msg.attach(img_attachment)
 
-        # Send Email
         with smtplib.SMTP('smtp.gmail.com', 587) as server:
             server.starttls()
             server.login(SENDER_EMAIL, SENDER_PASS)
@@ -187,6 +201,10 @@ def send_email_report():
 def analyze_side():
     if request.method == 'OPTIONS': return jsonify({'status': 'ok'}), 200
     try:
+        # Lazy load heavy dependencies
+        import cv2
+        import numpy as np
+
         if 'real_image' not in request.files:
             return jsonify({"status": "error", "message": "No real_image provided"}), 400
 
@@ -197,18 +215,36 @@ def analyze_side():
         ref_points = json.loads(request.form.get('ref_points', '[]'))
         ref_length = float(request.form.get('ref_length', 0))
 
-        real_path = os.path.join(UPLOAD_FOLDER, "temp_side_real.jpg")
-        real_img.save(real_path)
+        # Zero Disk I/O
+        real_bytes = real_img.read()
+        design_bytes = design_img.read() if design_img else None
         
-        annotated_img, results, has_scale = side_view_service.process_side_view(
-            real_path, rod_points, ref_points, ref_length
-        )
+        # Decode image for CV
+        img_array = cv2.imdecode(np.frombuffer(real_bytes, np.uint8), cv2.IMREAD_COLOR)
+        if img_array is None:
+             return jsonify({"status": "error", "message": "Could not decode image"}), 400
 
-        design_data = {"spacing_mm": 0}
-        if design_img:
-            design_path = os.path.join(UPLOAD_FOLDER, "temp_side_design.jpg")
-            design_img.save(design_path)
-            design_data = gemini_service.extract_side_design_data(design_path)
+        # Parallel Execution
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            future_cv = executor.submit(
+                side_view_service.process_side_view,
+                img_array, rod_points, ref_points, ref_length
+            )
+
+            if design_bytes:
+                future_design = executor.submit(
+                    gemini_service.extract_side_design_data,
+                    design_bytes
+                )
+            else:
+                future_design = None
+
+            annotated_img, results, has_scale = future_cv.result()
+            
+            if future_design:
+                design_data = future_design.result()
+            else:
+                design_data = {"spacing_mm": 0}
 
         score, table = scoring_utils.calculate_side_view_score(
             design_data, results, has_scale
