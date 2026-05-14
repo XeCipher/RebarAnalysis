@@ -251,7 +251,7 @@
         
         <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <h2 class="text-xl sm:text-2xl font-bold text-slate-800">Compliance Report</h2>
-            <div class="flex flex-wrap gap-2 w-full sm:w-auto">
+            <div class="flex flex-wrap sm:justify-end gap-2 w-full sm:w-auto">
                 <!-- Download revit highlight JSON -->
                 <button *ngIf="viewMode === 'top' && revitData" (click)="downloadRevitJson()" 
                   class="btn bg-orange-100 text-orange-700 border border-orange-200 hover:bg-orange-200 text-xs sm:text-sm py-1.5 px-3 flex-1 sm:flex-none justify-center active:scale-95">
@@ -270,7 +270,7 @@
                     <lucide-icon [img]="icons.FileJson" class="w-3.5 h-3.5 sm:w-4 sm:h-4" /> CSV
                 </button>
                 
-                <button (click)="result = null" class="btn btn-outline text-xs sm:text-sm py-1.5 px-3 w-full sm:w-auto justify-center active:scale-95">
+                <button (click)="result = null" class="btn btn-outline text-xs sm:text-sm py-1.5 px-3 w-full sm:w-auto sm:flex-none justify-center active:scale-95">
                     <lucide-icon [img]="icons.Undo2" class="w-3.5 h-3.5 sm:w-4 sm:h-4" /> New Analysis
                 </button>
             </div>
