@@ -14,7 +14,7 @@ const envConfigFile = `export const environment = {
   production: true,
   gemprismApiKey: '${process.env.GEMPRISM_API_KEY}',
   gemprismBaseUrl: '${process.env.GEMPRISM_BASE_URL || 'https://gemprism.vercel.app'}',
-  apiBaseUrl: '${process.env.API_BASE_URL || 'https://rebaranalysis.onrender.com'}'
+  apiBaseUrl: '${process.env.API_BASE_URL || 'https://rebaranalysis.onrender.com'}',
   googleAnalyticsId: '${process.env.GOOGLE_ANALYTICS_ID || ''}'
 };
 `;
