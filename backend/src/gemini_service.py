@@ -116,8 +116,8 @@ The column consists of 4 main vertical rods, one at each corner.
 # --- AUTO DETECT PROMPTS (HYBRID CV-AI) ---
 PROMPT_AUTO_DETECT_TOP = """
 You are an expert AI vision system. Analyze this Site Photograph of a concrete block.
-Identify the center points of all protruding rusty rebar rods. 
-There are usually exactly 4 or exactly 8 rods in these images.
+Identify the center points of all protruding rusty rebar rod top-ends.
+There are usually exactly 4, exactly 6, exactly 8 or any even number of rods in these images.
 Return their exact coordinates as normalized floats between 0.000 and 1.000.
 (x=0.0 is the left edge, x=1.0 is the right edge, y=0.0 is the top edge, y=1.0 is the bottom edge).
 Ignore chalk marks, wooden planks, and background objects. Only mark the actual protruding rebar rods.
