@@ -74,5 +74,5 @@ if not exist "frontend\node_modules\" (
 
 echo.
 echo [INFO] Starting servers... Press Ctrl+C to stop both.
-:: Using npx concurrently to run both processes cleanly in one window
-npx --yes concurrently -c "blue,green" -n "BACKEND,FRONTEND" "call backend\venv\Scripts\activate.bat && cd backend\src && python app.py" "cd frontend && npm start"
+:: Using npx concurrently to run both processes and a third to wait & open the browser
+npx --yes concurrently -c "blue,green,yellow" -n "BACKEND,FRONTEND,BROWSER" "call backend\venv\Scripts\activate.bat && cd backend\src && python app.py" "cd frontend && npm start" "npx --yes wait-on http://localhost:4200 && start http://localhost:4200"
