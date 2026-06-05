@@ -132,8 +132,7 @@ Output Structure (Strict JSON):
 export class GeminiService {
   constructor(private http: HttpClient) {}
 
-  /** Compress and downscale image to a max dimension to save extreme bandwidth/LLM latency */
-  async fileToBase64(file: File, maxDim: number = 600): Promise<string> {
+  async fileToBase64(file: File, maxDim: number = 1000): Promise<string> {
     return new Promise((resolve) => {
       const img = new Image();
       img.onload = () => {
