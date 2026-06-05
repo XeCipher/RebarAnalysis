@@ -174,10 +174,12 @@ def process_side_view(img_array, rod_points, ref_points=None, ref_length=0):
         mid = ((p1[0]+p2[0])//2, (p1[1]+p2[1])//2)
         draw_text_with_bg(annotated_img, f"Ref: {ref_length}mm", mid)
 
-    results = {"bars_detected": 0, "spacing": 0}
+    results = {"bars_detected": 0, "spacings": []}
 
-    # 2. Process Rods
-    if len(rod_points) == 2:
+    # 2. Process Rods (Infinite Multiple Detection)
+    if len(rod_points) >= 2:
+        # Guarantee strict top-to-bottom sequence
+        rod_points = sorted(rod_points, key=lambda p: p[1])
         bar_lines = [] 
         
         for i, pt in enumerate(rod_points):
@@ -220,27 +222,30 @@ def process_side_view(img_array, rod_points, ref_points=None, ref_length=0):
             label_y = int(m * (w_img - 80) + c)
             draw_text_with_bg(annotated_img, f"Bar {i+1}", (w_img - 80, label_y))
 
-        # 3. Calculate Spacing
+        # 3. Calculate All Consecutive Spacings
         measure_x = int(rod_points[0][0])
-        m1, c1 = bar_lines[0]
-        m2, c2 = bar_lines[1]
         
-        y1 = int(m1 * measure_x + c1)
-        y2 = int(m2 * measure_x + c2)
-        
-        spacing_px = abs(y1 - y2)
-        spacing_val = spacing_px / px_per_mm if px_per_mm else spacing_px
-        
-        results["spacing"] = spacing_val
-        results["bars_detected"] = 2
-        
-        # Arrow
-        cv2.arrowedLine(annotated_img, (measure_x, y1), (measure_x, y2), COLOR_DIM_LINE, 2, tipLength=0.05)
-        cv2.arrowedLine(annotated_img, (measure_x, y2), (measure_x, y1), COLOR_DIM_LINE, 2, tipLength=0.05)
-        
-        unit = "mm" if px_per_mm else "px"
-        label_text = f"Spacing: {spacing_val:.2f} {unit}"
-        draw_text_with_bg(annotated_img, label_text, (measure_x + 10, int((y1+y2)/2)), 0.8, 2)
+        for i in range(len(bar_lines) - 1):
+            m1, c1 = bar_lines[i]
+            m2, c2 = bar_lines[i+1]
+            
+            y1 = int(m1 * measure_x + c1)
+            y2 = int(m2 * measure_x + c2)
+            
+            spacing_px = abs(y1 - y2)
+            spacing_val = spacing_px / px_per_mm if px_per_mm else spacing_px
+            
+            results["spacings"].append(spacing_val)
+            
+            # Arrow
+            cv2.arrowedLine(annotated_img, (measure_x, y1), (measure_x, y2), COLOR_DIM_LINE, 2, tipLength=0.05)
+            cv2.arrowedLine(annotated_img, (measure_x, y2), (measure_x, y1), COLOR_DIM_LINE, 2, tipLength=0.05)
+            
+            unit = "mm" if px_per_mm else "px"
+            label_text = f"Sp {i+1}-{i+2}: {spacing_val:.1f} {unit}"
+            draw_text_with_bg(annotated_img, label_text, (measure_x + 10, int((y1+y2)/2)), 0.6, 2)
+
+        results["bars_detected"] = len(rod_points)
 
     return annotated_img, results, (px_per_mm is not None)
 

@@ -106,17 +106,25 @@ Output Structure (Strict JSON):
   ]
 }`;
 
-const PROMPT_AUTO_DETECT_SIDE = `You are an expert AI vision system. Analyze this Site Photograph of a concrete column from the side elevation.
-Identify the center points of exactly TWO prominent horizontal bars (stirrups / ties).
-Pick two clear distinct bars separated by a gap vertically.
-Return their exact coordinates as normalized floats between 0.000 and 1.000.
+const PROMPT_AUTO_DETECT_SIDE = `You are an expert AI vision system. Analyze this Site Photograph of a 3D rebar column cage from the side elevation.
+Identify the center points of the FOREGROUND horizontal bars (stirrups / ties).
+
+CRITICAL RULES:
+1. The structure is 3D. You will easily see horizontal bars on the front face (closest to camera) and the back face (further away/behind).
+2. STRICTLY IGNORE all horizontal bars at the back. Do not place points on the rear ties.
+3. ONLY mark the horizontal segments that are on the FRONT face, crossing between the two closest vertical rods in the foreground.
+4. Provide exactly one center point for each visible front horizontal tie.
+5. Return their exact coordinates as normalized floats between 0.000 and 1.000.
 (x=0.0 is the left edge, x=1.0 is the right edge, y=0.0 is the top edge, y=1.0 is the bottom edge).
+6. Sort the points strictly from top to bottom based on the y-coordinate.
 
 Output Structure (Strict JSON):
 {
   "rods": [
-    {"x": 0.500, "y": 0.350},
-    {"x": 0.500, "y": 0.650}
+    {"x": 0.500, "y": 0.200},
+    {"x": 0.500, "y": 0.400},
+    {"x": 0.500, "y": 0.600},
+    {"x": 0.500, "y": 0.800}
   ]
 }`;
 

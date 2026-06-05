@@ -1,7 +1,7 @@
 import { Component, ElementRef, ViewChild, ChangeDetectionStrategy, ChangeDetectorRef, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
-import { LucideAngularModule, Upload, ScanLine, Ruler, CheckCircle2, AlertCircle, Trash2, Undo2, ArrowRight, Layers, ArrowUpDown, FileJson, Wand2, Info } from 'lucide-angular';
+import { LucideAngularModule, Upload, ScanLine, Ruler, CheckCircle2, AlertCircle, Trash2, Undo2, ArrowRight, Layers, ArrowUpDown, FileJson, Wand2, Info, HelpCircle, Calculator, X } from 'lucide-angular';
 import { FormsModule } from '@angular/forms';
 import { forkJoin, from, Subscription } from 'rxjs';
 import { environment } from '../environments/environment';
@@ -25,7 +25,7 @@ export interface ApiResponse {
   changeDetection: ChangeDetectionStrategy.OnPush 
 })
 export class AppComponent implements OnInit, OnDestroy {
-  icons = { Upload, ScanLine, Ruler, CheckCircle2, AlertCircle, Trash2, Undo2, ArrowRight, Layers, ArrowUpDown, FileJson, Wand2, Info };
+  icons = { Upload, ScanLine, Ruler, CheckCircle2, AlertCircle, Trash2, Undo2, ArrowRight, Layers, ArrowUpDown, FileJson, Wand2, Info, HelpCircle, Calculator, X };
 
   // State
   viewMode: 'top' | 'side' = 'top';
@@ -48,6 +48,8 @@ export class AppComponent implements OnInit, OnDestroy {
   result: ApiResponse | null = null;
   errorMsg: string | null = null;
   revitData: any = null;
+
+  showScoreModal: boolean = false;
 
   // Email notification state
   columnNumber: string = '';
@@ -97,6 +99,11 @@ export class AppComponent implements OnInit, OnDestroy {
 
   ngOnDestroy() {
     if (this.analysisSub) this.analysisSub.unsubscribe();
+  }
+
+  toggleScoreModal() {
+    this.showScoreModal = !this.showScoreModal;
+    this.cdr.markForCheck();
   }
 
   setViewMode(mode: 'top' | 'side') {
@@ -160,10 +167,6 @@ export class AppComponent implements OnInit, OnDestroy {
 
   onImageClick(event: MouseEvent) {
     if (!this.realImagePreview) return;
-    if (this.viewMode === 'side' && this.mode === 'rods' && this.rodPoints.length >= 2) {
-      alert("For Side View spacing, please mark exactly 2 horizontal bars.");
-      return;
-    }
 
     const img = this.imageElement.nativeElement;
     this.imgNatWidth = img.naturalWidth;

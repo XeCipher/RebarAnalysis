@@ -143,35 +143,50 @@ export class ScoringService {
 
   calculateSideScore(designData: any, actualData: any, hasScale: boolean): { score: number, table: ComparisonRow[] } {
     const dSpacing = this.safeFloat(designData.spacing_mm);
-    const aSpacing = this.safeFloat(actualData.spacing);
+    const aSpacings: number[] = Array.isArray(actualData.spacings) ? actualData.spacings : [];
     
     const tableRows: ComparisonRow[] = [];
-    let score = 0;
-    let status: ComparisonRow['status'] = "NA";
-    let actualStr = "";
     
-    if (hasScale && dSpacing > 0) {
-      const diff = Math.abs(dSpacing - aSpacing);
-      const errorPct = (diff / dSpacing) * 100;
-      score = Math.max(0, 100 - errorPct);
-      
-      if (errorPct <= 5) status = "Acceptable";
-      else if (errorPct <= 15) status = "Minor Mismatch";
-      else status = "Not Acceptable";
-      
-      actualStr = `${aSpacing.toFixed(2)} mm`;
-    } else {
-      score = aSpacing > 0 ? 85 : 0; // Baseline fallback
-      actualStr = `${aSpacing.toFixed(2)} ${hasScale ? 'mm' : 'px'}`;
+    if (aSpacings.length === 0) {
+      return { 
+        score: 0, 
+        table: [{ parameter: "Vertical Spacing", design: dSpacing > 0 ? `${dSpacing} mm` : "Not Specified", actual: "None detected", status: "Not Acceptable" }] 
+      };
     }
-    
-    tableRows.push({
-      parameter: "Vertical Spacing",
-      design: dSpacing > 0 ? `${dSpacing} mm` : "Not Specified",
-      actual: actualStr,
-      status: status
+
+    let totalScore = 0;
+
+    aSpacings.forEach((aSpacing, i) => {
+      let score = 0;
+      let status: ComparisonRow['status'] = "NA";
+      let actualStr = "";
+      
+      if (hasScale && dSpacing > 0) {
+        const diff = Math.abs(dSpacing - aSpacing);
+        const errorPct = (diff / dSpacing) * 100;
+        score = Math.max(0, 100 - errorPct);
+        
+        if (errorPct <= 5) status = "Acceptable";
+        else if (errorPct <= 15) status = "Minor Mismatch";
+        else status = "Not Acceptable";
+        
+        actualStr = `${aSpacing.toFixed(2)} mm`;
+      } else {
+        score = aSpacing > 0 ? 85 : 0; // Baseline fallback
+        actualStr = `${aSpacing.toFixed(2)} ${hasScale ? 'mm' : 'px'}`;
+      }
+      
+      totalScore += score;
+
+      tableRows.push({
+        parameter: `Spacing Bar ${i+1} to ${i+2}`,
+        design: dSpacing > 0 ? `${dSpacing} mm` : "Not Specified",
+        actual: actualStr,
+        status: status
+      });
     });
     
-    return { score: Math.round(score), table: tableRows };
+    const finalScore = Math.round(totalScore / aSpacings.length);
+    return { score: finalScore, table: tableRows };
   }
 }
