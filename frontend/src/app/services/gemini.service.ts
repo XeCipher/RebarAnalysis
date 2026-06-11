@@ -176,7 +176,7 @@ export class GeminiService {
     return data?.rods || [];
   }
 
-  private async askGemini(prompt: string, base64Images: string[], retries: number = 3): Promise<any> {
+  private async askGemini(prompt: string, base64Images: string[], retries: number = 1): Promise<any> {
     try {
       const url = `${environment.gemprismBaseUrl}/api/proxy/v1beta/models/gemini-flash-latest:generateContent?key=${environment.gemprismApiKey}`;
       
