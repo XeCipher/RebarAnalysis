@@ -25,11 +25,12 @@ export class ScoringService {
   calculateTopScore(designData: any, actualData: any, hasScale: boolean): { score: number, score_count: number, score_radius: number | null, score_spacing: number, table: ComparisonRow[] } {
     const tableRows: ComparisonRow[] = [];
     
-    // 1. Number of Bars (100% Weightage)
+    // 1. Number of Bars (Rc)
     const dCount = this.safeInt(designData.count);
     const aCount = this.safeInt(actualData.count);
     const diffCount = Math.abs(dCount - aCount);
-    const scoreCount = Math.max(0, 100 - (diffCount * 25));
+    // 100 if exactly matching, otherwise proportionally drop
+    const scoreCount = diffCount === 0 ? 100 : Math.max(0, 100 - (diffCount * 25));
     
     tableRows.push({
       parameter: "Number of rods",
@@ -38,7 +39,7 @@ export class ScoringService {
       status: diffCount === 0 ? "Acceptable" : "Not Acceptable"
     });
 
-    // 2. Radius (100% Weightage)
+    // 2. Radius (Rr)
     let scoreRadius = 100;
     const dRad = this.safeFloat(designData.radius_mm);
     const aRad = this.safeFloat(actualData.avg_radius);
@@ -48,19 +49,26 @@ export class ScoringService {
 
     if (hasScale && dRad > 0) {
       const diameter = dRad * 2;
+      
       // IS 1786:2008 Approximations for Diametrical Tolerance
       let tol_pct = 2.0;
       if (diameter <= 10) tol_pct = 3.5;
-      else if (diameter <= 16) tol_pct = 2.5;
+      else if (diameter < 16) tol_pct = 2.5; // Covers 12mm
+      else tol_pct = 2.0; // Covers 16mm and above
 
       const errRad = Math.abs(dRad - aRad);
       const percentErr = (errRad / dRad) * 100;
       
-      scoreRadius = Math.max(0, 100 - percentErr);
-      
-      if (percentErr <= tol_pct) radiusStatus = "Acceptable";
-      else if (percentErr <= tol_pct * 1.5) radiusStatus = "Minor Mismatch";
-      else radiusStatus = "Not Acceptable";
+      if (percentErr <= tol_pct) {
+        radiusStatus = "Acceptable";
+        scoreRadius = 100;
+      } else if (percentErr <= tol_pct * 1.5) {
+        radiusStatus = "Minor Mismatch";
+        scoreRadius = Math.max(0, 100 - percentErr);
+      } else {
+        radiusStatus = "Not Acceptable";
+        scoreRadius = Math.max(0, 100 - percentErr);
+      }
       
       actualDisplay = `${aRad.toFixed(2)} mm`;
     } else {
@@ -74,7 +82,7 @@ export class ScoringService {
       status: radiusStatus
     });
 
-    // 3. Sequential Spacing (100% Weightage)
+    // 3. Sequential Spacing (Rs)
     const rawDSpacings = Array.isArray(designData.spacings_mm) ? designData.spacings_mm : [];
     const dSpacings = rawDSpacings.map((x: any) => this.safeFloat(x));
     const rawASpacings = Array.isArray(actualData.distances) ? actualData.distances : [];
@@ -96,6 +104,7 @@ export class ScoringService {
         const valDesign = i < dSpacings.length ? dSpacings[i] : null;
         
         let rowStatus: ComparisonRow['status'] = "NA";
+        let rowScore = 100;
         
         if (valDesign !== null) {
           if (hasScale) {
@@ -105,11 +114,18 @@ export class ScoringService {
               const err_mm = Math.abs(valDesign - valActual);
               const pct = (err_mm / valDesign) * 100;
               
-              if (err_mm <= tol_mm) rowStatus = "Acceptable";
-              else if (err_mm <= tol_mm * 1.5) rowStatus = "Minor Mismatch";
-              else rowStatus = "Not Acceptable";
+              if (err_mm <= tol_mm) {
+                rowStatus = "Acceptable";
+                rowScore = 100;
+              } else if (err_mm <= tol_mm * 1.5) {
+                rowStatus = "Minor Mismatch";
+                rowScore = Math.max(0, 100 - pct);
+              } else {
+                rowStatus = "Not Acceptable";
+                rowScore = Math.max(0, 100 - pct);
+              }
               
-              scoreSpacingAccum += Math.max(0, 100 - pct);
+              scoreSpacingAccum += rowScore;
               validSpacingChecks++;
             }
           } else {
@@ -118,7 +134,18 @@ export class ScoringService {
               const aNorm = valActual / (aMax > 0 ? aMax : 1);
               const diffRatio = Math.abs(dNorm - aNorm);
               
-              scoreSpacingAccum += Math.max(0, 100 - (diffRatio * 100));
+              if (diffRatio <= 0.05) {
+                rowStatus = "Acceptable";
+                rowScore = 100;
+              } else if (diffRatio <= 0.075) {
+                rowStatus = "Minor Mismatch";
+                rowScore = Math.max(0, 100 - (diffRatio * 100));
+              } else {
+                rowStatus = "Not Acceptable";
+                rowScore = Math.max(0, 100 - (diffRatio * 100));
+              }
+              
+              scoreSpacingAccum += rowScore;
               validSpacingChecks++;
             }
           }
@@ -140,7 +167,7 @@ export class ScoringService {
       scoreSpacing = 0;
     }
     
-    // Calculate final unweighted average using all categories
+    // Formula: Final Score = (Rc + Rr + Rs) / 3
     let finalScore = 0;
     if (hasScale) {
       finalScore = (scoreCount + scoreSpacing + scoreRadius) / 3;
@@ -185,15 +212,24 @@ export class ScoringService {
         const tol_mm = dSpacing <= 200 ? 10 : 15;
         const err_mm = Math.abs(dSpacing - aSpacing);
         const errorPct = (err_mm / dSpacing) * 100;
-        score = Math.max(0, 100 - errorPct);
         
-        if (err_mm <= tol_mm) status = "Acceptable";
-        else if (err_mm <= tol_mm * 1.5) status = "Minor Mismatch";
-        else status = "Not Acceptable";
+        if (err_mm <= tol_mm) {
+          status = "Acceptable";
+          score = 100;
+        } else if (err_mm <= tol_mm * 1.5) {
+          status = "Minor Mismatch";
+          score = Math.max(0, 100 - errorPct);
+        } else {
+          status = "Not Acceptable";
+          score = Math.max(0, 100 - errorPct);
+        }
         
         actualStr = `${aSpacing.toFixed(2)} mm`;
       } else {
-        score = aSpacing > 0 ? 85 : 0; // Baseline fallback
+        if (aSpacing > 0) {
+          score = 85; // Baseline fallback
+          status = "NA";
+        }
         actualStr = `${aSpacing.toFixed(2)} ${hasScale ? 'mm' : 'px'}`;
       }
       
