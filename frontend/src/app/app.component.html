@@ -277,23 +277,22 @@
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div class="card flex flex-col items-center justify-center text-center p-6 sm:p-8 bg-gradient-to-br from-white to-slate-50 border-slate-200 shadow-sm relative">
+            <div class="card flex flex-col items-center justify-center text-center p-6 sm:p-8 bg-white border border-slate-200 shadow-sm relative">
                 
                 <!-- Info Button For Score Formula -->
-                <button (click)="toggleScoreModal()" class="absolute top-4 right-4 p-2 rounded-full hover:bg-slate-100 text-slate-400 hover:text-primary transition-colors focus:outline-none focus:ring-2 focus:ring-primary/20" title="How is this calculated?">
-                    <lucide-icon [img]="icons.HelpCircle" class="w-5 h-5" />
+                <button (click)="toggleScoreModal()" class="absolute top-4 right-4 p-2 rounded-full hover:bg-slate-100 text-slate-500 transition-colors focus:outline-none border border-transparent hover:border-slate-300" title="View Evaluation Methodology">
+                    <lucide-icon [img]="icons.Calculator" class="w-5 h-5" />
                 </button>
 
                 <div class="text-xs sm:text-sm font-bold text-slate-400 uppercase tracking-widest mb-2">Overall Score</div>
-                <div class="text-5xl sm:text-6xl font-black mb-3 drop-shadow-sm" 
+                <div class="text-5xl sm:text-6xl font-black mb-3 text-slate-800" 
                      [class.text-green-600]="result.score === 100"
-                     [class.text-yellow-600]="result.score < 100 && result.score >= 50"
-                     [class.text-red-600]="result.score < 50">
+                     [class.text-red-600]="result.score < 100">
                     {{ result.score }}%
                 </div>
-                <div class="inline-flex items-center gap-1.5 px-3 sm:px-4 py-1.5 rounded-full text-xs sm:text-sm font-medium shadow-sm"
-                    [class.bg-green-100]="result.score === 100" [class.text-green-800]="result.score === 100"
-                    [class.bg-yellow-100]="result.score < 100" [class.text-yellow-800]="result.score < 100">
+                <div class="inline-flex items-center gap-1.5 px-3 sm:px-4 py-1.5 rounded-full text-xs sm:text-sm font-medium shadow-sm border"
+                    [class.bg-green-50]="result.score === 100" [class.text-green-700]="result.score === 100" [class.border-green-200]="result.score === 100"
+                    [class.bg-red-50]="result.score < 100" [class.text-red-700]="result.score < 100" [class.border-red-200]="result.score < 100">
                     <lucide-icon [img]="result.score === 100 ? icons.CheckCircle2 : icons.AlertCircle" class="w-4 h-4" />
                     {{ result.score === 100 ? 'Passed QC Check' : 'Quality Warning' }}
                 </div>
@@ -301,32 +300,29 @@
                 <!-- Individual Param Breakout -->
                 <div class="w-full mt-6 pt-5 border-t border-slate-200 flex flex-wrap items-center justify-center gap-3 sm:gap-4">
                     
-                    <div *ngIf="result.score_count !== null && result.score_count !== undefined" class="flex-1 min-w-[80px] p-3 rounded-xl bg-white shadow-[0_2px_8px_-3px_rgba(0,0,0,0.05)] border border-slate-100 flex flex-col items-center justify-center transition-all">
-                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Count</span>
-                        <span class="text-xl sm:text-2xl font-black drop-shadow-sm" 
+                    <div *ngIf="result.score_count !== null && result.score_count !== undefined" class="flex-1 min-w-[80px] p-3 rounded-lg bg-slate-50 border border-slate-200 flex flex-col items-center justify-center">
+                        <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Count</span>
+                        <span class="text-xl sm:text-2xl font-bold" 
                               [class.text-green-600]="result.score_count === 100" 
-                              [class.text-yellow-600]="result.score_count >= 50 && result.score_count < 100" 
-                              [class.text-red-600]="result.score_count < 50">
+                              [class.text-red-600]="result.score_count < 100">
                             {{ result.score_count }}%
                         </span>
                     </div>
 
-                    <div *ngIf="result.score_radius !== null && result.score_radius !== undefined" class="flex-1 min-w-[80px] p-3 rounded-xl bg-white shadow-[0_2px_8px_-3px_rgba(0,0,0,0.05)] border border-slate-100 flex flex-col items-center justify-center transition-all">
-                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Radius</span>
-                        <span class="text-xl sm:text-2xl font-black drop-shadow-sm" 
+                    <div *ngIf="result.score_radius !== null && result.score_radius !== undefined" class="flex-1 min-w-[80px] p-3 rounded-lg bg-slate-50 border border-slate-200 flex flex-col items-center justify-center">
+                        <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Radius</span>
+                        <span class="text-xl sm:text-2xl font-bold" 
                               [class.text-green-600]="result.score_radius === 100" 
-                              [class.text-yellow-600]="result.score_radius >= 50 && result.score_radius < 100" 
-                              [class.text-red-600]="result.score_radius < 50">
+                              [class.text-red-600]="result.score_radius < 100">
                             {{ result.score_radius }}%
                         </span>
                     </div>
 
-                    <div *ngIf="result.score_spacing !== null && result.score_spacing !== undefined" class="flex-1 min-w-[80px] p-3 rounded-xl bg-white shadow-[0_2px_8px_-3px_rgba(0,0,0,0.05)] border border-slate-100 flex flex-col items-center justify-center transition-all">
-                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Spacing</span>
-                        <span class="text-xl sm:text-2xl font-black drop-shadow-sm" 
+                    <div *ngIf="result.score_spacing !== null && result.score_spacing !== undefined" class="flex-1 min-w-[80px] p-3 rounded-lg bg-slate-50 border border-slate-200 flex flex-col items-center justify-center">
+                        <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Spacing</span>
+                        <span class="text-xl sm:text-2xl font-bold" 
                               [class.text-green-600]="result.score_spacing === 100" 
-                              [class.text-yellow-600]="result.score_spacing >= 50 && result.score_spacing < 100" 
-                              [class.text-red-600]="result.score_spacing < 50">
+                              [class.text-red-600]="result.score_spacing < 100">
                             {{ result.score_spacing }}%
                         </span>
                     </div>
@@ -340,10 +336,10 @@
         </div>
 
         <!-- Table Responsive Wrapper -->
-        <div class="card overflow-hidden p-0 shadow-sm">
+        <div class="card overflow-hidden p-0 shadow-sm border border-slate-200">
           <div class="overflow-x-auto w-full">
             <table class="w-full text-sm text-left min-w-[500px]">
-                <thead class="bg-slate-50 text-slate-500 uppercase text-[11px] sm:text-xs font-bold border-b border-slate-200">
+                <thead class="bg-slate-100 text-slate-600 uppercase text-[11px] sm:text-xs font-bold border-b border-slate-200">
                     <tr>
                         <th class="px-4 sm:px-6 py-3 sm:py-4">Parameter</th>
                         <th class="px-4 sm:px-6 py-3 sm:py-4">Design Spec</th>
@@ -351,11 +347,11 @@
                         <th class="px-4 sm:px-6 py-3 sm:py-4">Status</th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-slate-100">
-                    <tr *ngFor="let row of result.comparison_table; trackBy: trackByIndex" class="hover:bg-slate-50/50 transition-colors">
-                        <td class="px-4 sm:px-6 py-3 sm:py-4 font-medium text-slate-700">{{ row.parameter }}</td>
-                        <td class="px-4 sm:px-6 py-3 sm:py-4 font-mono text-slate-500 text-xs sm:text-sm">{{ row.design }}</td>
-                        <td class="px-4 sm:px-6 py-3 sm:py-4 font-mono text-slate-600 font-semibold text-xs sm:text-sm">{{ row.actual }}</td>
+                <tbody class="divide-y divide-slate-200 bg-white">
+                    <tr *ngFor="let row of result.comparison_table; trackBy: trackByIndex" class="hover:bg-slate-50 transition-colors">
+                        <td class="px-4 sm:px-6 py-3 sm:py-4 font-medium text-slate-800">{{ row.parameter }}</td>
+                        <td class="px-4 sm:px-6 py-3 sm:py-4 font-mono text-slate-600 text-xs sm:text-sm">{{ row.design }}</td>
+                        <td class="px-4 sm:px-6 py-3 sm:py-4 font-mono text-slate-700 font-semibold text-xs sm:text-sm">{{ row.actual }}</td>
                         <td class="px-4 sm:px-6 py-3 sm:py-4">
                             <span [class]="'status-badge ' + getStatusClass(row.status)">
                                 {{ row.status }}
@@ -372,102 +368,145 @@
   </main>
 </div>
 
-<!-- Score Details Modal -->
+<!-- CLEAN, PROFESSIONAL ENGINEERING EVALUATION MODAL -->
 <div *ngIf="showScoreModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 animate-fade-in">
+  <!-- Backdrop -->
   <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" (click)="toggleScoreModal()"></div>
-  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col relative z-10 border border-slate-200">
+  
+  <div class="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col relative z-10 border border-slate-300">
     
     <!-- Modal Header -->
-    <div class="bg-white/90 backdrop-blur-md border-b border-slate-100 px-6 py-4 flex items-center justify-between z-20 shrink-0">
-      <h3 class="text-xl font-bold text-slate-800 flex items-center gap-2">
-        <lucide-icon [img]="icons.Calculator" class="w-6 h-6 text-primary" />
-        Scoring Methodology
-      </h3>
-      <button (click)="toggleScoreModal()" class="p-2 rounded-full hover:bg-slate-100 text-slate-500 transition-colors focus:outline-none focus:ring-2 focus:ring-primary/20">
+    <div class="bg-slate-50 px-6 py-4 flex items-center justify-between border-b border-slate-200 rounded-t-xl shrink-0">
+      <div class="flex items-center gap-3">
+        <lucide-icon [img]="icons.Calculator" class="w-5 h-5 text-slate-600" />
+        <h3 class="text-lg sm:text-xl font-bold text-slate-800">
+          Evaluation Methodology & Tolerances
+        </h3>
+      </div>
+      <button (click)="toggleScoreModal()" class="p-2 rounded-md hover:bg-slate-200 text-slate-500 transition-colors focus:outline-none">
         <lucide-icon [img]="icons.X" class="w-5 h-5" />
       </button>
     </div>
     
     <!-- Modal Body -->
-    <div class="p-6 overflow-y-auto flex-1 space-y-6 text-sm sm:text-base text-slate-600 bg-slate-50/50">
-      
-      <!-- IS Code Tolerances -->
-      <div>
-        <h4 class="font-bold text-lg text-slate-800 mb-2">1. IS Code Tolerances</h4>
-        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-4 mb-4">
-            <div>
-               <strong class="text-slate-700">Radius/Diameter (IS 1786:2008)</strong>
-               <ul class="list-disc list-inside text-sm text-slate-600 mt-1">
-                   <li>&le; 10 mm bar: &plusmn;3.5%</li>
-                   <li>12 &ndash; 14 mm bar: &plusmn;2.5%</li>
-                   <li>&ge; 16 mm bar: &plusmn;2.0%</li>
-               </ul>
+    <div class="p-6 md:p-8 overflow-y-auto flex-1 space-y-8 text-slate-700 text-sm sm:text-base">
+
+      <!-- Section 1: Core Formula -->
+      <section>
+        <h4 class="font-bold text-slate-900 border-b border-slate-200 pb-2 mb-4 text-lg">1. Final Similarity Score</h4>
+        <p class="mb-4">
+          The system utilizes a <strong>strict binary scoring model (100% or 0%)</strong> for each parameter, based directly on the permissible limits specified by the Indian Standard (IS) codes.
+        </p>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="bg-slate-50 border border-slate-200 p-4 rounded-lg">
+            <div class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Top View Output</div>
+            <div class="font-mono text-slate-800 bg-white border border-slate-200 p-3 rounded text-center text-sm md:text-base shadow-sm">
+              Final Score = (Rc + Rr + Rs) / 3
             </div>
-            <div>
-               <strong class="text-slate-700">Spacing/Placement (IS 456:2000)</strong>
-               <ul class="list-disc list-inside text-sm text-slate-600 mt-1">
-                   <li>Spacing &le; 200 mm: &plusmn;10 mm</li>
-                   <li>Spacing &gt; 200 mm: &plusmn;15 mm</li>
-               </ul>
+          </div>
+          <div class="bg-slate-50 border border-slate-200 p-4 rounded-lg">
+            <div class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Side View Output</div>
+            <div class="font-mono text-slate-800 bg-white border border-slate-200 p-3 rounded text-center text-sm md:text-base shadow-sm">
+              Final Score = Average(Rs_all_pairs)
             </div>
-        </div>
-      </div>
-
-      <!-- Top View -->
-      <div>
-        <h4 class="font-bold text-lg text-slate-800 mb-2">2. Top View Scoring</h4>
-        <p class="mb-3">The final overall score averages the individual 100% metrics:</p>
-        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm mb-4">
-          <ul class="space-y-3">
-            <li class="flex items-start gap-3">
-               <span class="font-mono text-xs bg-primary/10 text-primary px-2 py-1 rounded font-bold mt-0.5 w-24 text-center shrink-0">With Scale</span>
-               <span>Final Score = (Rc + Rr + Rs) &divide; 3 <br><em class="text-xs text-slate-400">Where Rc = Count, Rr = Radius, Rs = Spacing</em></span>
-            </li>
-            <li class="flex items-start gap-3">
-               <span class="font-mono text-xs bg-slate-100 text-slate-600 border border-slate-200 px-2 py-1 rounded font-bold mt-0.5 w-24 text-center shrink-0">No Scale</span>
-               <span>Final Score = (Rc + Rs) &divide; 2 <br><em class="text-xs text-slate-400">Uses pixel-ratio symmetry directly instead of physical dimensions.</em></span>
-            </li>
-          </ul>
-          <p class="text-sm mt-3 font-semibold text-red-600">If Final Score &lt; 100%, the work is marked as Not Acceptable.</p>
-        </div>
-      </div>
-
-      <!-- Side View -->
-      <div>
-        <h4 class="font-bold text-lg text-slate-800 mb-2">3. Side View Scoring</h4>
-        <p class="mb-3">The system automatically detects multiple horizontal stirrups (bars) and evaluates the vertical distance between every consecutive pair iteratively.</p>
-        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm mb-4">
-            <p><strong>Final Score</strong> = The mathematical average of all individually calculated pair spacing scores.</p>
-        </div>
-      </div>
-
-      <!-- General Parameter Formula -->
-      <div>
-        <h4 class="font-bold text-lg text-slate-800 mb-2">4. Parameter Score Evaluation</h4>
-        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-2 font-mono text-sm text-slate-200 bg-slate-800 tracking-wide">
-          <p class="text-green-400">If error &le; Tolerance: Score = 100</p>
-          <p class="text-blue-400">Else: Score = max(0, 100 - % Error)</p>
-        </div>
-      </div>
-
-      <!-- Status Colors -->
-      <div>
-        <h4 class="font-bold text-lg text-slate-800 mb-3">5. Status Thresholds</h4>
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-center">
-          <div class="p-4 bg-green-50 border border-green-200 rounded-xl flex flex-col items-center justify-center">
-              <strong class="text-green-700">Acceptable</strong>
-              <span class="text-sm text-green-600 mt-1">Within IS Code Tolerance</span>
-          </div>
-          <div class="p-4 bg-yellow-50 border border-yellow-200 rounded-xl flex flex-col items-center justify-center">
-              <strong class="text-yellow-700">Minor Mismatch</strong>
-              <span class="text-sm text-yellow-600 mt-1">Up to 1.5x Tolerance</span>
-          </div>
-          <div class="p-4 bg-red-50 border border-red-200 rounded-xl flex flex-col items-center justify-center">
-              <strong class="text-red-700">Not Acceptable</strong>
-              <span class="text-sm text-red-600 mt-1">Exceeds 1.5x Tolerance</span>
           </div>
         </div>
-      </div>
+
+        <p class="mt-4 text-sm text-red-600 font-medium">
+          Note: If the final averaged score mathematically drops below 100% (indicating at least one parameter failed the tolerance check), the overall column is flagged as "Not Acceptable".
+        </p>
+      </section>
+
+      <!-- Section 2: IS Codes & Tolerances -->
+      <section>
+        <h4 class="font-bold text-slate-900 border-b border-slate-200 pb-2 mb-4 text-lg">2. IS Code Tolerance Limits</h4>
+        
+        <div class="overflow-x-auto border border-slate-200 rounded-lg shadow-sm">
+          <table class="w-full text-left border-collapse min-w-[600px]">
+            <thead>
+              <tr class="bg-slate-100">
+                <th class="p-3 border-b border-slate-200 font-semibold text-slate-700">Parameter</th>
+                <th class="p-3 border-b border-slate-200 font-semibold text-slate-700">Reference Code</th>
+                <th class="p-3 border-b border-slate-200 font-semibold text-slate-700">Permissible Tolerance</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-200 bg-white">
+              <!-- Rebar Count -->
+              <tr>
+                <td class="p-3 font-medium text-slate-800 align-top">Rebar Count (Rc)</td>
+                <td class="p-3 text-slate-600 align-top">Architectural Design</td>
+                <td class="p-3 text-slate-600 align-top">
+                  Strict Exact Match Required.
+                </td>
+              </tr>
+              <!-- Rebar Radius -->
+              <tr>
+                <td class="p-3 font-medium text-slate-800 align-top">Rebar Radius / Dia (Rr)</td>
+                <td class="p-3 text-slate-600 align-top">IS 1786:2008<br><span class="text-xs text-slate-400">(Derived from unit mass variation)</span></td>
+                <td class="p-3 text-slate-600 align-top">
+                  <ul class="list-disc list-inside space-y-1">
+                    <li><span class="font-mono bg-slate-50 px-1 rounded border border-slate-100">≤ 10 mm</span> diameter: ± 3.5%</li>
+                    <li><span class="font-mono bg-slate-50 px-1 rounded border border-slate-100">12 – 16 mm</span> diameter: ± 2.5%</li>
+                    <li><span class="font-mono bg-slate-50 px-1 rounded border border-slate-100">> 16 mm</span> diameter: ± 2.0%</li>
+                  </ul>
+                </td>
+              </tr>
+              <!-- Rebar Spacing -->
+              <tr>
+                <td class="p-3 font-medium text-slate-800 align-top">Rebar Spacing (Rs)</td>
+                <td class="p-3 text-slate-600 align-top">IS 456:2000<br><span class="text-xs text-slate-400">(Placement/Effective depth tolerance)</span></td>
+                <td class="p-3 text-slate-600 align-top">
+                  <ul class="list-disc list-inside space-y-1">
+                    <li>Spacing <span class="font-mono bg-slate-50 px-1 rounded border border-slate-100">≤ 200 mm</span>: ± 10 mm</li>
+                    <li>Spacing <span class="font-mono bg-slate-50 px-1 rounded border border-slate-100">> 200 mm</span>: ± 15 mm</li>
+                  </ul>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Section 3: Views Explanation -->
+      <section>
+        <h4 class="font-bold text-slate-900 border-b border-slate-200 pb-2 mb-4 text-lg">3. Processing Methodology</h4>
+        <div class="space-y-4">
+          <div>
+            <strong class="text-slate-800">Top View Evaluation:</strong>
+            <p class="mt-1">
+              Extracts the main perimeter rods, verifies the exact count (Rc), calculates the median localized pixel radius (Rr) mapped to mm, and assesses the sequential perimeter gaps (Rs) between consecutive rods in a clockwise arrangement.
+            </p>
+          </div>
+          <div>
+            <strong class="text-slate-800">Side View Evaluation:</strong>
+            <p class="mt-1">
+              Isolates the foreground horizontal ties (stirrups). The evaluation solely focuses on the vertical pitch spacing (Rs) between consecutive bars. The final score is the mathematical average of all calculated pair intervals; if any interval exceeds the ±10mm or ±15mm threshold, it drops to 0%, affecting the whole average.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section 4: Status Indicator Explanations -->
+      <section>
+        <h4 class="font-bold text-slate-900 border-b border-slate-200 pb-2 mb-4 text-lg">4. Status Reporting</h4>
+        <div class="flex flex-col sm:flex-row gap-4">
+          <div class="flex-1 p-4 bg-green-50 border border-green-200 rounded-lg flex items-start gap-3">
+            <lucide-icon [img]="icons.CheckCircle2" class="w-5 h-5 text-green-600 shrink-0 mt-0.5" />
+            <div>
+              <strong class="text-green-800 block">Acceptable (100%)</strong>
+              <span class="text-sm text-green-700">The measured parameter is strictly within the allowable limit.</span>
+            </div>
+          </div>
+          <div class="flex-1 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
+            <lucide-icon [img]="icons.AlertCircle" class="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+            <div>
+              <strong class="text-red-800 block">Not Acceptable (0%)</strong>
+              <span class="text-sm text-red-700">The measurement exceeds the permissible allowance.</span>
+            </div>
+          </div>
+        </div>
+      </section>
 
     </div>
   </div>

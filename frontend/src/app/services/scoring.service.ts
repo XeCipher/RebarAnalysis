@@ -4,7 +4,7 @@ export interface ComparisonRow {
   parameter: string;
   design: string;
   actual: string;
-  status: 'Acceptable' | 'Minor Mismatch' | 'Not Acceptable' | 'NA';
+  status: 'Acceptable' | 'Not Acceptable' | 'NA';
 }
 
 @Injectable({ providedIn: 'root' })
@@ -25,12 +25,12 @@ export class ScoringService {
   calculateTopScore(designData: any, actualData: any, hasScale: boolean): { score: number, score_count: number, score_radius: number | null, score_spacing: number, table: ComparisonRow[] } {
     const tableRows: ComparisonRow[] = [];
     
-    // 1. Number of Bars (Rc)
+    // 1. Number of Bars (Rc) - Strict 100 / 0
     const dCount = this.safeInt(designData.count);
     const aCount = this.safeInt(actualData.count);
     const diffCount = Math.abs(dCount - aCount);
-    // 100 if exactly matching, otherwise proportionally drop
-    const scoreCount = diffCount === 0 ? 100 : Math.max(0, 100 - (diffCount * 25));
+    
+    const scoreCount = diffCount === 0 ? 100 : 0;
     
     tableRows.push({
       parameter: "Number of rods",
@@ -39,7 +39,7 @@ export class ScoringService {
       status: diffCount === 0 ? "Acceptable" : "Not Acceptable"
     });
 
-    // 2. Radius (Rr)
+    // 2. Radius (Rr) - Based on IS 1786:2008 Mass/Dia Tolerance limits
     let scoreRadius = 100;
     const dRad = this.safeFloat(designData.radius_mm);
     const aRad = this.safeFloat(actualData.avg_radius);
@@ -50,11 +50,11 @@ export class ScoringService {
     if (hasScale && dRad > 0) {
       const diameter = dRad * 2;
       
-      // IS 1786:2008 Approximations for Diametrical Tolerance
+      // IS 1786:2008 Approximations for Diametrical Tolerance based on unit weight
       let tol_pct = 2.0;
       if (diameter <= 10) tol_pct = 3.5;
-      else if (diameter < 16) tol_pct = 2.5; // Covers 12mm
-      else tol_pct = 2.0; // Covers 16mm and above
+      else if (diameter <= 16) tol_pct = 2.5; // Covers 12mm to 16mm
+      else tol_pct = 2.0; // Over 16mm
 
       const errRad = Math.abs(dRad - aRad);
       const percentErr = (errRad / dRad) * 100;
@@ -62,12 +62,9 @@ export class ScoringService {
       if (percentErr <= tol_pct) {
         radiusStatus = "Acceptable";
         scoreRadius = 100;
-      } else if (percentErr <= tol_pct * 1.5) {
-        radiusStatus = "Minor Mismatch";
-        scoreRadius = Math.max(0, 100 - percentErr);
       } else {
         radiusStatus = "Not Acceptable";
-        scoreRadius = Math.max(0, 100 - percentErr);
+        scoreRadius = 0;
       }
       
       actualDisplay = `${aRad.toFixed(2)} mm`;
@@ -82,7 +79,7 @@ export class ScoringService {
       status: radiusStatus
     });
 
-    // 3. Sequential Spacing (Rs)
+    // 3. Sequential Spacing (Rs) - Based on IS 456:2000
     const rawDSpacings = Array.isArray(designData.spacings_mm) ? designData.spacings_mm : [];
     const dSpacings = rawDSpacings.map((x: any) => this.safeFloat(x));
     const rawASpacings = Array.isArray(actualData.distances) ? actualData.distances : [];
@@ -112,17 +109,13 @@ export class ScoringService {
               // IS 456:2000 Tolerance limit checks
               const tol_mm = valDesign <= 200 ? 10 : 15;
               const err_mm = Math.abs(valDesign - valActual);
-              const pct = (err_mm / valDesign) * 100;
               
               if (err_mm <= tol_mm) {
                 rowStatus = "Acceptable";
                 rowScore = 100;
-              } else if (err_mm <= tol_mm * 1.5) {
-                rowStatus = "Minor Mismatch";
-                rowScore = Math.max(0, 100 - pct);
               } else {
                 rowStatus = "Not Acceptable";
-                rowScore = Math.max(0, 100 - pct);
+                rowScore = 0;
               }
               
               scoreSpacingAccum += rowScore;
@@ -134,15 +127,13 @@ export class ScoringService {
               const aNorm = valActual / (aMax > 0 ? aMax : 1);
               const diffRatio = Math.abs(dNorm - aNorm);
               
+              // Visual pixel-ratio fallback tolerance
               if (diffRatio <= 0.05) {
                 rowStatus = "Acceptable";
                 rowScore = 100;
-              } else if (diffRatio <= 0.075) {
-                rowStatus = "Minor Mismatch";
-                rowScore = Math.max(0, 100 - (diffRatio * 100));
               } else {
                 rowStatus = "Not Acceptable";
-                rowScore = Math.max(0, 100 - (diffRatio * 100));
+                rowScore = 0;
               }
               
               scoreSpacingAccum += rowScore;
@@ -211,23 +202,19 @@ export class ScoringService {
         // IS 456:2000 Tolerance limit checks
         const tol_mm = dSpacing <= 200 ? 10 : 15;
         const err_mm = Math.abs(dSpacing - aSpacing);
-        const errorPct = (err_mm / dSpacing) * 100;
         
         if (err_mm <= tol_mm) {
           status = "Acceptable";
           score = 100;
-        } else if (err_mm <= tol_mm * 1.5) {
-          status = "Minor Mismatch";
-          score = Math.max(0, 100 - errorPct);
         } else {
           status = "Not Acceptable";
-          score = Math.max(0, 100 - errorPct);
+          score = 0;
         }
         
         actualStr = `${aSpacing.toFixed(2)} mm`;
       } else {
         if (aSpacing > 0) {
-          score = 85; // Baseline fallback
+          score = 100; // Baseline fallback without physical scale
           status = "NA";
         }
         actualStr = `${aSpacing.toFixed(2)} ${hasScale ? 'mm' : 'px'}`;
