@@ -102,6 +102,41 @@ export class AppComponent implements OnInit, OnDestroy {
     if (this.analysisSub) this.analysisSub.unsubscribe();
   }
 
+  // --- Image Handling & Compression Tool ---
+  async compressFile(file: File, maxDim: number, quality: number = 0.85): Promise<File> {
+    return new Promise((resolve) => {
+      const img = new Image();
+      const objectUrl = URL.createObjectURL(file);
+      img.onload = () => {
+        URL.revokeObjectURL(objectUrl);
+        let w = img.width;
+        let h = img.height;
+        if (w <= maxDim && h <= maxDim) {
+            resolve(file);
+            return;
+        }
+        const scale = maxDim / Math.max(w, h);
+        w = Math.floor(w * scale);
+        h = Math.floor(h * scale);
+        
+        const canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d')!;
+        ctx.drawImage(img, 0, 0, w, h);
+        
+        canvas.toBlob((blob) => {
+            if (blob) {
+                resolve(new File([blob], file.name, { type: 'image/jpeg' }));
+            } else {
+                resolve(file);
+            }
+        }, 'image/jpeg', quality);
+      };
+      img.src = objectUrl;
+    });
+  }
+
   toggleScoreModal() {
     this.showScoreModal = !this.showScoreModal;
     this.cdr.markForCheck();
@@ -273,22 +308,52 @@ export class AppComponent implements OnInit, OnDestroy {
     this.cdr.markForCheck();
 
     try {
+      if (this.imgNatWidth === 0 && this.imageElement?.nativeElement) {
+         this.imgNatWidth = this.imageElement.nativeElement.naturalWidth;
+         this.imgNatHeight = this.imageElement.nativeElement.naturalHeight;
+      }
+
+      // Base AI search 
       const tinyB64 = await this.gemini.fileToBase64(this.realImageFile, 400);
       const aiPoints = await this.gemini.getAutoDetectPoints(tinyB64, this.viewMode);
       
+      if (!aiPoints || aiPoints.length === 0) {
+          this.isAutoDetecting = false;
+          this.cdr.markForCheck();
+          return;
+      }
+
+      // Fallback points strictly mapping Gemini AI relative predictions to the UI (In case Backend fails)
+      const fallbackPoints = aiPoints.map((pt: any) => [
+          Math.round((pt.x || 0.5) * this.imgNatWidth),
+          Math.round((pt.y || 0.5) * this.imgNatHeight)
+      ]);
+
+      // Compress heavy upload to Backend to prevent Network connection drops
+      const compressedImg = await this.compressFile(this.realImageFile, 1200);
+      
       const formData = new FormData();
-      formData.append('image', this.realImageFile);
+      formData.append('image', compressedImg);
       formData.append('view_mode', this.viewMode);
       formData.append('gemini_points', JSON.stringify(aiPoints));
 
       this.http.post<any>(`${environment.apiBaseUrl}/refine-points`, formData).subscribe({
         next: (res) => {
-          if (res.status === 'success' && res.points) this.rodPoints = res.points;
+          // Process normalized refined points over raw native image scale
+          if (res.status === 'success' && res.points && res.points.length > 0) {
+            this.rodPoints = res.points.map((pt: any) => [
+              Math.round(pt.x * this.imgNatWidth),
+              Math.round(pt.y * this.imgNatHeight)
+            ]);
+          } else {
+            this.rodPoints = fallbackPoints;
+          }
           this.isAutoDetecting = false;
           this.cdr.markForCheck();
         },
         error: (err) => {
-          console.error(err);
+          console.warn("Backend Refinement skipped due to network timeout. Utilising raw AI points.", err);
+          this.rodPoints = fallbackPoints;
           this.isAutoDetecting = false;
           this.cdr.markForCheck();
         }
@@ -330,16 +395,25 @@ export class AppComponent implements OnInit, OnDestroy {
     this.isEmailSending = false;
     this.cdr.markForCheck();
     
+    // Scale full res points into normalized geometry points before uploading
+    const normRodPoints = this.rodPoints.map(p => [p[0] / this.imgNatWidth, p[1] / this.imgNatHeight]);
+    const normRefPoints = this.refPoints.map(p => [p[0] / this.imgNatWidth, p[1] / this.imgNatHeight]);
+
+    // Compress physical upload file substantially
+    const compressedReal = await this.compressFile(this.realImageFile, 1600, 0.9);
+    
     const formData = new FormData();
-    formData.append('real_image', this.realImageFile);
-    formData.append('rod_points', JSON.stringify(this.rodPoints));
-    formData.append('ref_points', JSON.stringify(this.refPoints));
+    formData.append('real_image', compressedReal);
+    formData.append('rod_points', JSON.stringify(normRodPoints));
+    formData.append('ref_points', JSON.stringify(normRefPoints));
     formData.append('ref_length', this.refPoints.length === 2 ? this.refLengthInput.toString() : '0');
 
     const endpoint = this.viewMode === 'top' ? '/analyze-cv' : '/analyze-cv/side';
     
+    // 1. Backend CV Observable
     const cvObs = this.http.post<any>(`${environment.apiBaseUrl}${endpoint}`, formData);
 
+    // 2. Gemini Design Extraction Promise
     let designPromise = Promise.resolve({ count: 0, radius_mm: 0, spacings_mm: [] } as any);
     let designB64 = '';
     if (this.designImageFile) {
@@ -347,12 +421,14 @@ export class AppComponent implements OnInit, OnDestroy {
       designPromise = this.gemini.extractDesignData(designB64, this.viewMode);
     }
 
+    // 3. Gemini Defect Search Promise
     let defectPromise = Promise.resolve({ reset: true, rod: null } as any);
     if (this.viewMode === 'top' && this.designImageFile) {
       const realB64 = await this.gemini.fileToBase64(this.realImageFile, 200);
       defectPromise = this.gemini.detectDefects(realB64, designB64, this.rodPoints.length);
     }
 
+    // Execute Concurrently
     this.analysisSub = forkJoin({
       cvRes: cvObs,
       designData: from(designPromise),
@@ -366,6 +442,7 @@ export class AppComponent implements OnInit, OnDestroy {
           return;
         }
 
+        // Calculate score locally
         let scoreData;
         if (this.viewMode === 'top') {
           scoreData = this.scoring.calculateTopScore(designData, cvRes.actual_data, cvRes.has_scale);

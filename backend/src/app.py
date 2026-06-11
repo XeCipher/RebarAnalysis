@@ -5,7 +5,6 @@ import numpy as np
 import base64
 import json
 import threading
-import concurrent.futures
 
 # Add src to path to ensure imports work
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -19,7 +18,7 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.mime.image import MIMEImage
 
-# Modules (Only heavy pure-Python services left!)
+# Modules
 import analysis_service
 import side_view_service  
 
@@ -32,11 +31,9 @@ CORS(app, resources={r"/*": {
 
 @app.route('/', methods=['GET'])
 def health_check():
-    # Fixes Render's 50s spin up delay since frontend automatically hits this on land!
     return "Rebar Analysis API Awake & Warmed Up!", 200
 
-# --- REFINE POINTS (FORMERLY AUTO-DETECT) ---
-# Gemini points are now calculated in frontend to save bandwidth. This just applies math.
+# --- REFINE POINTS (AUTO-DETECT) ---
 @app.route('/refine-points', methods=['POST', 'OPTIONS'])
 def refine_points():
     if request.method == 'OPTIONS': return jsonify({'status': 'ok'}), 200
@@ -48,27 +45,31 @@ def refine_points():
         view_mode = request.form.get('view_mode', 'top')
         gemini_normalized_points = json.loads(request.form.get('gemini_points', '[]'))
         
-        # Decode high-res image
+        # Decode compressed image
         img_array = cv2.imdecode(np.frombuffer(file_bytes, np.uint8), cv2.IMREAD_COLOR)
         if img_array is None:
             return jsonify({"status": "error", "message": "Could not decode image"}), 400
 
-        # OpenCV: Refine to exact pixel centers
-        points = []
+        # OpenCV: Refine to exact pixel centers on the received image size
+        pixel_points = []
         if gemini_normalized_points:
             if view_mode == 'top':
-                points = analysis_service.refine_gemini_points(img_array, gemini_normalized_points)
+                pixel_points = analysis_service.refine_gemini_points(img_array, gemini_normalized_points)
             else:
-                points = side_view_service.refine_side_gemini_points(img_array, gemini_normalized_points)
+                pixel_points = side_view_service.refine_side_gemini_points(img_array, gemini_normalized_points)
                 
-        return jsonify({"status": "success", "points": points})
+        h, w = img_array.shape[:2]
+        # Return as normalized points so the frontend can map it to any resolution
+        normalized_points = [{"x": float(px) / w, "y": float(py) / h} for px, py in pixel_points]
+                
+        return jsonify({"status": "success", "points": normalized_points})
         
     except Exception as e:
         print(f"Refinement Error: {e}")
         return jsonify({"status": "error", "message": str(e)}), 500
 
+
 # --- TOP VIEW CV ANALYSIS ---
-# Massive Performance increase - LLM offloaded entirely.
 @app.route('/analyze-cv', methods=['POST', 'OPTIONS'])
 def analyze_top_cv():
     if request.method == 'OPTIONS': return jsonify({'status': 'ok'}), 200
@@ -77,13 +78,18 @@ def analyze_top_cv():
             return jsonify({"status": "error", "message": "No real_image provided"}), 400
 
         real_bytes = request.files['real_image'].read()
-        rod_points = json.loads(request.form.get('rod_points', '[]'))
-        ref_points = json.loads(request.form.get('ref_points', '[]'))
+        norm_rod_points = json.loads(request.form.get('rod_points', '[]'))
+        norm_ref_points = json.loads(request.form.get('ref_points', '[]'))
         ref_length = float(request.form.get('ref_length', 0))
 
         img_array = cv2.imdecode(np.frombuffer(real_bytes, np.uint8), cv2.IMREAD_COLOR)
         if img_array is None:
              return jsonify({"status": "error", "message": "Could not decode image"}), 400
+
+        # Scale normalized coordinates to the actual received compressed image dimension
+        h, w = img_array.shape[:2]
+        rod_points = [[int(p[0] * w), int(p[1] * h)] for p in norm_rod_points]
+        ref_points = [[int(p[0] * w), int(p[1] * h)] for p in norm_ref_points]
 
         # Run Heavy Matrix Math calculations
         annotated_img, actual_data, has_scale = analysis_service.process_image(
@@ -94,7 +100,6 @@ def analyze_top_cv():
         _, buffer = cv2.imencode('.jpg', annotated_img, encode_param)
         img_base64 = base64.b64encode(buffer).decode('utf-8')
 
-        # Frontend will combine this mathematically derived data with the AI data!
         return jsonify({
             "status": "success",
             "annotated_image": f"data:image/jpeg;base64,{img_base64}",
@@ -116,13 +121,17 @@ def analyze_side_cv():
             return jsonify({"status": "error", "message": "No real_image provided"}), 400
 
         real_bytes = request.files['real_image'].read()
-        rod_points = json.loads(request.form.get('rod_points', '[]'))
-        ref_points = json.loads(request.form.get('ref_points', '[]'))
+        norm_rod_points = json.loads(request.form.get('rod_points', '[]'))
+        norm_ref_points = json.loads(request.form.get('ref_points', '[]'))
         ref_length = float(request.form.get('ref_length', 0))
 
         img_array = cv2.imdecode(np.frombuffer(real_bytes, np.uint8), cv2.IMREAD_COLOR)
         if img_array is None:
              return jsonify({"status": "error", "message": "Could not decode image"}), 400
+
+        h, w = img_array.shape[:2]
+        rod_points = [[int(p[0] * w), int(p[1] * h)] for p in norm_rod_points]
+        ref_points = [[int(p[0] * w), int(p[1] * h)] for p in norm_ref_points]
 
         annotated_img, actual_data, has_scale = side_view_service.process_side_view(
             img_array, rod_points, ref_points, ref_length
@@ -216,8 +225,6 @@ def send_email_report():
             except Exception as e:
                 print(f"Async Email Dispatch Error: {e}")
 
-        # Dispatch email logic heavily optimized on a completely separate thread
-        # This will unblock UI state instantaneously while Gmail backend connects via SMTP.
         threading.Thread(target=send_email_async, args=(msg, SENDER_EMAIL, SENDER_PASS)).start()
 
         return jsonify({"status": "success", "message": "Email dispatch initiated successfully"}), 200

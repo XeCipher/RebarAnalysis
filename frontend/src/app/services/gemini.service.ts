@@ -135,7 +135,9 @@ export class GeminiService {
   async fileToBase64(file: File, maxDim: number = 1000): Promise<string> {
     return new Promise((resolve) => {
       const img = new Image();
+      const objectUrl = URL.createObjectURL(file);
       img.onload = () => {
+        URL.revokeObjectURL(objectUrl);
         let w = img.width;
         let h = img.height;
         const scale = Math.min(1, maxDim / Math.max(w, h));
@@ -149,9 +151,9 @@ export class GeminiService {
         ctx.drawImage(img, 0, 0, w, h);
         
         const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
-        resolve(dataUrl.split(',')[1]); // return pure base64 payload
+        resolve(dataUrl.split(',')[1]); 
       };
-      img.src = URL.createObjectURL(file);
+      img.src = objectUrl;
     });
   }
 
@@ -174,7 +176,8 @@ export class GeminiService {
     return data?.rods || [];
   }
 
-  private async askGemini(prompt: string, base64Images: string[]): Promise<any> {
+  // Included a retry mechanism (retries=1) to prevent 504 timeouts from breaking execution
+  private async askGemini(prompt: string, base64Images: string[], retries: number = 1): Promise<any> {
     try {
       const url = `${environment.gemprismBaseUrl}/api/proxy/v1beta/models/gemini-flash-latest:generateContent?key=${environment.gemprismApiKey}`;
       
@@ -194,12 +197,15 @@ export class GeminiService {
       try {
         return JSON.parse(text);
       } catch {
-        // Fallback cleanup if Gemini returns markdown block inside JSON MIME
         const match = text.match(/\{[\s\S]*\}/);
         if (match) return JSON.parse(match[0]);
         return null;
       }
     } catch (err) {
+      if (retries > 0) {
+        console.warn(`Gemini Gateway timeout, retrying... (${retries} retries left)`, err);
+        return await this.askGemini(prompt, base64Images, retries - 1);
+      }
       console.error("Gemini API Error:", err);
       return null;
     }
