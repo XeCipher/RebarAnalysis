@@ -177,7 +177,7 @@
            </button>
         </div>
 
-        <!-- Render Points (Interactive with Drag & Drop logic mapping) -->
+        <!-- Render Points -->
         <ng-container *ngIf="imgNatWidth > 0">
           <div *ngFor="let p of rodPoints; let i = index; trackBy: trackByIndex" 
                class="dot-rod" 
@@ -284,7 +284,7 @@
                     <lucide-icon [img]="icons.HelpCircle" class="w-5 h-5" />
                 </button>
 
-                <div class="text-xs sm:text-sm font-bold text-slate-400 uppercase tracking-widest mb-2">Similarity Score</div>
+                <div class="text-xs sm:text-sm font-bold text-slate-400 uppercase tracking-widest mb-2">Overall Score</div>
                 <div class="text-5xl sm:text-6xl font-black mb-3 drop-shadow-sm" 
                      [class.text-green-600]="result.score >= 80"
                      [class.text-yellow-600]="result.score < 80 && result.score >= 50"
@@ -297,6 +297,23 @@
                     <lucide-icon [img]="result.score >= 80 ? icons.CheckCircle2 : icons.AlertCircle" class="w-4 h-4" />
                     {{ result.score >= 80 ? 'Passed QC Check' : 'Quality Warning' }}
                 </div>
+
+                <!-- Individual Param Breakout -->
+                <div class="w-full mt-6 pt-5 border-t border-slate-200 flex justify-center gap-6 sm:gap-10">
+                    <div *ngIf="result.score_count !== null && result.score_count !== undefined" class="flex flex-col items-center">
+                        <span class="text-[10px] sm:text-xs font-bold text-slate-400 uppercase mb-1">Count</span>
+                        <span class="text-lg sm:text-xl font-bold" [class.text-green-600]="result.score_count >= 80" [class.text-yellow-600]="result.score_count >= 50 && result.score_count < 80" [class.text-red-600]="result.score_count < 50">{{ result.score_count }}%</span>
+                    </div>
+                    <div *ngIf="result.score_radius !== null && result.score_radius !== undefined" class="flex flex-col items-center border-l border-slate-200 pl-6 sm:pl-10">
+                        <span class="text-[10px] sm:text-xs font-bold text-slate-400 uppercase mb-1">Radius</span>
+                        <span class="text-lg sm:text-xl font-bold" [class.text-green-600]="result.score_radius >= 80" [class.text-yellow-600]="result.score_radius >= 50 && result.score_radius < 80" [class.text-red-600]="result.score_radius < 50">{{ result.score_radius }}%</span>
+                    </div>
+                    <div *ngIf="result.score_spacing !== null && result.score_spacing !== undefined" class="flex flex-col items-center border-l border-slate-200 pl-6 sm:pl-10">
+                        <span class="text-[10px] sm:text-xs font-bold text-slate-400 uppercase mb-1">Spacing</span>
+                        <span class="text-lg sm:text-xl font-bold" [class.text-green-600]="result.score_spacing >= 80" [class.text-yellow-600]="result.score_spacing >= 50 && result.score_spacing < 80" [class.text-red-600]="result.score_spacing < 50">{{ result.score_spacing }}%</span>
+                    </div>
+                </div>
+
             </div>
 
             <div class="relative rounded-xl overflow-hidden shadow-sm border border-slate-200 bg-slate-900">
@@ -356,19 +373,41 @@
     <!-- Modal Body -->
     <div class="p-6 overflow-y-auto flex-1 space-y-6 text-sm sm:text-base text-slate-600 bg-slate-50/50">
       
+      <!-- IS Code Tolerances -->
+      <div>
+        <h4 class="font-bold text-lg text-slate-800 mb-2">1. IS Code Tolerances</h4>
+        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-4 mb-4">
+            <div>
+               <strong class="text-slate-700">Radius/Diameter (IS 1786:2008)</strong>
+               <ul class="list-disc list-inside text-sm text-slate-600 mt-1">
+                   <li>≤ 10 mm bar: ±3.5%</li>
+                   <li>12 – 16 mm bar: ±2.5%</li>
+                   <li>> 16 mm bar: ±2.0%</li>
+               </ul>
+            </div>
+            <div>
+               <strong class="text-slate-700">Spacing/Placement (IS 456:2000)</strong>
+               <ul class="list-disc list-inside text-sm text-slate-600 mt-1">
+                   <li>Effective depth ≤ 200 mm: ±10 mm</li>
+                   <li>Effective depth > 200 mm: ±15 mm</li>
+               </ul>
+            </div>
+        </div>
+      </div>
+
       <!-- Top View -->
       <div>
-        <h4 class="font-bold text-lg text-slate-800 mb-2">1. Top View Scoring</h4>
-        <p class="mb-3">The final score evaluates geometric structural accuracy. It merges multiple component scores using weighted averages:</p>
+        <h4 class="font-bold text-lg text-slate-800 mb-2">2. Top View Scoring</h4>
+        <p class="mb-3">The final overall score averages the individual 100% metrics:</p>
         <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm mb-4">
           <ul class="space-y-3">
             <li class="flex items-start gap-3">
                <span class="font-mono text-xs bg-primary/10 text-primary px-2 py-1 rounded font-bold mt-0.5 w-24 text-center shrink-0">With Scale</span>
-               <span>Score = (40% × Count) + (40% × Spacing) + (20% × Radius)</span>
+               <span>Overall Score = (Count Score + Spacing Score + Radius Score) ÷ 3</span>
             </li>
             <li class="flex items-start gap-3">
                <span class="font-mono text-xs bg-slate-100 text-slate-600 border border-slate-200 px-2 py-1 rounded font-bold mt-0.5 w-24 text-center shrink-0">No Scale</span>
-               <span>Score = (50% × Count) + (50% × Spacing) <br><em class="text-xs text-slate-400">Uses pixel-ratio symmetry directly instead of physical dimensions.</em></span>
+               <span>Overall Score = (Count Score + Spacing Score) ÷ 2 <br><em class="text-xs text-slate-400">Uses pixel-ratio symmetry directly instead of physical dimensions.</em></span>
             </li>
           </ul>
         </div>
@@ -376,37 +415,37 @@
 
       <!-- Side View -->
       <div>
-        <h4 class="font-bold text-lg text-slate-800 mb-2">2. Side View Scoring</h4>
+        <h4 class="font-bold text-lg text-slate-800 mb-2">3. Side View Scoring</h4>
         <p class="mb-3">The system automatically detects multiple horizontal stirrups (bars) and evaluates the vertical distance between every consecutive pair iteratively.</p>
         <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm mb-4">
-            <p><strong>Final Score</strong> = The mathematical average of all individually calculated pair spacing scores.</p>
+            <p><strong>Overall Score</strong> = The mathematical average of all individually calculated pair spacing scores.</p>
         </div>
       </div>
 
       <!-- General Parameter Formula -->
       <div>
-        <h4 class="font-bold text-lg text-slate-800 mb-2">3. Parameter Error Calculation</h4>
+        <h4 class="font-bold text-lg text-slate-800 mb-2">4. Parameter Score Evaluation</h4>
         <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-2 font-mono text-sm text-slate-200 bg-slate-800 tracking-wide">
           <p class="text-green-400">% Error = (|Design - Actual| / Design) × 100</p>
-          <p class="text-blue-400">Parameter Score = max(0, 100 - % Error)</p>
+          <p class="text-blue-400">Individual Score = max(0, 100 - % Error)</p>
         </div>
       </div>
 
       <!-- Status Colors -->
       <div>
-        <h4 class="font-bold text-lg text-slate-800 mb-3">4. Status Thresholds</h4>
+        <h4 class="font-bold text-lg text-slate-800 mb-3">5. Status Thresholds</h4>
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-center">
           <div class="p-4 bg-green-50 border border-green-200 rounded-xl flex flex-col items-center justify-center">
               <strong class="text-green-700">Acceptable</strong>
-              <span class="text-sm text-green-600 mt-1">Error ≤ 5%</span>
+              <span class="text-sm text-green-600 mt-1">Within IS Code Tolerance</span>
           </div>
           <div class="p-4 bg-yellow-50 border border-yellow-200 rounded-xl flex flex-col items-center justify-center">
               <strong class="text-yellow-700">Minor Mismatch</strong>
-              <span class="text-sm text-yellow-600 mt-1">5% < Error ≤ 15%</span>
+              <span class="text-sm text-yellow-600 mt-1">Up to 1.5x Tolerance</span>
           </div>
           <div class="p-4 bg-red-50 border border-red-200 rounded-xl flex flex-col items-center justify-center">
               <strong class="text-red-700">Not Acceptable</strong>
-              <span class="text-sm text-red-600 mt-1">Error > 15%</span>
+              <span class="text-sm text-red-600 mt-1">Exceeds 1.5x Tolerance</span>
           </div>
         </div>
       </div>

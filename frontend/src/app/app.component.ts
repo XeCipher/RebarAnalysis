@@ -11,6 +11,9 @@ import { ScoringService, ComparisonRow } from './services/scoring.service';
 export interface ApiResponse {
   status: string;
   score: number;
+  score_count?: number | null;
+  score_radius?: number | null;
+  score_spacing?: number | null;
   comparison_table: ComparisonRow[];
   annotated_image: string;
   revit_data?: any;
@@ -76,13 +79,11 @@ export class AppComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit() {
-    // 1. Backend Wake-up Ping (Fixes Render 50s cold start delay)
     this.http.get(environment.apiBaseUrl + '/', { responseType: 'text' }).subscribe({
       next: () => console.log('Backend warmed up successfully.'),
       error: () => console.log('Ping sent to wake up backend.')
     });
 
-    // 2. Setup Google Analytics dynamically (Safely fallback if omitted from environment)
     const analyticsId = (environment as any).googleAnalyticsId;
     if (analyticsId) {
       const script = document.createElement('script');
@@ -329,7 +330,6 @@ export class AppComponent implements OnInit, OnDestroy {
     this.isEmailSending = false;
     this.cdr.markForCheck();
     
-    // Setup Parallel Processing Data
     const formData = new FormData();
     formData.append('real_image', this.realImageFile);
     formData.append('rod_points', JSON.stringify(this.rodPoints));
@@ -338,10 +338,8 @@ export class AppComponent implements OnInit, OnDestroy {
 
     const endpoint = this.viewMode === 'top' ? '/analyze-cv' : '/analyze-cv/side';
     
-    // 1. Backend CV Observable
     const cvObs = this.http.post<any>(`${environment.apiBaseUrl}${endpoint}`, formData);
 
-    // 2. Gemini Design Extraction Promise
     let designPromise = Promise.resolve({ count: 0, radius_mm: 0, spacings_mm: [] } as any);
     let designB64 = '';
     if (this.designImageFile) {
@@ -349,14 +347,12 @@ export class AppComponent implements OnInit, OnDestroy {
       designPromise = this.gemini.extractDesignData(designB64, this.viewMode);
     }
 
-    // 3. Gemini Defect Search Promise
     let defectPromise = Promise.resolve({ reset: true, rod: null } as any);
     if (this.viewMode === 'top' && this.designImageFile) {
       const realB64 = await this.gemini.fileToBase64(this.realImageFile, 200);
       defectPromise = this.gemini.detectDefects(realB64, designB64, this.rodPoints.length);
     }
 
-    // Execute Concurrently & Store Subscription for easy cancellation
     this.analysisSub = forkJoin({
       cvRes: cvObs,
       designData: from(designPromise),
@@ -370,7 +366,6 @@ export class AppComponent implements OnInit, OnDestroy {
           return;
         }
 
-        // Calculate score locally on frontend
         let scoreData;
         if (this.viewMode === 'top') {
           scoreData = this.scoring.calculateTopScore(designData, cvRes.actual_data, cvRes.has_scale);
@@ -381,6 +376,9 @@ export class AppComponent implements OnInit, OnDestroy {
         this.result = {
           status: 'success',
           score: scoreData.score,
+          score_count: scoreData.score_count,
+          score_radius: scoreData.score_radius,
+          score_spacing: scoreData.score_spacing,
           comparison_table: scoreData.table,
           annotated_image: cvRes.annotated_image,
         };

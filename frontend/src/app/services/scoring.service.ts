@@ -22,10 +22,10 @@ export class ScoringService {
     return isNaN(parsed) ? def : parsed;
   }
 
-  calculateTopScore(designData: any, actualData: any, hasScale: boolean): { score: number, table: ComparisonRow[] } {
+  calculateTopScore(designData: any, actualData: any, hasScale: boolean): { score: number, score_count: number, score_radius: number | null, score_spacing: number, table: ComparisonRow[] } {
     const tableRows: ComparisonRow[] = [];
     
-    // 1. Number of Bars (Weight: 40%)
+    // 1. Number of Bars (100% Weightage)
     const dCount = this.safeInt(designData.count);
     const aCount = this.safeInt(actualData.count);
     const diffCount = Math.abs(dCount - aCount);
@@ -38,7 +38,7 @@ export class ScoringService {
       status: diffCount === 0 ? "Acceptable" : "Not Acceptable"
     });
 
-    // 2. Radius (Weight: 20%)
+    // 2. Radius (100% Weightage)
     let scoreRadius = 100;
     const dRad = this.safeFloat(designData.radius_mm);
     const aRad = this.safeFloat(actualData.avg_radius);
@@ -47,12 +47,19 @@ export class ScoringService {
     let actualDisplay = "";
 
     if (hasScale && dRad > 0) {
+      const diameter = dRad * 2;
+      // IS 1786:2008 Approximations for Diametrical Tolerance
+      let tol_pct = 2.0;
+      if (diameter <= 10) tol_pct = 3.5;
+      else if (diameter <= 16) tol_pct = 2.5;
+
       const errRad = Math.abs(dRad - aRad);
       const percentErr = (errRad / dRad) * 100;
+      
       scoreRadius = Math.max(0, 100 - percentErr);
       
-      if (percentErr <= 5) radiusStatus = "Acceptable";
-      else if (percentErr <= 15) radiusStatus = "Minor Mismatch";
+      if (percentErr <= tol_pct) radiusStatus = "Acceptable";
+      else if (percentErr <= tol_pct * 1.5) radiusStatus = "Minor Mismatch";
       else radiusStatus = "Not Acceptable";
       
       actualDisplay = `${aRad.toFixed(2)} mm`;
@@ -67,7 +74,7 @@ export class ScoringService {
       status: radiusStatus
     });
 
-    // 3. Sequential Spacing (Weight: 40%)
+    // 3. Sequential Spacing (100% Weightage)
     const rawDSpacings = Array.isArray(designData.spacings_mm) ? designData.spacings_mm : [];
     const dSpacings = rawDSpacings.map((x: any) => this.safeFloat(x));
     const rawASpacings = Array.isArray(actualData.distances) ? actualData.distances : [];
@@ -93,11 +100,13 @@ export class ScoringService {
         if (valDesign !== null) {
           if (hasScale) {
             if (valDesign > 0) {
-              const err = Math.abs(valDesign - valActual);
-              const pct = (err / valDesign) * 100;
+              // IS 456:2000 Tolerance limit checks
+              const tol_mm = valDesign <= 200 ? 10 : 15;
+              const err_mm = Math.abs(valDesign - valActual);
+              const pct = (err_mm / valDesign) * 100;
               
-              if (pct <= 5) rowStatus = "Acceptable";
-              else if (pct <= 15) rowStatus = "Minor Mismatch";
+              if (err_mm <= tol_mm) rowStatus = "Acceptable";
+              else if (err_mm <= tol_mm * 1.5) rowStatus = "Minor Mismatch";
               else rowStatus = "Not Acceptable";
               
               scoreSpacingAccum += Math.max(0, 100 - pct);
@@ -131,17 +140,24 @@ export class ScoringService {
       scoreSpacing = 0;
     }
     
+    // Calculate final unweighted average using all categories
     let finalScore = 0;
     if (hasScale) {
-      finalScore = (0.4 * scoreCount) + (0.4 * scoreSpacing) + (0.2 * scoreRadius);
+      finalScore = (scoreCount + scoreSpacing + scoreRadius) / 3;
     } else {
-      finalScore = (0.5 * scoreCount) + (0.5 * scoreSpacing);
+      finalScore = (scoreCount + scoreSpacing) / 2;
     }
         
-    return { score: Math.round(finalScore), table: tableRows };
+    return { 
+      score: Math.round(finalScore), 
+      score_count: Math.round(scoreCount), 
+      score_radius: hasScale ? Math.round(scoreRadius) : null,
+      score_spacing: Math.round(scoreSpacing),
+      table: tableRows 
+    };
   }
 
-  calculateSideScore(designData: any, actualData: any, hasScale: boolean): { score: number, table: ComparisonRow[] } {
+  calculateSideScore(designData: any, actualData: any, hasScale: boolean): { score: number, score_count: number | null, score_radius: number | null, score_spacing: number | null, table: ComparisonRow[] } {
     const dSpacing = this.safeFloat(designData.spacing_mm);
     const aSpacings: number[] = Array.isArray(actualData.spacings) ? actualData.spacings : [];
     
@@ -150,6 +166,9 @@ export class ScoringService {
     if (aSpacings.length === 0) {
       return { 
         score: 0, 
+        score_count: null,
+        score_radius: null,
+        score_spacing: 0,
         table: [{ parameter: "Vertical Spacing", design: dSpacing > 0 ? `${dSpacing} mm` : "Not Specified", actual: "None detected", status: "Not Acceptable" }] 
       };
     }
@@ -162,12 +181,14 @@ export class ScoringService {
       let actualStr = "";
       
       if (hasScale && dSpacing > 0) {
-        const diff = Math.abs(dSpacing - aSpacing);
-        const errorPct = (diff / dSpacing) * 100;
+        // IS 456:2000 Tolerance limit checks
+        const tol_mm = dSpacing <= 200 ? 10 : 15;
+        const err_mm = Math.abs(dSpacing - aSpacing);
+        const errorPct = (err_mm / dSpacing) * 100;
         score = Math.max(0, 100 - errorPct);
         
-        if (errorPct <= 5) status = "Acceptable";
-        else if (errorPct <= 15) status = "Minor Mismatch";
+        if (err_mm <= tol_mm) status = "Acceptable";
+        else if (err_mm <= tol_mm * 1.5) status = "Minor Mismatch";
         else status = "Not Acceptable";
         
         actualStr = `${aSpacing.toFixed(2)} mm`;
@@ -187,6 +208,12 @@ export class ScoringService {
     });
     
     const finalScore = Math.round(totalScore / aSpacings.length);
-    return { score: finalScore, table: tableRows };
+    return { 
+      score: finalScore, 
+      score_count: null,
+      score_radius: null,
+      score_spacing: finalScore,
+      table: tableRows 
+    };
   }
 }
