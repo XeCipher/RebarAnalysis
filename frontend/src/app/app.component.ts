@@ -272,7 +272,7 @@ export class AppComponent implements OnInit, OnDestroy {
     this.cdr.markForCheck();
 
     try {
-      const tinyB64 = await this.gemini.fileToBase64(this.realImageFile, 400);
+      const tinyB64 = await this.gemini.fileToBase64(this.realImageFile, 200);
       const aiPoints = await this.gemini.getAutoDetectPoints(tinyB64, this.viewMode);
       
       const formData = new FormData();
@@ -345,14 +345,14 @@ export class AppComponent implements OnInit, OnDestroy {
     let designPromise = Promise.resolve({ count: 0, radius_mm: 0, spacings_mm: [] } as any);
     let designB64 = '';
     if (this.designImageFile) {
-      designB64 = await this.gemini.fileToBase64(this.designImageFile, 800);
+      designB64 = await this.gemini.fileToBase64(this.designImageFile, 700);
       designPromise = this.gemini.extractDesignData(designB64, this.viewMode);
     }
 
     // 3. Gemini Defect Search Promise
     let defectPromise = Promise.resolve({ reset: true, rod: null } as any);
     if (this.viewMode === 'top' && this.designImageFile) {
-      const realB64 = await this.gemini.fileToBase64(this.realImageFile, 600);
+      const realB64 = await this.gemini.fileToBase64(this.realImageFile, 200);
       defectPromise = this.gemini.detectDefects(realB64, designB64, this.rodPoints.length);
     }
 
