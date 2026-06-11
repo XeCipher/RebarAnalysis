@@ -299,18 +299,36 @@
                 </div>
 
                 <!-- Individual Param Breakout -->
-                <div class="w-full mt-6 pt-5 border-t border-slate-200 flex justify-center gap-6 sm:gap-10">
-                    <div *ngIf="result.score_count !== null && result.score_count !== undefined" class="flex flex-col items-center">
-                        <span class="text-[10px] sm:text-xs font-bold text-slate-400 uppercase mb-1">Count</span>
-                        <span class="text-lg sm:text-xl font-bold" [class.text-green-600]="result.score_count >= 80" [class.text-yellow-600]="result.score_count >= 50 && result.score_count < 80" [class.text-red-600]="result.score_count < 50">{{ result.score_count }}%</span>
+                <div class="w-full mt-6 pt-5 border-t border-slate-200 flex flex-wrap items-center justify-center gap-3 sm:gap-4">
+                    
+                    <div *ngIf="result.score_count !== null && result.score_count !== undefined" class="flex-1 min-w-[80px] p-3 rounded-xl bg-white shadow-[0_2px_8px_-3px_rgba(0,0,0,0.05)] border border-slate-100 flex flex-col items-center justify-center transition-all">
+                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Count</span>
+                        <span class="text-xl sm:text-2xl font-black drop-shadow-sm" 
+                              [class.text-green-600]="result.score_count >= 80" 
+                              [class.text-yellow-600]="result.score_count >= 50 && result.score_count < 80" 
+                              [class.text-red-600]="result.score_count < 50">
+                            {{ result.score_count }}%
+                        </span>
                     </div>
-                    <div *ngIf="result.score_radius !== null && result.score_radius !== undefined" class="flex flex-col items-center border-l border-slate-200 pl-6 sm:pl-10">
-                        <span class="text-[10px] sm:text-xs font-bold text-slate-400 uppercase mb-1">Radius</span>
-                        <span class="text-lg sm:text-xl font-bold" [class.text-green-600]="result.score_radius >= 80" [class.text-yellow-600]="result.score_radius >= 50 && result.score_radius < 80" [class.text-red-600]="result.score_radius < 50">{{ result.score_radius }}%</span>
+
+                    <div *ngIf="result.score_radius !== null && result.score_radius !== undefined" class="flex-1 min-w-[80px] p-3 rounded-xl bg-white shadow-[0_2px_8px_-3px_rgba(0,0,0,0.05)] border border-slate-100 flex flex-col items-center justify-center transition-all">
+                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Radius</span>
+                        <span class="text-xl sm:text-2xl font-black drop-shadow-sm" 
+                              [class.text-green-600]="result.score_radius >= 80" 
+                              [class.text-yellow-600]="result.score_radius >= 50 && result.score_radius < 80" 
+                              [class.text-red-600]="result.score_radius < 50">
+                            {{ result.score_radius }}%
+                        </span>
                     </div>
-                    <div *ngIf="result.score_spacing !== null && result.score_spacing !== undefined" class="flex flex-col items-center border-l border-slate-200 pl-6 sm:pl-10">
-                        <span class="text-[10px] sm:text-xs font-bold text-slate-400 uppercase mb-1">Spacing</span>
-                        <span class="text-lg sm:text-xl font-bold" [class.text-green-600]="result.score_spacing >= 80" [class.text-yellow-600]="result.score_spacing >= 50 && result.score_spacing < 80" [class.text-red-600]="result.score_spacing < 50">{{ result.score_spacing }}%</span>
+
+                    <div *ngIf="result.score_spacing !== null && result.score_spacing !== undefined" class="flex-1 min-w-[80px] p-3 rounded-xl bg-white shadow-[0_2px_8px_-3px_rgba(0,0,0,0.05)] border border-slate-100 flex flex-col items-center justify-center transition-all">
+                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Spacing</span>
+                        <span class="text-xl sm:text-2xl font-black drop-shadow-sm" 
+                              [class.text-green-600]="result.score_spacing >= 80" 
+                              [class.text-yellow-600]="result.score_spacing >= 50 && result.score_spacing < 80" 
+                              [class.text-red-600]="result.score_spacing < 50">
+                            {{ result.score_spacing }}%
+                        </span>
                     </div>
                 </div>
 
