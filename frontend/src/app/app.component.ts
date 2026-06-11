@@ -272,7 +272,7 @@ export class AppComponent implements OnInit, OnDestroy {
     this.cdr.markForCheck();
 
     try {
-      const tinyB64 = await this.gemini.fileToBase64(this.realImageFile, 200);
+      const tinyB64 = await this.gemini.fileToBase64(this.realImageFile, 400);
       const aiPoints = await this.gemini.getAutoDetectPoints(tinyB64, this.viewMode);
       
       const formData = new FormData();
