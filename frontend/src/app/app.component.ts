@@ -1,9 +1,9 @@
 import { Component, ElementRef, ViewChild, ChangeDetectionStrategy, ChangeDetectorRef, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
-import { LucideAngularModule, Upload, ScanLine, Ruler, CheckCircle2, AlertCircle, Trash2, Undo2, ArrowRight, Layers, ArrowUpDown, FileJson, Wand2, Info, HelpCircle, Calculator, X } from 'lucide-angular';
+import { LucideAngularModule, Upload, ScanLine, Ruler, CheckCircle2, AlertCircle, Trash2, Undo2, ArrowRight, Layers, ArrowUpDown, FileJson, Wand2, Info, HelpCircle, Calculator, X, Timer } from 'lucide-angular';
 import { FormsModule } from '@angular/forms';
-import { forkJoin, from, Subscription } from 'rxjs';
+import { forkJoin, from, Subscription, firstValueFrom } from 'rxjs';
 import { environment } from '../environments/environment';
 import { GeminiService } from './services/gemini.service';
 import { ScoringService, ComparisonRow } from './services/scoring.service';
@@ -28,7 +28,7 @@ export interface ApiResponse {
   changeDetection: ChangeDetectionStrategy.OnPush 
 })
 export class AppComponent implements OnInit, OnDestroy {
-  icons = { Upload, ScanLine, Ruler, CheckCircle2, AlertCircle, Trash2, Undo2, ArrowRight, Layers, ArrowUpDown, FileJson, Wand2, Info, HelpCircle, Calculator, X };
+  icons = { Upload, ScanLine, Ruler, CheckCircle2, AlertCircle, Trash2, Undo2, ArrowRight, Layers, ArrowUpDown, FileJson, Wand2, Info, HelpCircle, Calculator, X, Timer };
 
   // State
   viewMode: 'top' | 'side' = 'top';
@@ -59,6 +59,20 @@ export class AppComponent implements OnInit, OnDestroy {
   authorityEmail: string = '';
   isEmailSending: boolean = false;
   emailSent: boolean = false;
+
+  // Performance Timers
+  timers = {
+    autoDetect: 0,
+    autoDetectRunning: false,
+    total: 0,
+    cv: 0,
+    cvRunning: false,
+    design: 0,
+    designRunning: false,
+    defect: 0,
+    defectRunning: false,
+  };
+  private intervals: any[] = [];
 
   // Drag Drop Variables
   draggingPointIndex: number | null = null;
@@ -99,6 +113,7 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy() {
+    this.intervals.forEach(i => clearInterval(i));
     if (this.analysisSub) this.analysisSub.unsubscribe();
   }
 
@@ -155,6 +170,7 @@ export class AppComponent implements OnInit, OnDestroy {
     this.realImageFile = null;
     this.designImageFile = null;
     this.realImagePreview = null;
+    this.timers.autoDetect = 0;
     this.resetMarkings();
   }
 
@@ -305,7 +321,25 @@ export class AppComponent implements OnInit, OnDestroy {
   async autoDetect() {
     if (!this.realImageFile) return;
     this.isAutoDetecting = true;
-    this.cdr.markForCheck();
+    
+    // Performance Timer Setup
+    this.timers.autoDetectRunning = true;
+    this.timers.autoDetect = 0;
+    const adStart = performance.now();
+    const adInterval = setInterval(() => {
+      if(this.timers.autoDetectRunning) {
+        this.timers.autoDetect = (performance.now() - adStart) / 1000;
+        this.cdr.markForCheck();
+      }
+    }, 30);
+    this.intervals.push(adInterval);
+
+    const finishAutoDetect = () => {
+      this.timers.autoDetectRunning = false;
+      this.isAutoDetecting = false;
+      clearInterval(adInterval);
+      this.cdr.markForCheck();
+    };
 
     try {
       if (this.imgNatWidth === 0 && this.imageElement?.nativeElement) {
@@ -318,8 +352,7 @@ export class AppComponent implements OnInit, OnDestroy {
       const aiPoints = await this.gemini.getAutoDetectPoints(tinyB64, this.viewMode);
       
       if (!aiPoints || aiPoints.length === 0) {
-          this.isAutoDetecting = false;
-          this.cdr.markForCheck();
+          finishAutoDetect();
           return;
       }
 
@@ -348,25 +381,25 @@ export class AppComponent implements OnInit, OnDestroy {
           } else {
             this.rodPoints = fallbackPoints;
           }
-          this.isAutoDetecting = false;
-          this.cdr.markForCheck();
+          finishAutoDetect();
         },
         error: (err) => {
           console.warn("Backend Refinement skipped due to network timeout. Utilising raw AI points.", err);
           this.rodPoints = fallbackPoints;
-          this.isAutoDetecting = false;
-          this.cdr.markForCheck();
+          finishAutoDetect();
         }
       });
     } catch (e) {
       console.error(e);
-      this.isAutoDetecting = false;
-      this.cdr.markForCheck();
+      finishAutoDetect();
     }
   }
 
   cancelAutoDetect() {
+    this.timers.autoDetectRunning = false;
     this.isAutoDetecting = false;
+    this.intervals.forEach(i => clearInterval(i));
+    this.intervals = [];
     this.cdr.markForCheck();
   }
 
@@ -376,6 +409,11 @@ export class AppComponent implements OnInit, OnDestroy {
       this.analysisSub.unsubscribe();
       this.analysisSub = null;
     }
+    this.timers.cvRunning = false;
+    this.timers.designRunning = false;
+    this.timers.defectRunning = false;
+    this.intervals.forEach(i => clearInterval(i));
+    this.intervals = [];
     this.cdr.markForCheck();
   }
 
@@ -393,61 +431,132 @@ export class AppComponent implements OnInit, OnDestroy {
     this.revitData = null;
     this.emailSent = false;
     this.isEmailSending = false;
+    
+    // Performance Initialization for Parallel Execution
+    this.timers.total = 0;
+    this.timers.cv = 0; this.timers.cvRunning = false;
+    this.timers.design = 0; this.timers.designRunning = false;
+    this.timers.defect = 0; this.timers.defectRunning = false;
+
+    const overallStart = performance.now();
+    let cvStart = overallStart;
+    let designStart = overallStart;
+    let defectStart = overallStart;
+
+    const aInterval = setInterval(() => {
+      const now = performance.now();
+      this.timers.total = (now - overallStart) / 1000;
+      if (this.timers.cvRunning) this.timers.cv = (now - cvStart) / 1000;
+      if (this.timers.designRunning) this.timers.design = (now - designStart) / 1000;
+      if (this.timers.defectRunning) this.timers.defect = (now - defectStart) / 1000;
+      this.cdr.markForCheck();
+    }, 30);
+    this.intervals.push(aInterval);
+
     this.cdr.markForCheck();
     
     // Scale full res points into normalized geometry points before uploading
     const normRodPoints = this.rodPoints.map(p => [p[0] / this.imgNatWidth, p[1] / this.imgNatHeight]);
     const normRefPoints = this.refPoints.map(p => [p[0] / this.imgNatWidth, p[1] / this.imgNatHeight]);
 
-    // Compress physical upload file substantially
-    const compressedReal = await this.compressFile(this.realImageFile, 1600, 0.9);
-    
-    const formData = new FormData();
-    formData.append('real_image', compressedReal);
-    formData.append('rod_points', JSON.stringify(normRodPoints));
-    formData.append('ref_points', JSON.stringify(normRefPoints));
-    formData.append('ref_length', this.refPoints.length === 2 ? this.refLengthInput.toString() : '0');
+    // 1. Independent CV Runner
+    const runCV = async () => {
+      this.timers.cvRunning = true;
+      cvStart = performance.now();
+      try {
+        const compressedReal = await this.compressFile(this.realImageFile!, 1600, 0.9);
+        const formData = new FormData();
+        formData.append('real_image', compressedReal);
+        formData.append('rod_points', JSON.stringify(normRodPoints));
+        formData.append('ref_points', JSON.stringify(normRefPoints));
+        formData.append('ref_length', this.refPoints.length === 2 ? this.refLengthInput.toString() : '0');
 
-    const endpoint = this.viewMode === 'top' ? '/analyze-cv' : '/analyze-cv/side';
-    
-    // 1. Backend CV Observable
-    const cvObs = this.http.post<any>(`${environment.apiBaseUrl}${endpoint}`, formData);
+        const endpoint = this.viewMode === 'top' ? '/analyze-cv' : '/analyze-cv/side';
+        const res = await firstValueFrom(this.http.post<any>(`${environment.apiBaseUrl}${endpoint}`, formData));
+        this.timers.cvRunning = false;
+        return res;
+      } catch (err) {
+        this.timers.cvRunning = false;
+        throw err;
+      }
+    };
 
-    // 2. Gemini Design Extraction Promise
-    let designPromise = Promise.resolve({ count: 0, radius_mm: 0, spacings_mm: [] } as any);
-    let designB64 = '';
+    // 2. Independent Design Extractor Runner
+    const runDesign = async () => {
+      this.timers.designRunning = true;
+      designStart = performance.now();
+      try {
+        const designB64 = await this.gemini.fileToBase64(this.designImageFile!, 700);
+        const res = await this.gemini.extractDesignData(designB64, this.viewMode);
+        this.timers.designRunning = false;
+        return { data: res, b64: designB64 };
+      } catch (err) {
+        this.timers.designRunning = false;
+        throw err;
+      }
+    };
+
+    // 3. Independent Defect Search Runner
+    const runDefect = async (designB64Promise: Promise<string>) => {
+      this.timers.defectRunning = true;
+      defectStart = performance.now();
+      try {
+        const realB64 = await this.gemini.fileToBase64(this.realImageFile!, 200);
+        const designB64 = await designB64Promise;
+        const res = await this.gemini.detectDefects(realB64, designB64, this.rodPoints.length);
+        this.timers.defectRunning = false;
+        return res;
+      } catch (err) {
+        this.timers.defectRunning = false;
+        throw err;
+      }
+    };
+
+    // Instantiate Promises immediately for true parallel execution
+    const cvObs = from(runCV());
+    
+    let designDataPromise = Promise.resolve({ data: { count: 0, radius_mm: 0, spacings_mm: [] }, b64: '' } as any);
+    let designB64ExtractPromise = Promise.resolve('');
+    
     if (this.designImageFile) {
-      designB64 = await this.gemini.fileToBase64(this.designImageFile, 700);
-      designPromise = this.gemini.extractDesignData(designB64, this.viewMode);
+      const dPromise = runDesign();
+      designDataPromise = dPromise;
+      designB64ExtractPromise = dPromise.then(r => r.b64).catch(() => '');
     }
 
-    // 3. Gemini Defect Search Promise
     let defectPromise = Promise.resolve({ reset: true, rod: null } as any);
     if (this.viewMode === 'top' && this.designImageFile) {
-      const realB64 = await this.gemini.fileToBase64(this.realImageFile, 200);
-      defectPromise = this.gemini.detectDefects(realB64, designB64, this.rodPoints.length);
+      defectPromise = runDefect(designB64ExtractPromise);
     }
 
-    // Execute Concurrently
+    const finishAnalysis = () => {
+      this.isAnalyzing = false;
+      this.timers.cvRunning = false;
+      this.timers.designRunning = false;
+      this.timers.defectRunning = false;
+      clearInterval(aInterval);
+      this.cdr.markForCheck();
+    };
+
+    // Coordinate all processes using RxJS forkJoin
     this.analysisSub = forkJoin({
       cvRes: cvObs,
-      designData: from(designPromise),
+      designRes: from(designDataPromise),
       defectData: from(defectPromise)
     }).subscribe({
-      next: ({ cvRes, designData, defectData }) => {
+      next: ({ cvRes, designRes, defectData }) => {
         if (cvRes?.status !== 'success') {
           this.errorMsg = "Computer Vision processing failed.";
-          this.isAnalyzing = false;
-          this.cdr.markForCheck();
+          finishAnalysis();
           return;
         }
 
         // Calculate score locally
         let scoreData;
         if (this.viewMode === 'top') {
-          scoreData = this.scoring.calculateTopScore(designData, cvRes.actual_data, cvRes.has_scale);
+          scoreData = this.scoring.calculateTopScore(designRes.data, cvRes.actual_data, cvRes.has_scale);
         } else {
-          scoreData = this.scoring.calculateSideScore(designData, cvRes.actual_data, cvRes.has_scale);
+          scoreData = this.scoring.calculateSideScore(designRes.data, cvRes.actual_data, cvRes.has_scale);
         }
 
         this.result = {
@@ -461,14 +570,12 @@ export class AppComponent implements OnInit, OnDestroy {
         };
         
         this.revitData = defectData;
-        this.isAnalyzing = false;
-        this.cdr.markForCheck();
+        finishAnalysis();
       },
       error: (err) => {
         console.error(err);
         this.errorMsg = `Analysis Error: ${err.message || 'Server timeout or network failure.'}`;
-        this.isAnalyzing = false;
-        this.cdr.markForCheck();
+        finishAnalysis();
       }
     });
   }

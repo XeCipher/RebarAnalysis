@@ -154,31 +154,84 @@
         <p class="font-medium text-center px-4">Select a View Mode & Upload Photo to Begin</p>
       </div>
 
-      <div *ngIf="realImagePreview && !result" class="relative rounded-xl overflow-hidden shadow-lg border border-slate-200 bg-slate-900 group select-none">
+      <div *ngIf="realImagePreview && !result" class="relative rounded-xl overflow-hidden shadow-lg border border-slate-200 bg-slate-900 group select-none flex items-center justify-center min-h-[400px]">
         
         <!-- Interactive Canvas Image -->
         <img #imageRef [src]="realImagePreview" (load)="onImageLoad($event)" (click)="onImageClick($event)" class="w-full h-auto block select-none cursor-crosshair touch-manipulation">
         
-        <!-- Auto Detect Processing Overlay -->
-        <div *ngIf="isAutoDetecting" class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm flex flex-col items-center justify-center z-30 text-white animate-fade-in">
+        <!-- Auto Detect Processing Overlay with Live Time -->
+        <div *ngIf="isAutoDetecting" class="absolute inset-0 bg-slate-900/80 backdrop-blur-sm flex flex-col items-center justify-center z-30 text-white animate-fade-in">
            <div class="animate-spin h-10 w-10 border-4 border-purple-500 border-t-transparent rounded-full mb-4 shadow-lg"></div>
-           <p class="font-bold tracking-wide drop-shadow-md mb-6 text-purple-50">Auto-detecting rods...</p>
+           <p class="font-bold tracking-wide drop-shadow-md mb-2 text-purple-50">Auto-detecting rods...</p>
+           
+           <div class="font-mono text-3xl font-black text-purple-200 mb-6 drop-shadow-md tracking-wider flex items-center gap-2">
+             <lucide-icon [img]="icons.Timer" class="w-6 h-6 opacity-70"></lucide-icon>
+             {{ timers.autoDetect | number:'1.2-2' }}s
+           </div>
+
            <button (click)="cancelAutoDetect()" class="px-5 py-2 bg-white/10 hover:bg-white/20 border border-white/30 rounded-full text-sm font-medium backdrop-blur transition-all active:scale-95">
               Cancel
            </button>
         </div>
 
-        <!-- Loading Overlay during Analysis -->
-        <div *ngIf="isAnalyzing" class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm flex flex-col items-center justify-center z-20 text-white animate-fade-in">
-           <div class="animate-spin h-10 w-10 border-4 border-white border-t-transparent rounded-full mb-4 shadow-lg"></div>
-           <p class="font-bold tracking-wide drop-shadow-md mb-6 text-white">Running Computer Vision & AI Models...</p>
-           <button (click)="cancelAnalysis()" class="px-5 py-2 bg-white/10 hover:bg-white/20 border border-white/30 rounded-full text-sm font-medium backdrop-blur transition-all active:scale-95">
-              Cancel
+        <!-- Engine Analysis Loading Overlay with Parallel Live Timers -->
+        <div *ngIf="isAnalyzing" class="absolute inset-0 bg-slate-900/80 backdrop-blur-md flex flex-col items-center justify-center z-20 text-white animate-fade-in">
+           <div class="animate-spin h-10 w-10 border-4 border-blue-500 border-t-transparent rounded-full mb-4 shadow-lg"></div>
+           <p class="font-bold text-lg tracking-wide drop-shadow-md mb-2 text-blue-50">Running Analysis Engine...</p>
+           
+           <!-- Main Total Timer -->
+           <div class="font-mono text-4xl font-black text-blue-300 mb-6 drop-shadow-md tracking-wider flex items-center gap-2">
+             <lucide-icon [img]="icons.Timer" class="w-8 h-8 opacity-70"></lucide-icon>
+             {{ timers.total | number:'1.2-2' }}s
+           </div>
+
+           <!-- Parallel Sub-Processes Matrix -->
+           <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-8 w-full max-w-[90%] sm:max-w-md px-4">
+             
+             <!-- Computer Vision Timer Box -->
+             <div class="bg-slate-800/60 border border-slate-700 p-3 rounded-lg flex flex-col items-center justify-center relative overflow-hidden transition-all">
+               <div *ngIf="timers.cvRunning" class="absolute inset-0 bg-blue-500/20 animate-pulse"></div>
+               <div class="text-[10px] uppercase tracking-widest text-slate-400 mb-1 flex items-center gap-1.5 z-10">
+                 <lucide-icon [img]="icons.ScanLine" class="w-3 h-3"></lucide-icon> Vision Math
+               </div>
+               <div class="font-mono text-lg font-bold z-10" [class.text-white]="timers.cvRunning" [class.text-green-400]="!timers.cvRunning && timers.cv > 0">
+                 {{ timers.cv | number:'1.2-2' }}s
+               </div>
+             </div>
+
+             <!-- Design Extraction AI Timer Box -->
+             <div class="bg-slate-800/60 border border-slate-700 p-3 rounded-lg flex flex-col items-center justify-center relative overflow-hidden transition-all" [class.opacity-50]="!designImageFile">
+               <div *ngIf="timers.designRunning" class="absolute inset-0 bg-blue-500/20 animate-pulse"></div>
+               <div class="text-[10px] uppercase tracking-widest text-slate-400 mb-1 flex items-center gap-1.5 z-10">
+                 <lucide-icon [img]="icons.FileJson" class="w-3 h-3"></lucide-icon> Design AI
+               </div>
+               <div class="font-mono text-lg font-bold z-10" [class.text-white]="timers.designRunning" [class.text-green-400]="!timers.designRunning && timers.design > 0">
+                 <span *ngIf="designImageFile">{{ timers.design | number:'1.2-2' }}s</span>
+                 <span *ngIf="!designImageFile">N/A</span>
+               </div>
+             </div>
+
+             <!-- Defect Detection AI Timer Box -->
+             <div class="bg-slate-800/60 border border-slate-700 p-3 rounded-lg flex flex-col items-center justify-center relative overflow-hidden transition-all" [class.opacity-50]="!(viewMode === 'top' && designImageFile)">
+               <div *ngIf="timers.defectRunning" class="absolute inset-0 bg-blue-500/20 animate-pulse"></div>
+               <div class="text-[10px] uppercase tracking-widest text-slate-400 mb-1 flex items-center gap-1.5 z-10">
+                 <lucide-icon [img]="icons.AlertCircle" class="w-3 h-3"></lucide-icon> Defect AI
+               </div>
+               <div class="font-mono text-lg font-bold z-10" [class.text-white]="timers.defectRunning" [class.text-green-400]="!timers.defectRunning && timers.defect > 0">
+                 <span *ngIf="viewMode === 'top' && designImageFile">{{ timers.defect | number:'1.2-2' }}s</span>
+                 <span *ngIf="!(viewMode === 'top' && designImageFile)">N/A</span>
+               </div>
+             </div>
+
+           </div>
+
+           <button (click)="cancelAnalysis()" class="px-6 py-2 bg-white/10 hover:bg-white/20 border border-white/30 rounded-full text-sm font-medium backdrop-blur transition-all active:scale-95 shadow-sm">
+              Cancel Execution
            </button>
         </div>
 
         <!-- Render Points -->
-        <ng-container *ngIf="imgNatWidth > 0">
+        <ng-container *ngIf="imgNatWidth > 0 && !isAnalyzing">
           <div *ngFor="let p of rodPoints; let i = index; trackBy: trackByIndex" 
                class="dot-rod" 
                (pointerdown)="onPointerDown($event, i, 'rod')"
@@ -363,65 +416,118 @@
           </div>
         </div>
 
+        <!-- Execution Performance Tracking Split-up (Vertical List Design) -->
+        <div class="card overflow-hidden p-0 shadow-sm border border-slate-200 bg-white animate-fade-in mt-6">
+           
+           <div class="bg-slate-50 px-4 sm:px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+             <div class="flex items-center gap-2">
+               <lucide-icon [img]="icons.Timer" class="w-4 h-4 text-slate-500"></lucide-icon>
+               <h3 class="font-bold text-slate-700 text-sm uppercase tracking-wide">Performance Breakdown</h3>
+             </div>
+             <div class="text-xs font-bold text-slate-400 uppercase tracking-widest text-right flex items-center gap-2">
+               Total Time <span class="text-lg font-black text-primary font-mono ml-1">{{ timers.total | number:'1.2-2' }}s</span>
+             </div>
+           </div>
+           
+           <div class="p-4 sm:p-6 space-y-4">
+             
+             <!-- Auto-Detection -->
+             <div class="flex items-center justify-between p-3 rounded-lg bg-slate-50 border border-slate-100 hover:bg-slate-100 transition-colors">
+               <div class="flex items-center gap-3">
+                 <div class="bg-purple-100 p-2 rounded-md border border-purple-200 shadow-sm"><lucide-icon [img]="icons.Wand2" class="w-4 h-4 text-purple-600"></lucide-icon></div>
+                 <div>
+                   <div class="text-sm font-bold text-slate-800">Auto-Detection Sequence</div>
+                   <div class="text-xs text-slate-500">Initial rod coordinate mapping via Gemini and OpenCV.</div>
+                 </div>
+               </div>
+               <div class="text-right shrink-0 ml-4">
+                 <div *ngIf="timers.autoDetect > 0" class="text-base font-bold text-slate-800 font-mono">{{ timers.autoDetect | number:'1.2-2' }}s</div>
+                 <div *ngIf="timers.autoDetect === 0" class="text-xs font-bold text-slate-400 bg-slate-200 px-2.5 py-1 rounded-full uppercase tracking-wider">Manual</div>
+               </div>
+             </div>
+
+             <!-- Computer Vision -->
+             <div class="flex items-center justify-between p-3 rounded-lg bg-slate-50 border border-slate-100 hover:bg-slate-100 transition-colors">
+               <div class="flex items-center gap-3">
+                 <div class="bg-blue-100 p-2 rounded-md border border-blue-200 shadow-sm"><lucide-icon [img]="icons.ScanLine" class="w-4 h-4 text-blue-600"></lucide-icon></div>
+                 <div>
+                   <div class="text-sm font-bold text-slate-800">Computer Vision Math</div>
+                   <div class="text-xs text-slate-500">OpenCV matrix scaling, radius detection, and perimeter spatial mapping.</div>
+                 </div>
+               </div>
+               <div class="text-base font-bold text-slate-800 font-mono shrink-0 ml-4">{{ timers.cv | number:'1.2-2' }}s</div>
+             </div>
+
+             <!-- Design Parsing AI -->
+             <div class="flex items-center justify-between p-3 rounded-lg bg-slate-50 border border-slate-100 hover:bg-slate-100 transition-colors" [class.opacity-60]="!designImageFile">
+               <div class="flex items-center gap-3">
+                 <div class="bg-indigo-100 p-2 rounded-md border border-indigo-200 shadow-sm"><lucide-icon [img]="icons.FileJson" class="w-4 h-4 text-indigo-600"></lucide-icon></div>
+                 <div>
+                   <div class="text-sm font-bold text-slate-800">Design Parsing Engine</div>
+                   <div class="text-xs text-slate-500">Gemini LLM semantic extraction of the structural blueprint specs.</div>
+                 </div>
+               </div>
+               <div class="text-right shrink-0 ml-4">
+                 <div *ngIf="designImageFile" class="text-base font-bold text-slate-800 font-mono">{{ timers.design | number:'1.2-2' }}s</div>
+                 <div *ngIf="!designImageFile" class="text-xs font-bold text-slate-400 bg-slate-200 px-2.5 py-1 rounded-full uppercase tracking-wider">Skipped</div>
+               </div>
+             </div>
+
+             <!-- Defect Detection -->
+             <div class="flex items-center justify-between p-3 rounded-lg bg-slate-50 border border-slate-100 hover:bg-slate-100 transition-colors" [class.opacity-60]="!(viewMode === 'top' && designImageFile)">
+               <div class="flex items-center gap-3">
+                 <div class="bg-rose-100 p-2 rounded-md border border-rose-200 shadow-sm"><lucide-icon [img]="icons.AlertCircle" class="w-4 h-4 text-rose-600"></lucide-icon></div>
+                 <div>
+                   <div class="text-sm font-bold text-slate-800">Visual Defect Detection</div>
+                   <div class="text-xs text-slate-500">Gemini LLM comparison of visual placement integrity against standard symmetry.</div>
+                 </div>
+               </div>
+               <div class="text-right shrink-0 ml-4">
+                 <div *ngIf="viewMode === 'top' && designImageFile" class="text-base font-bold text-slate-800 font-mono">{{ timers.defect | number:'1.2-2' }}s</div>
+                 <div *ngIf="!(viewMode === 'top' && designImageFile)" class="text-xs font-bold text-slate-400 bg-slate-200 px-2.5 py-1 rounded-full uppercase tracking-wider">Skipped</div>
+               </div>
+             </div>
+
+           </div>
+        </div>
+
       </div>
     </div>
   </main>
 </div>
 
 <!-- CLEAN, PROFESSIONAL ENGINEERING EVALUATION MODAL -->
+<!-- [MODAL CONTENT REMAINS THE SAME, IT'S INCLUDED AS PART OF THE PREVIOUS OUTPUT] -->
 <div *ngIf="showScoreModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 animate-fade-in">
-  <!-- Backdrop -->
   <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" (click)="toggleScoreModal()"></div>
-  
   <div class="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col relative z-10 border border-slate-300">
-    
-    <!-- Modal Header -->
     <div class="bg-slate-50 px-6 py-4 flex items-center justify-between border-b border-slate-200 rounded-t-xl shrink-0">
       <div class="flex items-center gap-3">
         <lucide-icon [img]="icons.Calculator" class="w-5 h-5 text-slate-600" />
-        <h3 class="text-lg sm:text-xl font-bold text-slate-800">
-          Evaluation Methodology & Tolerances
-        </h3>
+        <h3 class="text-lg sm:text-xl font-bold text-slate-800">Evaluation Methodology & Tolerances</h3>
       </div>
       <button (click)="toggleScoreModal()" class="p-2 rounded-md hover:bg-slate-200 text-slate-500 transition-colors focus:outline-none">
         <lucide-icon [img]="icons.X" class="w-5 h-5" />
       </button>
     </div>
-    
-    <!-- Modal Body -->
     <div class="p-6 md:p-8 overflow-y-auto flex-1 space-y-8 text-slate-700 text-sm sm:text-base">
-
-      <!-- Section 1: Core Formula -->
       <section>
         <h4 class="font-bold text-slate-900 border-b border-slate-200 pb-2 mb-4 text-lg">1. Final Similarity Score</h4>
-        <p class="mb-4">
-          The system utilizes a <strong>strict binary scoring model (100% or 0%)</strong> for each parameter, based directly on the permissible limits specified by the Indian Standard (IS) codes.
-        </p>
-        
+        <p class="mb-4">The system utilizes a <strong>strict binary scoring model (100% or 0%)</strong> for each parameter, based directly on the permissible limits specified by the Indian Standard (IS) codes.</p>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div class="bg-slate-50 border border-slate-200 p-4 rounded-lg">
             <div class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Top View Output</div>
-            <div class="font-mono text-slate-800 bg-white border border-slate-200 p-3 rounded text-center text-sm md:text-base shadow-sm">
-              Final Score = (Rc + Rr + Rs) / 3
-            </div>
+            <div class="font-mono text-slate-800 bg-white border border-slate-200 p-3 rounded text-center text-sm md:text-base shadow-sm">Final Score = (Rc + Rr + Rs) / 3</div>
           </div>
           <div class="bg-slate-50 border border-slate-200 p-4 rounded-lg">
             <div class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Side View Output</div>
-            <div class="font-mono text-slate-800 bg-white border border-slate-200 p-3 rounded text-center text-sm md:text-base shadow-sm">
-              Final Score = Average(Rs_all_pairs)
-            </div>
+            <div class="font-mono text-slate-800 bg-white border border-slate-200 p-3 rounded text-center text-sm md:text-base shadow-sm">Final Score = Average(Rs_all_pairs)</div>
           </div>
         </div>
-
-        <p class="mt-4 text-sm text-red-600 font-medium">
-          Note: If the final averaged score mathematically drops below 100% (indicating at least one parameter failed the tolerance check), the overall column is flagged as "Not Acceptable".
-        </p>
+        <p class="mt-4 text-sm text-red-600 font-medium">Note: If the final averaged score mathematically drops below 100% (indicating at least one parameter failed the tolerance check), the overall column is flagged as "Not Acceptable".</p>
       </section>
-
-      <!-- Section 2: IS Codes & Tolerances -->
       <section>
         <h4 class="font-bold text-slate-900 border-b border-slate-200 pb-2 mb-4 text-lg">2. IS Code Tolerance Limits</h4>
-        
         <div class="overflow-x-auto border border-slate-200 rounded-lg shadow-sm">
           <table class="w-full text-left border-collapse min-w-[600px]">
             <thead>
@@ -432,15 +538,11 @@
               </tr>
             </thead>
             <tbody class="divide-y divide-slate-200 bg-white">
-              <!-- Rebar Count -->
               <tr>
                 <td class="p-3 font-medium text-slate-800 align-top">Rebar Count (Rc)</td>
                 <td class="p-3 text-slate-600 align-top">Architectural Design</td>
-                <td class="p-3 text-slate-600 align-top">
-                  Strict Exact Match Required.
-                </td>
+                <td class="p-3 text-slate-600 align-top">Strict Exact Match Required.</td>
               </tr>
-              <!-- Rebar Radius -->
               <tr>
                 <td class="p-3 font-medium text-slate-800 align-top">Rebar Radius / Dia (Rr)</td>
                 <td class="p-3 text-slate-600 align-top">IS 1786:2008<br><span class="text-xs text-slate-400">(Derived from unit mass variation)</span></td>
@@ -452,7 +554,6 @@
                   </ul>
                 </td>
               </tr>
-              <!-- Rebar Spacing -->
               <tr>
                 <td class="p-3 font-medium text-slate-800 align-top">Rebar Spacing (Rs)</td>
                 <td class="p-3 text-slate-600 align-top">IS 456:2000<br><span class="text-xs text-slate-400">(Placement/Effective depth tolerance)</span></td>
@@ -467,27 +568,19 @@
           </table>
         </div>
       </section>
-
-      <!-- Section 3: Views Explanation -->
       <section>
         <h4 class="font-bold text-slate-900 border-b border-slate-200 pb-2 mb-4 text-lg">3. Processing Methodology</h4>
         <div class="space-y-4">
           <div>
             <strong class="text-slate-800">Top View Evaluation:</strong>
-            <p class="mt-1">
-              Extracts the main perimeter rods, verifies the exact count (Rc), calculates the median localized pixel radius (Rr) mapped to mm, and assesses the sequential perimeter gaps (Rs) between consecutive rods in a clockwise arrangement.
-            </p>
+            <p class="mt-1">Extracts the main perimeter rods, verifies the exact count (Rc), calculates the median localized pixel radius (Rr) mapped to mm, and assesses the sequential perimeter gaps (Rs) between consecutive rods in a clockwise arrangement.</p>
           </div>
           <div>
             <strong class="text-slate-800">Side View Evaluation:</strong>
-            <p class="mt-1">
-              Isolates the foreground horizontal ties (stirrups). The evaluation solely focuses on the vertical pitch spacing (Rs) between consecutive bars. The final score is the mathematical average of all calculated pair intervals; if any interval exceeds the ±10mm or ±15mm threshold, it drops to 0%, affecting the whole average.
-            </p>
+            <p class="mt-1">Isolates the foreground horizontal ties (stirrups). The evaluation solely focuses on the vertical pitch spacing (Rs) between consecutive bars. The final score is the mathematical average of all calculated pair intervals; if any interval exceeds the ±10mm or ±15mm threshold, it drops to 0%, affecting the whole average.</p>
           </div>
         </div>
       </section>
-
-      <!-- Section 4: Status Indicator Explanations -->
       <section>
         <h4 class="font-bold text-slate-900 border-b border-slate-200 pb-2 mb-4 text-lg">4. Status Reporting</h4>
         <div class="flex flex-col sm:flex-row gap-4">
@@ -507,7 +600,6 @@
           </div>
         </div>
       </section>
-
     </div>
   </div>
 </div>
