@@ -60,17 +60,15 @@ export class AppComponent implements OnInit, OnDestroy {
   isEmailSending: boolean = false;
   emailSent: boolean = false;
 
-  // Performance Timers
+  // Performance Timers (Merged AI)
   timers = {
     autoDetect: 0,
     autoDetectRunning: false,
     total: 0,
     cv: 0,
     cvRunning: false,
-    design: 0,
-    designRunning: false,
-    defect: 0,
-    defectRunning: false,
+    ai: 0,
+    aiRunning: false
   };
   private intervals: any[] = [];
 
@@ -424,8 +422,7 @@ export class AppComponent implements OnInit, OnDestroy {
       this.analysisSub = null;
     }
     this.timers.cvRunning = false;
-    this.timers.designRunning = false;
-    this.timers.defectRunning = false;
+    this.timers.aiRunning = false;
     this.intervals.forEach(i => clearInterval(i));
     this.intervals = [];
     this.cdr.markForCheck();
@@ -449,20 +446,17 @@ export class AppComponent implements OnInit, OnDestroy {
     // Performance Initialization
     this.timers.total = 0;
     this.timers.cv = 0; this.timers.cvRunning = false;
-    this.timers.design = 0; this.timers.designRunning = false;
-    this.timers.defect = 0; this.timers.defectRunning = false;
+    this.timers.ai = 0; this.timers.aiRunning = false;
 
     const overallStart = performance.now();
     let cvStart = overallStart;
-    let designStart = overallStart;
-    let defectStart = overallStart;
+    let aiStart = overallStart;
 
     const aInterval = setInterval(() => {
       const now = performance.now();
       this.timers.total = (now - overallStart) / 1000;
       if (this.timers.cvRunning) this.timers.cv = (now - cvStart) / 1000;
-      if (this.timers.designRunning) this.timers.design = (now - designStart) / 1000;
-      if (this.timers.defectRunning) this.timers.defect = (now - defectStart) / 1000;
+      if (this.timers.aiRunning) this.timers.ai = (now - aiStart) / 1000;
       this.cdr.markForCheck();
     }, 30);
     this.intervals.push(aInterval);
@@ -496,30 +490,23 @@ export class AppComponent implements OnInit, OnDestroy {
       }
 
       // 2. Run Gemini Engine (Sequential Block 2)
-      // Combines 2 LLM executions (Design AI + Defect Detection AI) into 1 call for speed.
       let designData = this.viewMode === 'side' ? { spacing_mm: 0 } : { count: 0, radius_mm: 0, spacings_mm: [] };
       let defectData = { reset: true, rod: null };
 
       if (this.designImageFile) {
-        this.timers.designRunning = true;
-        this.timers.defectRunning = true;
-        designStart = performance.now();
-        defectStart = designStart; // Visually link both UI timers
+        this.timers.aiRunning = true;
+        aiStart = performance.now();
         
         const designB64 = await this.gemini.fileToBase64(this.designImageFile, 700);
-        
-        // Pass the CV labeled annotated image directly into Gemini for visual reading
-        const annotatedB64 = cvRes.annotated_image.split(',')[1];
+        const annotatedB64 = cvRes.annotated_image.split(',')[1]; // Pass annotated output directly
         
         const aiRes = await this.gemini.analyzeDesignAndDefects(designB64, annotatedB64, this.viewMode);
         
         designData = aiRes.design;
         defectData = aiRes.defect;
 
-        this.timers.designRunning = false;
-        this.timers.defectRunning = false;
-        this.timers.design = (performance.now() - designStart) / 1000;
-        this.timers.defect = this.timers.design; // Ensure UI reflects the combined operation time
+        this.timers.aiRunning = false;
+        this.timers.ai = (performance.now() - aiStart) / 1000;
       }
 
       // 3. Final Scoring Calculations
@@ -548,8 +535,7 @@ export class AppComponent implements OnInit, OnDestroy {
     } finally {
       this.isAnalyzing = false;
       this.timers.cvRunning = false;
-      this.timers.designRunning = false;
-      this.timers.defectRunning = false;
+      this.timers.aiRunning = false;
       clearInterval(aInterval);
       this.cdr.markForCheck();
     }
