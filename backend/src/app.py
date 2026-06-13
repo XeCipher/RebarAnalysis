@@ -33,42 +33,6 @@ CORS(app, resources={r"/*": {
 def health_check():
     return "Rebar Analysis API Awake & Warmed Up!", 200
 
-# --- REFINE POINTS (AUTO-DETECT) ---
-@app.route('/refine-points', methods=['POST', 'OPTIONS'])
-def refine_points():
-    if request.method == 'OPTIONS': return jsonify({'status': 'ok'}), 200
-    try:
-        if 'image' not in request.files:
-            return jsonify({"status": "error", "message": "No image provided"}), 400
-            
-        file_bytes = request.files['image'].read()
-        view_mode = request.form.get('view_mode', 'top')
-        gemini_normalized_points = json.loads(request.form.get('gemini_points', '[]'))
-        
-        # Decode compressed image
-        img_array = cv2.imdecode(np.frombuffer(file_bytes, np.uint8), cv2.IMREAD_COLOR)
-        if img_array is None:
-            return jsonify({"status": "error", "message": "Could not decode image"}), 400
-
-        # OpenCV: Refine to exact pixel centers on the received image size
-        pixel_points = []
-        if gemini_normalized_points:
-            if view_mode == 'top':
-                pixel_points = analysis_service.refine_gemini_points(img_array, gemini_normalized_points)
-            else:
-                pixel_points = side_view_service.refine_side_gemini_points(img_array, gemini_normalized_points)
-                
-        h, w = img_array.shape[:2]
-        # Return as normalized points so the frontend can map it to any resolution
-        normalized_points = [{"x": float(px) / w, "y": float(py) / h} for px, py in pixel_points]
-                
-        return jsonify({"status": "success", "points": normalized_points})
-        
-    except Exception as e:
-        print(f"Refinement Error: {e}")
-        return jsonify({"status": "error", "message": str(e)}), 500
-
-
 # --- TOP VIEW CV ANALYSIS ---
 @app.route('/analyze-cv', methods=['POST', 'OPTIONS'])
 def analyze_top_cv():

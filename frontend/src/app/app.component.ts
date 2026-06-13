@@ -318,6 +318,37 @@ export class AppComponent implements OnInit, OnDestroy {
     this.cdr.markForCheck();
   }
 
+  // --- Point Sorting Utility Functions ---
+  sortPointsClockwise(points: number[][]): number[][] {
+    if (!points || points.length === 0) return [];
+    
+    // Calculate geometric centroid
+    const cx = points.reduce((sum, p) => sum + p[0], 0) / points.length;
+    const cy = points.reduce((sum, p) => sum + p[1], 0) / points.length;
+    
+    // Sort around the centroid
+    let sortedPts = [...points].sort((a, b) => {
+      const angleA = Math.atan2(a[1] - cy, a[0] - cx);
+      const angleB = Math.atan2(b[1] - cy, b[0] - cx);
+      return angleA - angleB;
+    });
+    
+    // Locate the absolute top-left point by finding minimum (x + y) value
+    let topLeftIdx = 0;
+    let minSum = Infinity;
+    
+    for (let i = 0; i < sortedPts.length; i++) {
+      const sum = sortedPts[i][0] + sortedPts[i][1];
+      if (sum < minSum) {
+        minSum = sum;
+        topLeftIdx = i;
+      }
+    }
+    
+    // Rotate the sorted array so the Top-Left point becomes Index 0
+    return [...sortedPts.slice(topLeftIdx), ...sortedPts.slice(0, topLeftIdx)];
+  }
+
   async autoDetect() {
     if (!this.realImageFile) return;
     this.isAutoDetecting = true;
@@ -356,41 +387,24 @@ export class AppComponent implements OnInit, OnDestroy {
           return;
       }
 
-      // Fallback points strictly mapping Gemini AI relative predictions to the UI (In case Backend fails)
-      const fallbackPoints = aiPoints.map((pt: any) => [
+      // Map Gemini AI relative predictions directly to the UI bounds
+      let mappedPoints = aiPoints.map((pt: any) => [
           Math.round((pt.x || 0.5) * this.imgNatWidth),
           Math.round((pt.y || 0.5) * this.imgNatHeight)
       ]);
 
-      // Compress heavy upload to Backend to prevent Network connection drops
-      const compressedImg = await this.compressFile(this.realImageFile, 1200);
-      
-      const formData = new FormData();
-      formData.append('image', compressedImg);
-      formData.append('view_mode', this.viewMode);
-      formData.append('gemini_points', JSON.stringify(aiPoints));
+      // Ensure appropriate geometric ordering to facilitate sequential gap mapping logic
+      if (this.viewMode === 'top') {
+        this.rodPoints = this.sortPointsClockwise(mappedPoints);
+      } else {
+        // For side view, snap from top downwards strictly based on Y height
+        this.rodPoints = mappedPoints.sort((a, b) => a[1] - b[1]);
+      }
 
-      this.http.post<any>(`${environment.apiBaseUrl}/refine-points`, formData).subscribe({
-        next: (res) => {
-          // Process normalized refined points over raw native image scale
-          if (res.status === 'success' && res.points && res.points.length > 0) {
-            this.rodPoints = res.points.map((pt: any) => [
-              Math.round(pt.x * this.imgNatWidth),
-              Math.round(pt.y * this.imgNatHeight)
-            ]);
-          } else {
-            this.rodPoints = fallbackPoints;
-          }
-          finishAutoDetect();
-        },
-        error: (err) => {
-          console.warn("Backend Refinement skipped due to network timeout. Utilising raw AI points.", err);
-          this.rodPoints = fallbackPoints;
-          finishAutoDetect();
-        }
-      });
+      finishAutoDetect();
+      
     } catch (e) {
-      console.error(e);
+      console.error("Auto detection engine failed:", e);
       finishAutoDetect();
     }
   }
