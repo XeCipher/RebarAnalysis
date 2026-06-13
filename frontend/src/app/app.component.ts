@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { LucideAngularModule, Upload, ScanLine, Ruler, CheckCircle2, AlertCircle, Trash2, Undo2, ArrowRight, Layers, ArrowUpDown, FileJson, Wand2, Info, HelpCircle, Calculator, X, Timer } from 'lucide-angular';
 import { FormsModule } from '@angular/forms';
-import { forkJoin, from, Subscription, firstValueFrom } from 'rxjs';
+import { Subscription, firstValueFrom } from 'rxjs';
 import { environment } from '../environments/environment';
 import { GeminiService } from './services/gemini.service';
 import { ScoringService, ComparisonRow } from './services/scoring.service';
@@ -446,7 +446,7 @@ export class AppComponent implements OnInit, OnDestroy {
     this.emailSent = false;
     this.isEmailSending = false;
     
-    // Performance Initialization for Parallel Execution
+    // Performance Initialization
     this.timers.total = 0;
     this.timers.cv = 0; this.timers.cvRunning = false;
     this.timers.design = 0; this.timers.designRunning = false;
@@ -469,129 +469,90 @@ export class AppComponent implements OnInit, OnDestroy {
 
     this.cdr.markForCheck();
     
-    // Scale full res points into normalized geometry points before uploading
-    const normRodPoints = this.rodPoints.map(p => [p[0] / this.imgNatWidth, p[1] / this.imgNatHeight]);
-    const normRefPoints = this.refPoints.map(p => [p[0] / this.imgNatWidth, p[1] / this.imgNatHeight]);
+    try {
+      // Scale full res points into normalized geometry points before uploading
+      const normRodPoints = this.rodPoints.map(p => [p[0] / this.imgNatWidth, p[1] / this.imgNatHeight]);
+      const normRefPoints = this.refPoints.map(p => [p[0] / this.imgNatWidth, p[1] / this.imgNatHeight]);
 
-    // 1. Independent CV Runner
-    const runCV = async () => {
+      // 1. Run Computer Vision Service (Sequential Block 1)
       this.timers.cvRunning = true;
       cvStart = performance.now();
-      try {
-        const compressedReal = await this.compressFile(this.realImageFile!, 1600, 0.9);
-        const formData = new FormData();
-        formData.append('real_image', compressedReal);
-        formData.append('rod_points', JSON.stringify(normRodPoints));
-        formData.append('ref_points', JSON.stringify(normRefPoints));
-        formData.append('ref_length', this.refPoints.length === 2 ? this.refLengthInput.toString() : '0');
+      
+      const compressedReal = await this.compressFile(this.realImageFile!, 1600, 0.9);
+      const formData = new FormData();
+      formData.append('real_image', compressedReal);
+      formData.append('rod_points', JSON.stringify(normRodPoints));
+      formData.append('ref_points', JSON.stringify(normRefPoints));
+      formData.append('ref_length', this.refPoints.length === 2 ? this.refLengthInput.toString() : '0');
 
-        const endpoint = this.viewMode === 'top' ? '/analyze-cv' : '/analyze-cv/side';
-        const res = await firstValueFrom(this.http.post<any>(`${environment.apiBaseUrl}${endpoint}`, formData));
-        this.timers.cvRunning = false;
-        return res;
-      } catch (err) {
-        this.timers.cvRunning = false;
-        throw err;
+      const endpoint = this.viewMode === 'top' ? '/analyze-cv' : '/analyze-cv/side';
+      const cvRes = await firstValueFrom(this.http.post<any>(`${environment.apiBaseUrl}${endpoint}`, formData));
+      
+      this.timers.cvRunning = false;
+      this.timers.cv = (performance.now() - cvStart) / 1000;
+
+      if (cvRes?.status !== 'success') {
+         throw new Error("Computer Vision processing failed.");
       }
-    };
 
-    // 2. Independent Design Extractor Runner
-    const runDesign = async () => {
-      this.timers.designRunning = true;
-      designStart = performance.now();
-      try {
-        const designB64 = await this.gemini.fileToBase64(this.designImageFile!, 700);
-        const res = await this.gemini.extractDesignData(designB64, this.viewMode);
+      // 2. Run Gemini Engine (Sequential Block 2)
+      // Combines 2 LLM executions (Design AI + Defect Detection AI) into 1 call for speed.
+      let designData = this.viewMode === 'side' ? { spacing_mm: 0 } : { count: 0, radius_mm: 0, spacings_mm: [] };
+      let defectData = { reset: true, rod: null };
+
+      if (this.designImageFile) {
+        this.timers.designRunning = true;
+        this.timers.defectRunning = true;
+        designStart = performance.now();
+        defectStart = designStart; // Visually link both UI timers
+        
+        const designB64 = await this.gemini.fileToBase64(this.designImageFile, 700);
+        
+        // Pass the CV labeled annotated image directly into Gemini for visual reading
+        const annotatedB64 = cvRes.annotated_image.split(',')[1];
+        
+        const aiRes = await this.gemini.analyzeDesignAndDefects(designB64, annotatedB64, this.viewMode);
+        
+        designData = aiRes.design;
+        defectData = aiRes.defect;
+
         this.timers.designRunning = false;
-        return { data: res, b64: designB64 };
-      } catch (err) {
-        this.timers.designRunning = false;
-        throw err;
-      }
-    };
-
-    // 3. Independent Defect Search Runner
-    const runDefect = async (designB64Promise: Promise<string>) => {
-      this.timers.defectRunning = true;
-      defectStart = performance.now();
-      try {
-        const realB64 = await this.gemini.fileToBase64(this.realImageFile!, 200);
-        const designB64 = await designB64Promise;
-        const res = await this.gemini.detectDefects(realB64, designB64, this.rodPoints.length);
         this.timers.defectRunning = false;
-        return res;
-      } catch (err) {
-        this.timers.defectRunning = false;
-        throw err;
+        this.timers.design = (performance.now() - designStart) / 1000;
+        this.timers.defect = this.timers.design; // Ensure UI reflects the combined operation time
       }
-    };
 
-    // Instantiate Promises immediately for true parallel execution
-    const cvObs = from(runCV());
-    
-    let designDataPromise = Promise.resolve({ data: { count: 0, radius_mm: 0, spacings_mm: [] }, b64: '' } as any);
-    let designB64ExtractPromise = Promise.resolve('');
-    
-    if (this.designImageFile) {
-      const dPromise = runDesign();
-      designDataPromise = dPromise;
-      designB64ExtractPromise = dPromise.then(r => r.b64).catch(() => '');
-    }
+      // 3. Final Scoring Calculations
+      let scoreData;
+      if (this.viewMode === 'top') {
+        scoreData = this.scoring.calculateTopScore(designData, cvRes.actual_data, cvRes.has_scale);
+      } else {
+        scoreData = this.scoring.calculateSideScore(designData, cvRes.actual_data, cvRes.has_scale);
+      }
 
-    let defectPromise = Promise.resolve({ reset: true, rod: null } as any);
-    if (this.viewMode === 'top' && this.designImageFile) {
-      defectPromise = runDefect(designB64ExtractPromise);
-    }
+      this.result = {
+        status: 'success',
+        score: scoreData.score,
+        score_count: scoreData.score_count,
+        score_radius: scoreData.score_radius,
+        score_spacing: scoreData.score_spacing,
+        comparison_table: scoreData.table,
+        annotated_image: cvRes.annotated_image,
+      };
+      
+      this.revitData = defectData;
 
-    const finishAnalysis = () => {
+    } catch (err: any) {
+      console.error(err);
+      this.errorMsg = `Analysis Error: ${err.message || 'Server timeout or network failure.'}`;
+    } finally {
       this.isAnalyzing = false;
       this.timers.cvRunning = false;
       this.timers.designRunning = false;
       this.timers.defectRunning = false;
       clearInterval(aInterval);
       this.cdr.markForCheck();
-    };
-
-    // Coordinate all processes using RxJS forkJoin
-    this.analysisSub = forkJoin({
-      cvRes: cvObs,
-      designRes: from(designDataPromise),
-      defectData: from(defectPromise)
-    }).subscribe({
-      next: ({ cvRes, designRes, defectData }) => {
-        if (cvRes?.status !== 'success') {
-          this.errorMsg = "Computer Vision processing failed.";
-          finishAnalysis();
-          return;
-        }
-
-        // Calculate score locally
-        let scoreData;
-        if (this.viewMode === 'top') {
-          scoreData = this.scoring.calculateTopScore(designRes.data, cvRes.actual_data, cvRes.has_scale);
-        } else {
-          scoreData = this.scoring.calculateSideScore(designRes.data, cvRes.actual_data, cvRes.has_scale);
-        }
-
-        this.result = {
-          status: 'success',
-          score: scoreData.score,
-          score_count: scoreData.score_count,
-          score_radius: scoreData.score_radius,
-          score_spacing: scoreData.score_spacing,
-          comparison_table: scoreData.table,
-          annotated_image: cvRes.annotated_image,
-        };
-        
-        this.revitData = defectData;
-        finishAnalysis();
-      },
-      error: (err) => {
-        console.error(err);
-        this.errorMsg = `Analysis Error: ${err.message || 'Server timeout or network failure.'}`;
-        finishAnalysis();
-      }
-    });
+    }
   }
 
   sendEmailReport() {

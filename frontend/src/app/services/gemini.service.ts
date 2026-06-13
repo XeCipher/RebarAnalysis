@@ -3,33 +3,42 @@ import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { environment } from '../../environments/environment';
 
-// --- PROMPTS ---
-const PROMPT_TOP = `Analyze the architectural rebar drawing to extract technical specifications.
+// --- COMBINED PROMPTS ---
+const PROMPT_COMBINED_TOP = `You are an expert structural inspector. Analyze the two provided images:
+Image 1: Architectural Design Drawing
+Image 2: Annotated Site Photograph (with R1, R2, etc. labels)
 
-Extraction rules:
+PART 1: DESIGN EXTRACTION (From Drawing)
+Extract the following specifications:
 1. Count: Count the main round black circles (rods).
 2. Radius: Look for labels like "12mm" or "8mm". Diameter 12mm = Radius 6mm.
 3. Spacings (The Perimeter):
    - You MUST generate a list of distances between adjacent rods following a Clockwise Path starting from Top-Left.
    - Horizontal Spacings: Look for labels like "125mm" or "200mm" between vertical lines.
    - Vertical Spacings: Look for side labels like "230mm" or "300mm".
-   - Symmetry Rule: If a distance is labeled on one side (e.g., Bottom = 125mm), assume the opposite side (Top) is identical unless marked otherwise.
-   - Total Width Rule: If a total width is given (e.g. 375mm) and rods look evenly spaced, divide accordingly.
+   - Symmetry Rule: If a distance is labeled on one side, assume the opposite side is identical unless marked otherwise.
+   - Total Width Rule: If a total width is given and rods look evenly spaced, divide accordingly.
+
+PART 2: DEFECT DETECTION (From Annotated Photo)
+Look at the annotated site photograph where the rods are explicitly labeled (R1, R2, R3...).
+Identify if any specific rod is significantly misplaced, bent, or missing compared to a standard symmetrical rectangular arrangement.
+- If all rods look generally aligned and acceptable, set reset=true, rod=null.
+- If a rod is clearly out of alignment, set reset=false and provide its integer number (e.g., 3 for R3).
 
 Output Structure (Strict JSON):
 {
-  "count": Integer,
-  "radius_mm": Float,
-  "spacings_mm": [List of Floats representing the perimeter gaps in mm]
-}
+  "design": {
+    "count": Integer,
+    "radius_mm": Float,
+    "spacings_mm": [List of Floats]
+  },
+  "defect": {
+    "reset": Boolean,
+    "rod": Integer or null
+  }
+}`;
 
-Example Logic:
-- If drawing shows 6 rods (3 top, 3 bottom).
-- Bottom label: "125mm" between rods. Side label: "230mm".
-- List should represent: [Top-Left to Top-Mid, Top-Mid to Top-Right, Top-Right to Bot-Right, Bot-Right to Bot-Mid, Bot-Mid to Bot-Left, Bot-Left to Top-Left].
-- Result: [125, 125, 230, 125, 125, 230]`;
-
-const PROMPT_SIDE = `Analyze the architectural rebar drawing (Side/Elevation View).
+const PROMPT_COMBINED_SIDE = `Analyze the architectural rebar drawing (Side/Elevation View).
 Extract the **Vertical Spacing** (pitch) between the horizontal bars (stirrups/ties).
 
 Look for labels like:
@@ -39,56 +48,13 @@ Look for labels like:
 
 Output Structure (Strict JSON):
 {
-  "spacing_mm": Float (The target vertical distance between bars)
-}
-If not found, return 0.`;
-
-const PROMPT_DEFECT = `Analyze the provided Site Photograph of a rebar column (Top View).
-Your goal is to identify if any specific rod is significantly **misplaced, bent, or missing** compared to a standard symmetrical rectangular arrangement.
-
-**Context - The Revit Model Numbering Scheme:**
-The column consists of 8 main vertical rods arranged in 2 vertical lines.
-- **Left Side (Top to Bottom):** Rod 1, Rod 2, Rod 3, Rod 4.
-- **Right Side (Top to Bottom):** Rod 5, Rod 6, Rod 7, Rod 8.
-
-**Visual Map:**
-[1]      [5]
-[2]      [6]
-[3]      [7]
-[4]      [8]
-
-**Task:**
-1. Look at the photo. Is there a rod that is clearly out of alignment, bent inward/outward, or missing compared to the others?
-2. Map that specific rod to the Numbering Scheme above (1-8).
-3. If all rods look generally okay/acceptable, set reset=true.
-4. If a rod is wrong, set reset=false and provide the rod number.
-
-**Output Structure (Strict JSON):**
-{
-  "reset": Boolean,   // true if no major defects, false if a defect exists
-  "rod": Integer      // The Rod Number (1-8) to highlight. null if reset is true.
-}`;
-
-const PROMPT_DEFECT_4 = `Analyze the provided Site Photograph of a rebar column (Top View).
-Your goal is to identify if any specific rod is significantly **misplaced, bent, or missing** compared to a standard symmetrical rectangular arrangement.
-
-**Context - The Revit Model Numbering Scheme:**
-The column consists of 4 main vertical rods, one at each corner.
-
-**Visual Map:**
-[1] Top-Left     [2] Top-Right
-[4] Bot-Left     [3] Bot-Right
-
-**Task:**
-1. Look at the photo. Is there a rod that is clearly out of alignment, bent inward/outward, or missing compared to the others?
-2. Map that specific rod to the Numbering Scheme above (1-4).
-3. If all rods look generally okay/acceptable, set reset=true.
-4. If a rod is wrong, set reset=false and provide the rod number.
-
-**Output Structure (Strict JSON):**
-{
-  "reset": Boolean,
-  "rod": Integer   // The Rod Number (1-4) to highlight. null if reset is true.
+  "design": {
+    "spacing_mm": Float
+  },
+  "defect": {
+    "reset": true,
+    "rod": null
+  }
 }`;
 
 const PROMPT_AUTO_DETECT_TOP = `You are an expert AI vision system. Analyze this Site Photograph of a concrete block.
@@ -157,17 +123,24 @@ export class GeminiService {
     });
   }
 
-  async extractDesignData(base64: string, viewMode: 'top' | 'side'): Promise<any> {
-    const prompt = viewMode === 'side' ? PROMPT_SIDE : PROMPT_TOP;
-    const data = await this.askGemini(prompt, [base64]);
-    if (viewMode === 'side') return data || { spacing_mm: 0 };
-    return data || { count: 0, radius_mm: 0, spacings_mm: [] };
-  }
+  // Merged Call: Passes the annotated CV image straight to Gemini for hyper-accurate visual defect marking
+  async analyzeDesignAndDefects(designB64: string, annotatedB64: string | null, viewMode: 'top' | 'side'): Promise<any> {
+    const prompt = viewMode === 'side' ? PROMPT_COMBINED_SIDE : PROMPT_COMBINED_TOP;
+    
+    // Side view doesn't process annotated image for defects currently
+    const images = (annotatedB64 && viewMode === 'top') ? [designB64, annotatedB64] : [designB64];
+    
+    const data = await this.askGemini(prompt, images);
 
-  async detectDefects(realB64: string, designB64: string, rodCount: number): Promise<any> {
-    const prompt = rodCount === 4 ? PROMPT_DEFECT_4 : PROMPT_DEFECT;
-    const data = await this.askGemini(prompt, [realB64, designB64]);
-    return data || { reset: true, rod: null };
+    if (!data) {
+      if (viewMode === 'side') return { design: { spacing_mm: 0 }, defect: { reset: true, rod: null } };
+      return { design: { count: 0, radius_mm: 0, spacings_mm: [] }, defect: { reset: true, rod: null } };
+    }
+
+    return {
+      design: data.design || (viewMode === 'side' ? { spacing_mm: 0 } : { count: 0, radius_mm: 0, spacings_mm: [] }),
+      defect: data.defect || { reset: true, rod: null }
+    };
   }
 
   async getAutoDetectPoints(base64: string, viewMode: 'top' | 'side'): Promise<any[]> {
