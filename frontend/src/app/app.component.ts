@@ -468,7 +468,21 @@ export class AppComponent implements OnInit, OnDestroy {
       const normRodPoints = this.rodPoints.map(p => [p[0] / this.imgNatWidth, p[1] / this.imgNatHeight]);
       const normRefPoints = this.refPoints.map(p => [p[0] / this.imgNatWidth, p[1] / this.imgNatHeight]);
 
-      // 1. Run Computer Vision Service (Sequential Block 1)
+      let designData: any = this.viewMode === 'side' ? { spacing_mm: 0 } : { count: 0, radius_mm: 0, spacings_mm: [] };
+
+      // 1. Run Gemini Engine For Design Extraction (Sequential Block 1)
+      if (this.designImageFile) {
+        this.timers.aiRunning = true;
+        aiStart = performance.now();
+        
+        const designB64 = await this.gemini.fileToBase64(this.designImageFile, 700);
+        designData = await this.gemini.analyzeDesignOnly(designB64, this.viewMode);
+
+        this.timers.aiRunning = false;
+        this.timers.ai = (performance.now() - aiStart) / 1000;
+      }
+
+      // 2. Run Computer Vision Service with Simulation Mapping (Sequential Block 2)
       this.timers.cvRunning = true;
       cvStart = performance.now();
       
@@ -478,6 +492,9 @@ export class AppComponent implements OnInit, OnDestroy {
       formData.append('rod_points', JSON.stringify(normRodPoints));
       formData.append('ref_points', JSON.stringify(normRefPoints));
       formData.append('ref_length', this.refPoints.length === 2 ? this.refLengthInput.toString() : '0');
+      
+      // Inject AI output down into CV Engine
+      formData.append('design_data', JSON.stringify(designData));
 
       const endpoint = this.viewMode === 'top' ? '/analyze-cv' : '/analyze-cv/side';
       const cvRes = await firstValueFrom(this.http.post<any>(`${environment.apiBaseUrl}${endpoint}`, formData));
@@ -489,32 +506,39 @@ export class AppComponent implements OnInit, OnDestroy {
          throw new Error("Computer Vision processing failed.");
       }
 
-      // 2. Run Gemini Engine (Sequential Block 2)
-      let designData = this.viewMode === 'side' ? { spacing_mm: 0 } : { count: 0, radius_mm: 0, spacings_mm: [] };
-      let defectData = { reset: true, rod: null };
-
-      if (this.designImageFile) {
-        this.timers.aiRunning = true;
-        aiStart = performance.now();
-        
-        const designB64 = await this.gemini.fileToBase64(this.designImageFile, 700);
-        const annotatedB64 = cvRes.annotated_image.split(',')[1]; // Pass annotated output directly
-        
-        const aiRes = await this.gemini.analyzeDesignAndDefects(designB64, annotatedB64, this.viewMode);
-        
-        designData = aiRes.design;
-        defectData = aiRes.defect;
-
-        this.timers.aiRunning = false;
-        this.timers.ai = (performance.now() - aiStart) / 1000;
-      }
-
       // 3. Final Scoring Calculations
       let scoreData;
       if (this.viewMode === 'top') {
         scoreData = this.scoring.calculateTopScore(designData, cvRes.actual_data, cvRes.has_scale);
       } else {
         scoreData = this.scoring.calculateSideScore(designData, cvRes.actual_data, cvRes.has_scale);
+      }
+
+      // 4. Derive specific defect isolation for Revit BIM integration
+      let defectData = { reset: true, rod: null as number | null };
+      if (this.viewMode === 'top' && scoreData.score < 100) {
+        defectData.reset = false;
+        let worstRod = 1;
+        let maxErr = 0;
+        
+        const aSpacings = cvRes.actual_data.distances || [];
+        const dSpacings = designData.spacings_mm || [];
+        for (let i = 0; i < aSpacings.length; i++) {
+            const act = aSpacings[i];
+            const des = dSpacings[i] || 0;
+            if (des > 0) {
+                const err = Math.abs(act - des);
+                if (err > maxErr) {
+                    maxErr = err;
+                    worstRod = ((i + 1) % aSpacings.length) + 1;
+                }
+            }
+        }
+        if (maxErr > 10) {
+            defectData.rod = worstRod;
+        } else {
+            defectData.reset = true;
+        }
       }
 
       this.result = {

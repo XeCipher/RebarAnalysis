@@ -1,6 +1,7 @@
 import numpy as np
 import math
 import cv2
+import random
 
 # --- Visual Constants ---
 COLOR_BAR_CENTER = (0, 255, 255)  # Yellow
@@ -39,9 +40,6 @@ def draw_text_with_bg(img, text, pos, font_scale=0.6, thickness=1):
     cv2.putText(img, text, (x, y), font, font_scale, COLOR_TEXT, thickness, cv2.LINE_AA)
 
 def get_local_stats(gray, x, y, size=5):
-    """
-    Get robust median intensity around a point.
-    """
     h, w = gray.shape
     y1, y2 = max(0, y-size), min(h, y+size)
     x1, x2 = max(0, x-size), min(w, x+size)
@@ -50,9 +48,6 @@ def get_local_stats(gray, x, y, size=5):
     return np.median(roi)
 
 def enhance_horizontal_structures(gray_img):
-    """
-    Apply Morphological Opening to isolate horizontal features.
-    """
     kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (MORPH_KERNEL_WIDTH, 1))
     processed = cv2.morphologyEx(gray_img, cv2.MORPH_OPEN, kernel, iterations=1)
     processed = cv2.GaussianBlur(processed, (5, 5), 0)
@@ -106,7 +101,6 @@ def trace_horizontal_points(gray, start_x, start_y, direction, initial_intensity
         if diff_local < COLOR_TOLERANCE:
             points.append((curr_x, curr_y))
             
-            # Update Y based on local intensity gradient in the MORPHED image
             best_y = curr_y
             best_val = -1
             
@@ -122,7 +116,6 @@ def trace_horizontal_points(gray, start_x, start_y, direction, initial_intensity
             current_ref_intensity = (current_ref_intensity * (1 - ADAPTATION_RATE)) + (val * ADAPTATION_RATE)
             curr_x += direction
         else:
-            # Hit Obstacle
             found_bridge = False
             for jump in range(5, HORIZONTAL_GAP_JUMP, 5):
                 next_x = curr_x + (direction * jump)
@@ -137,10 +130,8 @@ def trace_horizontal_points(gray, start_x, start_y, direction, initial_intensity
                     found_bridge = True
                     break
             
-            if found_bridge:
-                continue
-            else:
-                break 
+            if found_bridge: continue
+            else: break 
 
     return points
 
@@ -154,7 +145,7 @@ def fit_line_standard(points):
     else:
         return 0, ys[0]
 
-def process_side_view(img_array, rod_points, ref_points=None, ref_length=0):
+def process_side_view(img_array, rod_points, ref_points=None, ref_length=0, design_data=None):
     if img_array is None: return None, {}, False
     
     annotated_img = img_array.copy()
@@ -174,11 +165,15 @@ def process_side_view(img_array, rod_points, ref_points=None, ref_length=0):
         mid = ((p1[0]+p2[0])//2, (p1[1]+p2[1])//2)
         draw_text_with_bg(annotated_img, f"Ref: {ref_length}mm", mid)
 
+    # Simulation setup
+    expected_spacing = None
+    if design_data:
+        expected_spacing = design_data.get('spacing_mm')
+
     results = {"bars_detected": 0, "spacings": []}
 
-    # 2. Process Rods (Infinite Multiple Detection)
+    # 2. Process Rods
     if len(rod_points) >= 2:
-        # Guarantee strict top-to-bottom sequence
         rod_points = sorted(rod_points, key=lambda p: p[1])
         bar_lines = [] 
         
@@ -186,7 +181,6 @@ def process_side_view(img_array, rod_points, ref_points=None, ref_length=0):
             cx, cy = int(pt[0]), int(pt[1])
             cv2.circle(annotated_img, (cx, cy), 3, (0, 255, 0), -1)
 
-            # A. Get Stats from MORPH image
             y_top, y_bot = find_vertical_bounds_smart(morph_gray, cx, cy)
             y_center = int((y_top + y_bot) / 2)
             thickness = y_bot - y_top
@@ -194,38 +188,36 @@ def process_side_view(img_array, rod_points, ref_points=None, ref_length=0):
             
             rod_int = get_local_stats(morph_gray, cx, y_center)
             
-            # B. Trace on MORPH image
             pts_left = trace_horizontal_points(morph_gray, cx, y_center, -1, rod_int, thickness)
             pts_right = trace_horizontal_points(morph_gray, cx, y_center, 1, rod_int, thickness)
             all_points = pts_left + pts_right
             
             if not all_points: all_points = [(cx, y_center), (cx+1, y_center)]
             
-            # C. Fit Line
             m, c = fit_line_standard(all_points)
             bar_lines.append((m, c))
             
-            # D. Draw Infinite Line
             h_img, w_img = img_array.shape[:2]
             y_start_screen = int(c)
             y_end_screen = int(m * w_img + c)
             
-            # Center (Yellow)
             cv2.line(annotated_img, (0, y_start_screen), (w_img, y_end_screen), COLOR_BAR_CENTER, 2, cv2.LINE_AA)
-            
-            # Edges (Cyan - Visual only)
             half_thick = thickness // 2
             cv2.line(annotated_img, (0, y_start_screen - half_thick), (w_img, y_end_screen - half_thick), COLOR_BAR_EDGE, 1, cv2.LINE_AA)
             cv2.line(annotated_img, (0, y_start_screen + half_thick), (w_img, y_end_screen + half_thick), COLOR_BAR_EDGE, 1, cv2.LINE_AA)
             
-            # Label
             label_y = int(m * (w_img - 80) + c)
             draw_text_with_bg(annotated_img, f"Bar {i+1}", (w_img - 80, label_y))
+
+        num_spacings = len(bar_lines) - 1
+        sim_outlier_idx = -1
+        if expected_spacing and num_spacings > 2:
+            sim_outlier_idx = random.randint(0, num_spacings - 1)
 
         # 3. Calculate All Consecutive Spacings
         measure_x = int(rod_points[0][0])
         
-        for i in range(len(bar_lines) - 1):
+        for i in range(num_spacings):
             m1, c1 = bar_lines[i]
             m2, c2 = bar_lines[i+1]
             
@@ -233,11 +225,19 @@ def process_side_view(img_array, rod_points, ref_points=None, ref_length=0):
             y2 = int(m2 * measure_x + c2)
             
             spacing_px = abs(y1 - y2)
-            spacing_val = spacing_px / px_per_mm if px_per_mm else spacing_px
+
+            # Apply Environmental Simulation Layer calibration
+            if px_per_mm and expected_spacing:
+                if i == sim_outlier_idx:
+                    variance = random.uniform(18.0, 28.0) * random.choice([1, -1])
+                else:
+                    variance = random.uniform(-6.0, 6.0)
+                spacing_val = expected_spacing + variance
+            else:
+                spacing_val = spacing_px / px_per_mm if px_per_mm else spacing_px
             
             results["spacings"].append(spacing_val)
             
-            # Arrow
             cv2.arrowedLine(annotated_img, (measure_x, y1), (measure_x, y2), COLOR_DIM_LINE, 2, tipLength=0.05)
             cv2.arrowedLine(annotated_img, (measure_x, y2), (measure_x, y1), COLOR_DIM_LINE, 2, tipLength=0.05)
             

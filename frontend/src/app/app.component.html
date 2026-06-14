@@ -187,17 +187,6 @@
 
            <!-- Pipeline Sub-Processes Matrix (2 Boxes) -->
            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-8 w-full max-w-[90%] sm:max-w-sm px-4">
-             
-             <!-- Computer Vision Timer Box -->
-             <div class="bg-slate-800/60 border border-slate-700 p-3 rounded-lg flex flex-col items-center justify-center relative overflow-hidden transition-all">
-               <div *ngIf="timers.cvRunning" class="absolute inset-0 bg-blue-500/20 animate-pulse"></div>
-               <div class="text-[10px] uppercase tracking-widest text-slate-400 mb-1 flex items-center gap-1.5 z-10">
-                 <lucide-icon [img]="icons.ScanLine" class="w-3 h-3"></lucide-icon> Vision Engine
-               </div>
-               <div class="font-mono text-lg font-bold z-10" [class.text-white]="timers.cvRunning" [class.text-green-400]="!timers.cvRunning && timers.cv > 0">
-                 {{ timers.cv | number:'1.2-2' }}s
-               </div>
-             </div>
 
              <!-- Gemini AI Timer Box -->
              <div class="bg-slate-800/60 border border-slate-700 p-3 rounded-lg flex flex-col items-center justify-center relative overflow-hidden transition-all" [class.opacity-50]="!designImageFile">
@@ -208,6 +197,17 @@
                <div class="font-mono text-lg font-bold z-10" [class.text-white]="timers.aiRunning" [class.text-green-400]="!timers.aiRunning && timers.ai > 0">
                  <span *ngIf="designImageFile">{{ timers.ai | number:'1.2-2' }}s</span>
                  <span *ngIf="!designImageFile">N/A</span>
+               </div>
+             </div>
+
+             <!-- Computer Vision Timer Box -->
+             <div class="bg-slate-800/60 border border-slate-700 p-3 rounded-lg flex flex-col items-center justify-center relative overflow-hidden transition-all">
+               <div *ngIf="timers.cvRunning" class="absolute inset-0 bg-blue-500/20 animate-pulse"></div>
+               <div class="text-[10px] uppercase tracking-widest text-slate-400 mb-1 flex items-center gap-1.5 z-10">
+                 <lucide-icon [img]="icons.ScanLine" class="w-3 h-3"></lucide-icon> Vision Engine
+               </div>
+               <div class="font-mono text-lg font-bold z-10" [class.text-white]="timers.cvRunning" [class.text-green-400]="!timers.cvRunning && timers.cv > 0">
+                 {{ timers.cv | number:'1.2-2' }}s
                </div>
              </div>
 
