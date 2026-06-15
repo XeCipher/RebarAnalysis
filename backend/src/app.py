@@ -23,8 +23,9 @@ import analysis_service
 import side_view_service  
 
 app = Flask(__name__)
+FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:4200")
 CORS(app, resources={r"/*": {
-    "origins": ["http://localhost:4200", "https://rebaranalysis-sim.vercel.app"],
+    "origins": ["http://localhost:4200", FRONTEND_URL],
     "methods": ["GET", "POST", "OPTIONS"],
     "allow_headers": ["Content-Type"]
 }})
