@@ -127,6 +127,7 @@ def send_email_report():
         column_number = data.get('column_number', 'Unknown')
         authority_email = data.get('email')
         score = data.get('score')
+        quality_label = data.get('label', 'Defective')
         table = data.get('table', [])
         img_b64 = data.get('image', '').split(',')[-1] 
 
@@ -137,15 +138,15 @@ def send_email_report():
             return jsonify({"status": "error", "message": "Server email credentials not configured"}), 500
 
         msg = MIMEMultipart('related')
-        msg['Subject'] = f"Rebar Inspection Alert: Column {column_number} - Score {score}%"
+        msg['Subject'] = f"Rebar Inspection Alert: Column {column_number} - {quality_label} ({score}%)"
         msg['From'] = SENDER_EMAIL
         msg['To'] = authority_email
 
         html_body = f"""
         <html>
           <body>
-            <h2 style="color: #d32f2f; font-family: Arial, sans-serif;">Rebar Inspection Failed</h2>
-            <p style="font-family: Arial, sans-serif;">A recent site inspection for <strong style="color: #d32f2f;">Column {column_number}</strong> has yielded a similarity score of <strong style="color: #d32f2f;">{score}%</strong>.</p>
+            <h2 style="color: #d32f2f; font-family: Arial, sans-serif;">Rebar Quality Deviation Alert</h2>
+            <p style="font-family: Arial, sans-serif;">A recent site inspection for <strong style="color: #d32f2f;">Column {column_number}</strong> has yielded a similarity score of <strong style="color: #d32f2f;">{score}% ({quality_label})</strong>, which falls below the acceptable 80% threshold.</p>
             <h3 style="font-family: Arial, sans-serif;">Compliance Table</h3>
             <table border="1" cellpadding="8" cellspacing="0" style="border-collapse: collapse; font-family: Arial, sans-serif; width: 100%; max-width: 800px;">
               <tr style="background-color: #f2f2f2; text-align: left;">

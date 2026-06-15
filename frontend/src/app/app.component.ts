@@ -11,6 +11,7 @@ import { ScoringService, ComparisonRow } from './services/scoring.service';
 export interface ApiResponse {
   status: string;
   score: number;
+  quality_tier?: { label: string; color: 'green' | 'yellow' | 'red' };
   score_count?: number | null;
   score_radius?: number | null;
   score_spacing?: number | null;
@@ -113,6 +114,15 @@ export class AppComponent implements OnInit, OnDestroy {
   ngOnDestroy() {
     this.intervals.forEach(i => clearInterval(i));
     if (this.analysisSub) this.analysisSub.unsubscribe();
+  }
+
+  // --- Quality Status Classifier ---
+  getQualityTier(score: number): { label: string, color: 'green' | 'yellow' | 'red' } {
+    if (score > 95) return { label: 'Excellent', color: 'green' };
+    if (score >= 90) return { label: 'Acceptable', color: 'green' };
+    if (score >= 80) return { label: 'Minor Deviation', color: 'yellow' };
+    if (score >= 70) return { label: 'Major Deviation', color: 'red' };
+    return { label: 'Defective', color: 'red' };
   }
 
   // --- Image Handling & Compression Tool ---
@@ -316,7 +326,6 @@ export class AppComponent implements OnInit, OnDestroy {
     this.cdr.markForCheck();
   }
 
-  // --- Point Sorting Utility Functions ---
   sortPointsClockwise(points: number[][]): number[][] {
     if (!points || points.length === 0) return [];
     
@@ -343,7 +352,6 @@ export class AppComponent implements OnInit, OnDestroy {
       }
     }
     
-    // Rotate the sorted array so the Top-Left point becomes Index 0
     return [...sortedPts.slice(topLeftIdx), ...sortedPts.slice(0, topLeftIdx)];
   }
 
@@ -351,7 +359,6 @@ export class AppComponent implements OnInit, OnDestroy {
     if (!this.realImageFile) return;
     this.isAutoDetecting = true;
     
-    // Performance Timer Setup
     this.timers.autoDetectRunning = true;
     this.timers.autoDetect = 0;
     const adStart = performance.now();
@@ -376,7 +383,6 @@ export class AppComponent implements OnInit, OnDestroy {
          this.imgNatHeight = this.imageElement.nativeElement.naturalHeight;
       }
 
-      // Base AI search 
       const tinyB64 = await this.gemini.fileToBase64(this.realImageFile, 400);
       const aiPoints = await this.gemini.getAutoDetectPoints(tinyB64, this.viewMode);
       
@@ -385,17 +391,14 @@ export class AppComponent implements OnInit, OnDestroy {
           return;
       }
 
-      // Map Gemini AI relative predictions directly to the UI bounds
       let mappedPoints = aiPoints.map((pt: any) => [
           Math.round((pt.x || 0.5) * this.imgNatWidth),
           Math.round((pt.y || 0.5) * this.imgNatHeight)
       ]);
 
-      // Ensure appropriate geometric ordering to facilitate sequential gap mapping logic
       if (this.viewMode === 'top') {
         this.rodPoints = this.sortPointsClockwise(mappedPoints);
       } else {
-        // For side view, snap from top downwards strictly based on Y height
         this.rodPoints = mappedPoints.sort((a, b) => a[1] - b[1]);
       }
 
@@ -443,7 +446,6 @@ export class AppComponent implements OnInit, OnDestroy {
     this.emailSent = false;
     this.isEmailSending = false;
     
-    // Performance Initialization
     this.timers.total = 0;
     this.timers.cv = 0; this.timers.cvRunning = false;
     this.timers.ai = 0; this.timers.aiRunning = false;
@@ -464,11 +466,10 @@ export class AppComponent implements OnInit, OnDestroy {
     this.cdr.markForCheck();
     
     try {
-      // Scale full res points into normalized geometry points before uploading
       const normRodPoints = this.rodPoints.map(p => [p[0] / this.imgNatWidth, p[1] / this.imgNatHeight]);
       const normRefPoints = this.refPoints.map(p => [p[0] / this.imgNatWidth, p[1] / this.imgNatHeight]);
 
-      // 1. Run Computer Vision Service (Sequential Block 1)
+      // 1. Run Computer Vision Service
       this.timers.cvRunning = true;
       cvStart = performance.now();
       
@@ -489,7 +490,7 @@ export class AppComponent implements OnInit, OnDestroy {
          throw new Error("Computer Vision processing failed.");
       }
 
-      // 2. Run Gemini Engine (Sequential Block 2)
+      // 2. Run Gemini Engine
       let designData = this.viewMode === 'side' ? { spacing_mm: 0 } : { count: 0, radius_mm: 0, spacings_mm: [] };
       let defectData = { reset: true, rod: null };
 
@@ -498,7 +499,7 @@ export class AppComponent implements OnInit, OnDestroy {
         aiStart = performance.now();
         
         const designB64 = await this.gemini.fileToBase64(this.designImageFile, 700);
-        const annotatedB64 = cvRes.annotated_image.split(',')[1]; // Pass annotated output directly
+        const annotatedB64 = cvRes.annotated_image.split(',')[1];
         
         const aiRes = await this.gemini.analyzeDesignAndDefects(designB64, annotatedB64, this.viewMode);
         
@@ -517,9 +518,12 @@ export class AppComponent implements OnInit, OnDestroy {
         scoreData = this.scoring.calculateSideScore(designData, cvRes.actual_data, cvRes.has_scale);
       }
 
+      const qualityTier = this.getQualityTier(scoreData.score);
+
       this.result = {
         status: 'success',
         score: scoreData.score,
+        quality_tier: qualityTier,
         score_count: scoreData.score_count,
         score_radius: scoreData.score_radius,
         score_spacing: scoreData.score_spacing,
@@ -553,6 +557,7 @@ export class AppComponent implements OnInit, OnDestroy {
       column_number: this.columnNumber,
       email: this.authorityEmail,
       score: this.result.score,
+      label: this.result.quality_tier?.label || 'Defective',
       table: this.result.comparison_table,
       image: this.result.annotated_image
     };

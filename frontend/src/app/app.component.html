@@ -245,26 +245,37 @@
       <!-- Results Panel -->
       <div *ngIf="result" class="space-y-6 animate-fade-in">
 
-        <div class="mb-4">
-          <!-- Green: Work acceptable -->
-          <div *ngIf="result.score === 100" class="bg-green-50 border-l-4 border-green-500 p-4 sm:p-5 rounded-r-lg shadow-sm flex items-start gap-4 transition-all">
+        <div class="mb-4" *ngIf="result.quality_tier as tier">
+          <!-- Green: Excellent / Acceptable -->
+          <div *ngIf="tier.color === 'green'" class="bg-green-50 border-l-4 border-green-500 p-4 sm:p-5 rounded-r-lg shadow-sm flex items-start gap-4 transition-all">
             <div class="bg-green-100 p-2 rounded-full mt-1 shrink-0">
               <lucide-icon [img]="icons.CheckCircle2" class="w-5 h-5 sm:w-6 sm:h-6 text-green-600" />
             </div>
             <div>
-              <h3 class="text-lg sm:text-xl font-bold text-green-800">Work is acceptable.</h3>
-              <p class="text-green-700 mt-1 text-sm sm:text-base">Similarity score meets the 100% threshold. You may proceed to the next work.</p>
+              <h3 class="text-lg sm:text-xl font-bold text-green-800">Work is acceptable. ({{ tier.label }})</h3>
+              <p class="text-green-700 mt-1 text-sm sm:text-base">Similarity score meets the quality thresholds. You may proceed to the next work.</p>
             </div>
           </div>
 
-          <!-- Red: Work failed & Email notification -->
-          <div *ngIf="result.score < 100" class="bg-red-50 border-l-4 border-red-500 p-4 sm:p-5 rounded-r-lg shadow-sm flex items-start gap-4 transition-all">
+          <!-- Yellow: Minor Deviation -->
+          <div *ngIf="tier.color === 'yellow'" class="bg-yellow-50 border-l-4 border-yellow-500 p-4 sm:p-5 rounded-r-lg shadow-sm flex items-start gap-4 transition-all">
+            <div class="bg-yellow-100 p-2 rounded-full mt-1 shrink-0">
+              <lucide-icon [img]="icons.AlertCircle" class="w-5 h-5 sm:w-6 sm:h-6 text-yellow-600" />
+            </div>
+            <div>
+              <h3 class="text-lg sm:text-xl font-bold text-yellow-800">Review Recommended. ({{ tier.label }})</h3>
+              <p class="text-yellow-700 mt-1 text-sm sm:text-base">Similarity score indicates a minor deviation. Please review the parameter mismatches below.</p>
+            </div>
+          </div>
+
+          <!-- Red: Major Deviation / Defective -->
+          <div *ngIf="tier.color === 'red'" class="bg-red-50 border-l-4 border-red-500 p-4 sm:p-5 rounded-r-lg shadow-sm flex items-start gap-4 transition-all">
             <div class="bg-red-100 p-2 rounded-full mt-1 shrink-0">
               <lucide-icon [img]="icons.AlertCircle" class="w-5 h-5 sm:w-6 sm:h-6 text-red-600" />
             </div>
             <div class="flex-1">
-              <h3 class="text-lg sm:text-xl font-bold text-red-800">Please wait. Work needs improvement.</h3>
-              <p class="text-red-700 mt-1 mb-4 text-sm sm:text-base">Similarity score is below the 100% threshold. The higher authority must be notified.</p>
+              <h3 class="text-lg sm:text-xl font-bold text-red-800">Please wait. Work needs improvement. ({{ tier.label }})</h3>
+              <p class="text-red-700 mt-1 mb-4 text-sm sm:text-base">Similarity score has fallen below 80%. The higher authority must be notified.</p>
               
               <div *ngIf="!emailSent" class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
                 <input type="text" [(ngModel)]="columnNumber" placeholder="Col No." 
@@ -327,15 +338,23 @@
 
                 <div class="text-xs sm:text-sm font-bold text-slate-400 uppercase tracking-widest mb-2">Overall Score</div>
                 <div class="text-5xl sm:text-6xl font-black mb-3 text-slate-800" 
-                     [class.text-green-600]="result.score === 100"
-                     [class.text-red-600]="result.score < 100">
+                     [class.text-green-600]="result.quality_tier?.color === 'green'"
+                     [class.text-yellow-500]="result.quality_tier?.color === 'yellow'"
+                     [class.text-red-600]="result.quality_tier?.color === 'red'">
                     {{ result.score }}%
                 </div>
                 <div class="inline-flex items-center gap-1.5 px-3 sm:px-4 py-1.5 rounded-full text-xs sm:text-sm font-medium shadow-sm border"
-                    [class.bg-green-50]="result.score === 100" [class.text-green-700]="result.score === 100" [class.border-green-200]="result.score === 100"
-                    [class.bg-red-50]="result.score < 100" [class.text-red-700]="result.score < 100" [class.border-red-200]="result.score < 100">
-                    <lucide-icon [img]="result.score === 100 ? icons.CheckCircle2 : icons.AlertCircle" class="w-4 h-4" />
-                    {{ result.score === 100 ? 'Passed QC Check' : 'Quality Warning' }}
+                    [class.bg-green-50]="result.quality_tier?.color === 'green'" 
+                    [class.text-green-700]="result.quality_tier?.color === 'green'" 
+                    [class.border-green-200]="result.quality_tier?.color === 'green'"
+                    [class.bg-yellow-50]="result.quality_tier?.color === 'yellow'" 
+                    [class.text-yellow-700]="result.quality_tier?.color === 'yellow'" 
+                    [class.border-yellow-200]="result.quality_tier?.color === 'yellow'"
+                    [class.bg-red-50]="result.quality_tier?.color === 'red'" 
+                    [class.text-red-700]="result.quality_tier?.color === 'red'" 
+                    [class.border-red-200]="result.quality_tier?.color === 'red'">
+                    <lucide-icon [img]="result.quality_tier?.color === 'green' ? icons.CheckCircle2 : icons.AlertCircle" class="w-4 h-4" />
+                    {{ result.quality_tier?.label }}
                 </div>
 
                 <!-- Individual Param Breakout -->
@@ -344,8 +363,9 @@
                     <div *ngIf="result.score_count !== null && result.score_count !== undefined" class="flex-1 min-w-[80px] p-3 rounded-lg bg-slate-50 border border-slate-200 flex flex-col items-center justify-center">
                         <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Count</span>
                         <span class="text-xl sm:text-2xl font-bold" 
-                              [class.text-green-600]="result.score_count === 100" 
-                              [class.text-red-600]="result.score_count < 100">
+                              [class.text-green-600]="result.score_count >= 90" 
+                              [class.text-yellow-600]="result.score_count >= 80 && result.score_count < 90"
+                              [class.text-red-600]="result.score_count < 80">
                             {{ result.score_count }}%
                         </span>
                     </div>
@@ -353,8 +373,9 @@
                     <div *ngIf="result.score_radius !== null && result.score_radius !== undefined" class="flex-1 min-w-[80px] p-3 rounded-lg bg-slate-50 border border-slate-200 flex flex-col items-center justify-center">
                         <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Radius</span>
                         <span class="text-xl sm:text-2xl font-bold" 
-                              [class.text-green-600]="result.score_radius === 100" 
-                              [class.text-red-600]="result.score_radius < 100">
+                              [class.text-green-600]="result.score_radius >= 90" 
+                              [class.text-yellow-600]="result.score_radius >= 80 && result.score_radius < 90"
+                              [class.text-red-600]="result.score_radius < 80">
                             {{ result.score_radius }}%
                         </span>
                     </div>
@@ -362,8 +383,9 @@
                     <div *ngIf="result.score_spacing !== null && result.score_spacing !== undefined" class="flex-1 min-w-[80px] p-3 rounded-lg bg-slate-50 border border-slate-200 flex flex-col items-center justify-center">
                         <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Spacing</span>
                         <span class="text-xl sm:text-2xl font-bold" 
-                              [class.text-green-600]="result.score_spacing === 100" 
-                              [class.text-red-600]="result.score_spacing < 100">
+                              [class.text-green-600]="result.score_spacing >= 90" 
+                              [class.text-yellow-600]="result.score_spacing >= 80 && result.score_spacing < 90"
+                              [class.text-red-600]="result.score_spacing < 80">
                             {{ result.score_spacing }}%
                         </span>
                     </div>
@@ -460,18 +482,58 @@
     <div class="p-6 md:p-8 overflow-y-auto flex-1 space-y-8 text-slate-700 text-sm sm:text-base">
       <section>
         <h4 class="font-bold text-slate-900 border-b border-slate-200 pb-2 mb-4 text-lg">1. Final Similarity Score</h4>
-        <p class="mb-4">The system utilizes a <strong>strict binary scoring model (100% or 0%)</strong> for each parameter, based directly on the permissible limits specified by the Indian Standard (IS) codes.</p>
+        <p class="mb-4">The system computes a final similarity score based on dimensional and quantitative limits specified by the Indian Standard (IS) codes. The final score maps to the following quality matrix:</p>
+        
+        <div class="overflow-x-auto border border-slate-200 rounded-lg shadow-sm mb-4">
+          <table class="w-full text-left border-collapse min-w-[500px]">
+            <thead>
+              <tr class="bg-slate-100">
+                <th class="p-3 border-b border-slate-200 font-semibold text-slate-700">Similarity Score (%)</th>
+                <th class="p-3 border-b border-slate-200 font-semibold text-slate-700">Quality Status</th>
+                <th class="p-3 border-b border-slate-200 font-semibold text-slate-700">Action Required</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-200 bg-white">
+              <tr>
+                <td class="p-3 font-mono text-slate-800">> 95</td>
+                <td class="p-3 text-green-700 font-bold">Excellent</td>
+                <td class="p-3 text-slate-600">Acceptable, no action.</td>
+              </tr>
+              <tr>
+                <td class="p-3 font-mono text-slate-800">90 – 95</td>
+                <td class="p-3 text-green-700 font-bold">Acceptable</td>
+                <td class="p-3 text-slate-600">Acceptable, no action.</td>
+              </tr>
+              <tr>
+                <td class="p-3 font-mono text-slate-800">80 – 89.9</td>
+                <td class="p-3 text-yellow-600 font-bold">Minor Deviation</td>
+                <td class="p-3 text-slate-600">Review Required. No email sent.</td>
+              </tr>
+              <tr>
+                <td class="p-3 font-mono text-slate-800">70 – 79.9</td>
+                <td class="p-3 text-red-600 font-bold">Major Deviation</td>
+                <td class="p-3 text-red-600 font-medium">Email Alert Triggered.</td>
+              </tr>
+              <tr>
+                <td class="p-3 font-mono text-slate-800">< 70</td>
+                <td class="p-3 text-red-600 font-bold">Defective</td>
+                <td class="p-3 text-red-600 font-medium">Email Alert Triggered.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div class="bg-slate-50 border border-slate-200 p-4 rounded-lg">
-            <div class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Top View Output</div>
+            <div class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Top View Score Formula</div>
             <div class="font-mono text-slate-800 bg-white border border-slate-200 p-3 rounded text-center text-sm md:text-base shadow-sm">Final Score = (Rc + Rr + Rs) / 3</div>
           </div>
           <div class="bg-slate-50 border border-slate-200 p-4 rounded-lg">
-            <div class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Side View Output</div>
+            <div class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Side View Score Formula</div>
             <div class="font-mono text-slate-800 bg-white border border-slate-200 p-3 rounded text-center text-sm md:text-base shadow-sm">Final Score = Average(Rs_all_pairs)</div>
           </div>
         </div>
-        <p class="mt-4 text-sm text-red-600 font-medium">Note: If the final averaged score mathematically drops below 100% (indicating at least one parameter failed the tolerance check), the overall column is flagged as "Not Acceptable".</p>
+        <p class="mt-4 text-sm text-red-600 font-medium">Note: Any final score below 80% automatically flags the overall column as requiring intervention, triggering an automated email alert.</p>
       </section>
       <section>
         <h4 class="font-bold text-slate-900 border-b border-slate-200 pb-2 mb-4 text-lg">2. IS Code Tolerance Limits</h4>
