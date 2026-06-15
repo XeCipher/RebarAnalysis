@@ -40,16 +40,20 @@ Output Structure (Strict JSON):
 
 const PROMPT_COMBINED_SIDE = `Analyze the architectural rebar drawing (Side/Elevation View).
 Extract the **Vertical Spacing** (pitch) between the horizontal bars (stirrups/ties).
+Also extract the **Least lateral dimension** of the column (if specified) and the **diameter** of the smallest longitudinal (main vertical) bar.
 
 Look for labels like:
 - "8mm @ 150mm c/c" (Spacing is 150)
 - "Stirrups @ 200mm" (Spacing is 200)
-- Arrows indicating vertical gap.
+- "Column 400x600" (Least lateral dim is 400)
+- "6 - 20mm dia" (Longitudinal bar dia is 20)
 
 Output Structure (Strict JSON):
 {
   "design": {
-    "spacing_mm": Float
+    "spacing_mm": Float or null,
+    "least_lateral_dim_mm": Float or null,
+    "longitudinal_bar_dia_mm": Float or null
   },
   "defect": {
     "reset": true,
@@ -133,12 +137,12 @@ export class GeminiService {
     const data = await this.askGemini(prompt, images);
 
     if (!data) {
-      if (viewMode === 'side') return { design: { spacing_mm: 0 }, defect: { reset: true, rod: null } };
+      if (viewMode === 'side') return { design: { spacing_mm: 0, least_lateral_dim_mm: 0, longitudinal_bar_dia_mm: 0 }, defect: { reset: true, rod: null } };
       return { design: { count: 0, radius_mm: 0, spacings_mm: [] }, defect: { reset: true, rod: null } };
     }
 
     return {
-      design: data.design || (viewMode === 'side' ? { spacing_mm: 0 } : { count: 0, radius_mm: 0, spacings_mm: [] }),
+      design: data.design || (viewMode === 'side' ? { spacing_mm: 0, least_lateral_dim_mm: 0, longitudinal_bar_dia_mm: 0 } : { count: 0, radius_mm: 0, spacings_mm: [] }),
       defect: data.defect || { reset: true, rod: null }
     };
   }

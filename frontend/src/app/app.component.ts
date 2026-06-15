@@ -491,7 +491,7 @@ export class AppComponent implements OnInit, OnDestroy {
       }
 
       // 2. Run Gemini Engine
-      let designData = this.viewMode === 'side' ? { spacing_mm: 0 } : { count: 0, radius_mm: 0, spacings_mm: [] };
+      let designData: any = this.viewMode === 'side' ? { spacing_mm: 0, least_lateral_dim_mm: 0, longitudinal_bar_dia_mm: 0 } : { count: 0, radius_mm: 0, spacings_mm: [] };
       let defectData = { reset: true, rod: null };
 
       if (this.designImageFile) {

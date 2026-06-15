@@ -177,7 +177,14 @@ export class ScoringService {
 
   calculateSideScore(designData: any, actualData: any, hasScale: boolean): { score: number, score_count: number | null, score_radius: number | null, score_spacing: number | null, table: ComparisonRow[] } {
     const dSpacing = this.safeFloat(designData.spacing_mm);
+    const leastDim = this.safeFloat(designData.least_lateral_dim_mm, 0);
+    const longBarDia = this.safeFloat(designData.longitudinal_bar_dia_mm, 0);
     const aSpacings: number[] = Array.isArray(actualData.spacings) ? actualData.spacings : [];
+    
+    // IS 456:2000 Clause 26.5.3.2 Max Spacing Limit
+    let maxSpacingLimit = 300;
+    if (leastDim > 0) maxSpacingLimit = Math.min(maxSpacingLimit, leastDim);
+    if (longBarDia > 0) maxSpacingLimit = Math.min(maxSpacingLimit, 16 * longBarDia);
     
     const tableRows: ComparisonRow[] = [];
     
@@ -198,20 +205,30 @@ export class ScoringService {
       let status: ComparisonRow['status'] = "NA";
       let actualStr = "";
       
-      if (hasScale && dSpacing > 0) {
-        // IS 456:2000 Tolerance limit checks
-        const tol_mm = dSpacing <= 200 ? 10 : 15;
-        const err_mm = Math.abs(dSpacing - aSpacing);
-        
-        if (err_mm <= tol_mm) {
-          status = "Acceptable";
-          score = 100;
-        } else {
+      if (hasScale) {
+        if (aSpacing > maxSpacingLimit) {
           status = "Not Acceptable";
           score = 0;
+          actualStr = `${aSpacing.toFixed(2)} mm (Exceeds IS Max: ${maxSpacingLimit}mm)`;
+        } else if (dSpacing > 0) {
+          // IS 456:2000 Tolerance limit checks
+          const tol_mm = dSpacing <= 200 ? 10 : 15;
+          const err_mm = Math.abs(dSpacing - aSpacing);
+          
+          if (err_mm <= tol_mm) {
+            status = "Acceptable";
+            score = 100;
+            actualStr = `${aSpacing.toFixed(2)} mm`;
+          } else {
+            status = "Not Acceptable";
+            score = 0;
+            actualStr = `${aSpacing.toFixed(2)} mm (Deviates from design ${dSpacing}mm)`;
+          }
+        } else {
+          status = "Acceptable";
+          score = 100;
+          actualStr = `${aSpacing.toFixed(2)} mm`;
         }
-        
-        actualStr = `${aSpacing.toFixed(2)} mm`;
       } else {
         if (aSpacing > 0) {
           score = 100; // Baseline fallback without physical scale
