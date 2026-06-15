@@ -24,14 +24,19 @@ Output Structure (Strict JSON):
 
 const PROMPT_DESIGN_SIDE = `Analyze the architectural rebar drawing (Side/Elevation View).
 Extract the **Vertical Spacing** (pitch) between the horizontal bars (stirrups/ties).
+Also extract the **Least lateral dimension** of the column (if specified) and the **diameter** of the smallest longitudinal (main vertical) bar.
 
 Look for labels like:
 - "8mm @ 150mm c/c" (Spacing is 150)
 - "Stirrups @ 200mm" (Spacing is 200)
+- "Column 400x600" (Least lateral dim is 400)
+- "6 - 20mm dia" (Longitudinal bar dia is 20)
 
 Output Structure (Strict JSON):
 {
-  "spacing_mm": Float
+  "spacing_mm": Float or null,
+  "least_lateral_dim_mm": Float or null,
+  "longitudinal_bar_dia_mm": Float or null
 }`;
 
 const PROMPT_AUTO_DETECT_TOP = `You are an expert AI vision system. Analyze this Site Photograph of a concrete block.
@@ -106,7 +111,9 @@ export class GeminiService {
     const data = await this.askGemini(prompt, [designB64]);
 
     if (!data) {
-      return viewMode === 'side' ? { spacing_mm: 0 } : { count: 0, radius_mm: 0, spacings_mm: [] };
+      return viewMode === 'side' 
+        ? { spacing_mm: 0, least_lateral_dim_mm: 0, longitudinal_bar_dia_mm: 0 } 
+        : { count: 0, radius_mm: 0, spacings_mm: [] };
     }
     
     // Safely unwrap if the AI accidentally wrapped it inside a parent "design" object

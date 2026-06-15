@@ -469,7 +469,9 @@ export class AppComponent implements OnInit, OnDestroy {
       const normRodPoints = this.rodPoints.map(p => [p[0] / this.imgNatWidth, p[1] / this.imgNatHeight]);
       const normRefPoints = this.refPoints.map(p => [p[0] / this.imgNatWidth, p[1] / this.imgNatHeight]);
 
-      let designData: any = this.viewMode === 'side' ? { spacing_mm: 0 } : { count: 0, radius_mm: 0, spacings_mm: [] };
+      let designData: any = this.viewMode === 'side' 
+        ? { spacing_mm: 0, least_lateral_dim_mm: 0, longitudinal_bar_dia_mm: 0 } 
+        : { count: 0, radius_mm: 0, spacings_mm: [] };
 
       // 1. Run Gemini Engine For Design Extraction (Sequential Block 1 - from SIM branch)
       if (this.designImageFile) {
