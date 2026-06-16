@@ -26,17 +26,16 @@
     <!-- ========================================== -->
     <!-- STATE 1: INITIAL UPLOAD & MARKING ENGINE   -->
     <!-- ========================================== -->
-    <div *ngIf="!result" class="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 flex-1 lg:min-h-0 h-full">
+    <div *ngIf="!result" class="flex flex-col lg:flex-row gap-6 lg:gap-8 flex-1 lg:min-h-0 h-full">
       
       <!-- Left Column: Inputs & Controls -->
-      <div class="lg:col-span-4 xl:col-span-3 flex flex-col gap-6 lg:overflow-y-auto pr-1 pb-4">
+      <div class="w-full lg:w-[340px] xl:w-[380px] shrink-0 flex flex-col gap-6 lg:overflow-y-auto pr-1 pb-4">
         
         <div class="card shadow-sm hover:shadow-md transition-shadow">
           <div class="flex items-center justify-between mb-4">
             <h2 class="text-lg font-semibold flex items-center gap-2 text-slate-800">
               <lucide-icon [img]="icons.Upload" class="w-5 h-5 text-slate-400" /> Upload
             </h2>
-            <!-- The mode indicator here has been removed as per your request -->
           </div>
           <div class="space-y-4">
             <div>
@@ -77,9 +76,27 @@
               <lucide-icon [img]="icons.Wand2" class="w-4 h-4 mr-2" />
               {{ isAutoDetecting ? 'Detecting...' : 'Re-run Auto-Detect' }}
             </button>
+
+            <!-- Instructional Tooltip Box -->
+            <div class="text-[11px] sm:text-xs text-slate-500 bg-slate-50 p-2.5 rounded-lg text-center border border-slate-200 flex flex-col xl:flex-row items-center justify-center gap-1 xl:gap-1.5 shadow-inner">
+              <div class="flex items-center gap-1.5">
+                <lucide-icon [img]="icons.Info" class="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                <span>Tap dot to <strong class="text-slate-700">Remove</strong>.</span>
+              </div>
+              <span class="hidden xl:inline-block text-slate-300">•</span>
+              <span>Drag to <strong class="text-slate-700">Move</strong>.</span>
+              <span class="hidden xl:inline-block text-slate-300">•</span>
+              <span>Tap img to <strong class="text-slate-700">Add</strong>.</span>
+            </div>
           </div>
 
           <div *ngIf="mode === 'ref'" class="animate-fade-in space-y-4">
+            <!-- Instructional Tooltip Box -->
+            <div class="text-[11px] sm:text-xs text-slate-500 bg-slate-50 p-2.5 rounded-lg text-center border border-slate-200 flex items-center justify-center gap-1.5 shadow-inner mb-3">
+              <lucide-icon [img]="icons.Info" class="w-3.5 h-3.5 text-slate-400 shrink-0" />
+              <span>Click on the image to place exactly 2 scale points.</span>
+            </div>
+            
             <label class="block text-xs font-bold text-blue-700 uppercase mb-1">Reference Length (mm)</label>
             <input type="number" [(ngModel)]="refLengthInput" class="w-full px-3 py-2 text-sm border border-blue-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow">
           </div>
@@ -111,21 +128,21 @@
       </div>
 
       <!-- Right Column: Interactive Canvas -->
-      <div class="lg:col-span-8 xl:col-span-9 flex flex-col lg:min-h-0 h-full pb-4 lg:pb-0">
+      <div class="flex-1 flex flex-col min-w-0 lg:min-h-0 h-full pb-4 lg:pb-0 items-center justify-center">
         
-        <div *ngIf="!realImagePreview" class="flex-1 min-h-[300px] border-2 border-dashed border-slate-300 rounded-xl flex flex-col items-center justify-center text-slate-400 bg-slate-50/50">
+        <div *ngIf="!realImagePreview" class="w-full flex-1 min-h-[300px] border-2 border-dashed border-slate-300 rounded-xl flex flex-col items-center justify-center text-slate-400 bg-slate-50/50">
           <lucide-icon [img]="icons.Upload" class="w-10 h-10 mb-3 opacity-50" />
           <p class="font-medium text-sm">Upload Photo To Begin Analysis</p>
         </div>
 
-        <div *ngIf="realImagePreview" class="rounded-xl overflow-hidden shadow-lg border border-slate-200 bg-slate-900 group select-none flex items-center justify-center flex-1 min-h-[400px] lg:min-h-0 p-2 sm:p-4 relative">
+        <div *ngIf="realImagePreview" class="relative group select-none max-w-full flex items-center justify-center flex-1 lg:min-h-0 p-2 sm:p-4 w-full">
           
-          <!-- Inner Tight Wrapper -->
-          <div class="image-wrapper max-w-full rounded shadow-md">
-            <img #imageRef [src]="realImagePreview" (load)="onImageLoad($event)" (click)="onImageClick($event)" class="w-auto h-auto max-w-full max-h-[60vh] lg:max-h-[75vh] block touch-manipulation rounded">
+          <!-- Inner Tight Wrapper (Bounds strictly to the image shape) -->
+          <div class="image-wrapper relative max-w-full bg-white rounded-xl shadow-xl border border-slate-200">
+            <img #imageRef [src]="realImagePreview" (load)="onImageLoad($event)" (click)="onImageClick($event)" class="w-auto h-auto max-w-full max-h-[60vh] lg:max-h-[80vh] block touch-manipulation rounded-xl">
             
-            <!-- Loader Overlays (Fixed line-height inherit issue and added scaling & scrolling responsiveness) -->
-            <div *ngIf="isAutoDetecting" class="absolute inset-0 bg-slate-900/80 backdrop-blur-sm flex flex-col items-center justify-center z-30 text-white animate-fade-in rounded overflow-y-auto p-4 leading-normal">
+            <!-- Loader Overlays -->
+            <div *ngIf="isAutoDetecting" class="absolute inset-0 bg-slate-900/80 backdrop-blur-sm flex flex-col items-center justify-center z-30 text-white animate-fade-in rounded-xl overflow-y-auto p-4 leading-normal">
                <div class="animate-spin h-8 w-8 sm:h-10 sm:w-10 border-4 border-purple-500 border-t-transparent rounded-full mb-3 sm:mb-4 shrink-0"></div>
                <div class="font-mono text-2xl sm:text-3xl font-black text-purple-200 mb-4 sm:mb-6 flex items-center gap-2 shrink-0">
                  <lucide-icon [img]="icons.Timer" class="w-5 h-5 sm:w-6 sm:h-6 opacity-70"></lucide-icon>{{ timers.autoDetect | number:'1.2-2' }}s
@@ -133,7 +150,7 @@
                <button (click)="cancelAutoDetect()" class="px-4 sm:px-5 py-1.5 sm:py-2 bg-white/10 hover:bg-white/20 border border-white/30 rounded-full text-xs sm:text-sm font-medium backdrop-blur transition-all active:scale-95 shrink-0">Cancel</button>
             </div>
 
-            <div *ngIf="isAnalyzing" class="absolute inset-0 bg-slate-900/80 backdrop-blur-md flex flex-col items-center justify-center z-20 text-white animate-fade-in rounded overflow-y-auto p-4 leading-normal">
+            <div *ngIf="isAnalyzing" class="absolute inset-0 bg-slate-900/80 backdrop-blur-md flex flex-col items-center justify-center z-20 text-white animate-fade-in rounded-xl overflow-y-auto p-4 leading-normal">
                <div class="animate-spin h-8 w-8 sm:h-10 sm:w-10 border-4 border-blue-500 border-t-transparent rounded-full mb-3 sm:mb-4 shrink-0"></div>
                <div class="font-mono text-3xl sm:text-4xl font-black text-blue-300 mb-4 sm:mb-6 flex items-center gap-2 shrink-0">
                  <lucide-icon [img]="icons.Timer" class="w-6 h-6 sm:w-8 sm:h-8 opacity-70"></lucide-icon>{{ timers.total | number:'1.2-2' }}s
@@ -227,7 +244,7 @@
         <div class="w-full lg:w-1/3 flex flex-col gap-4 shrink-0">
             
             <!-- Compact Score Card -->
-            <div class="card p-4 flex flex-col shadow-sm border-slate-200 shrink-0 relative bg-white">
+            <div class="card p-4 flex flex-col shadow-sm border-slate-200 shrink-0 relative bg-white w-full">
                 <button (click)="toggleScoreModal()" class="absolute top-3 right-3 p-1.5 rounded hover:bg-slate-100 text-slate-400 transition-colors focus:outline-none" title="View Evaluation Methodology">
                     <lucide-icon [img]="icons.Calculator" class="w-4 h-4" />
                 </button>
@@ -281,7 +298,7 @@
 
             </div>
 
-            <!-- Annotated Image Card -->
+            <!-- Annotated Image Card (Restored original bounding logic to prevent overflow) -->
             <div class="bg-slate-900 border border-slate-800 shadow-inner rounded-xl lg:flex-1 lg:min-h-0 relative overflow-hidden flex items-center justify-center cursor-pointer">
                 <!-- Mobile: Scales dynamically up to 60vh | Desktop: Absolute fill to utilize remaining flex container height perfectly -->
                 <img [src]="result.annotated_image" class="w-full h-auto max-h-[60vh] lg:max-h-none lg:absolute lg:inset-0 lg:h-full object-contain block">
