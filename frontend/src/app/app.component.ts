@@ -165,6 +165,11 @@ export class AppComponent implements OnInit, OnDestroy {
     this.cdr.markForCheck();
   }
 
+  toggleViewMode() {
+    const newMode = this.viewMode === 'top' ? 'side' : 'top';
+    this.setViewMode(newMode);
+  }
+
   setViewMode(mode: 'top' | 'side') {
     if (this.viewMode !== mode) {
       this.viewMode = mode;
