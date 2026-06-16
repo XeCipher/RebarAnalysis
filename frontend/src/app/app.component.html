@@ -1,6 +1,8 @@
-<div class="min-h-screen pb-20 bg-slate-50 font-sans">
-  <nav class="bg-white/80 backdrop-blur-lg border-b border-slate-200 sticky top-0 z-50 shadow-sm">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+<div class="min-h-screen lg:h-screen flex flex-col bg-slate-50 font-sans lg:overflow-hidden">
+  
+  <!-- Top Navigation (Fixed / Shrink-0) -->
+  <nav class="bg-white/80 backdrop-blur-lg border-b border-slate-200 z-50 shadow-sm shrink-0">
+    <div class="max-w-[1400px] mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
       <div class="flex items-center gap-2">
         <div class="bg-primary/10 p-2 rounded-lg">
           <lucide-icon [img]="icons.ScanLine" class="text-primary w-5 h-5 sm:w-6 sm:h-6" />
@@ -23,450 +25,346 @@
     </div>
   </nav>
 
-  <main class="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
+  <!-- Main Content Area -->
+  <main class="w-full max-w-[1400px] mx-auto p-4 sm:p-6 flex-1 flex flex-col min-h-0">
     
-    <!-- Left column -->
-    <div class="lg:col-span-5 space-y-6">
+    <!-- ========================================== -->
+    <!-- STATE 1: INITIAL UPLOAD & MARKING ENGINE   -->
+    <!-- ========================================== -->
+    <div *ngIf="!result" class="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 flex-1 lg:min-h-0 h-full">
       
-      <div class="card shadow-sm hover:shadow-md transition-shadow">
-        <div class="flex items-center justify-between mb-4">
-          <h2 class="text-lg font-semibold flex items-center gap-2 text-slate-800">
-            <lucide-icon [img]="icons.Upload" class="w-5 h-5 text-slate-400" />
-            Upload Data
-          </h2>
-          <span class="text-[10px] font-bold uppercase tracking-widest text-primary bg-primary/5 px-2.5 py-1 rounded-md border border-primary/10 shadow-sm">
-            {{ viewMode === 'top' ? 'Top View' : 'Side View' }}
-          </span>
-        </div>
+      <!-- Left Column: Inputs & Controls -->
+      <div class="lg:col-span-4 xl:col-span-3 flex flex-col gap-6 lg:overflow-y-auto pr-1 pb-4">
         
-        <div class="space-y-4">
-          <div>
-            <label class="block text-sm font-medium text-slate-700 mb-1">Site Photograph</label>
-            <input type="file" (change)="onFileSelected($event, 'real')" accept="image/*" 
-              class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 transition-colors cursor-pointer"/>
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-slate-700 mb-1">Structural Design</label>
-            <input type="file" (change)="onFileSelected($event, 'design')" accept="image/*"
-              class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200 transition-colors cursor-pointer"/>
-          </div>
-        </div>
-      </div>
-
-      <div class="card shadow-sm hover:shadow-md transition-shadow" *ngIf="realImagePreview && !result">
-        
-        <!-- Tab Headers -->
-        <div class="flex border-b border-slate-200 mb-5">
-          <button (click)="setMode('rods')" 
-                  class="flex-1 pb-2.5 px-4 text-sm font-bold transition-all"
-                  [class.text-primary]="mode === 'rods'"
-                  [class.border-b-2]="mode === 'rods'"
-                  [class.border-primary]="mode === 'rods'"
-                  [class.text-slate-500]="mode !== 'rods'"
-                  [class.hover:text-slate-700]="mode !== 'rods'">
-            <span class="w-2.5 h-2.5 inline-block rounded-full bg-red-500 mr-2 align-baseline border border-red-200"></span>
-            Mark {{ viewMode === 'top' ? 'Rods' : 'Bars' }}
-          </button>
-          <button (click)="setMode('ref')" 
-                  class="flex-1 pb-2.5 px-4 text-sm font-bold transition-all"
-                  [class.text-primary]="mode === 'ref'"
-                  [class.border-b-2]="mode === 'ref'"
-                  [class.border-primary]="mode === 'ref'"
-                  [class.text-slate-500]="mode !== 'ref'"
-                  [class.hover:text-slate-700]="mode !== 'ref'">
-            <span class="w-2.5 h-2.5 inline-block rounded-full bg-blue-500 mr-2 align-baseline border border-blue-200"></span>
-            Set Scale
-          </button>
-        </div>
-
-        <!-- Tab Body: Rods -->
-        <div *ngIf="mode === 'rods'" class="animate-fade-in space-y-4">
-          <button (click)="autoDetect()" [disabled]="isAutoDetecting" class="w-full btn bg-purple-50 text-purple-700 border border-purple-200 hover:bg-purple-100 justify-center active:scale-[0.98]">
-            <lucide-icon [img]="icons.Wand2" class="w-4 h-4 mr-2" />
-            <span *ngIf="!isAutoDetecting">Re-run Auto-Detect</span>
-            <span *ngIf="isAutoDetecting" class="flex items-center gap-2">
-              <div class="animate-spin h-3 w-3 border-2 border-purple-700 border-t-transparent rounded-full"></div>
-              Detecting...
+        <div class="card shadow-sm hover:shadow-md transition-shadow">
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="text-lg font-semibold flex items-center gap-2 text-slate-800">
+              <lucide-icon [img]="icons.Upload" class="w-5 h-5 text-slate-400" /> Upload
+            </h2>
+            <span class="text-[10px] font-bold uppercase tracking-widest text-primary bg-primary/5 px-2 py-1 rounded border border-primary/10">
+              {{ viewMode === 'top' ? 'Top View' : 'Side View' }}
             </span>
-          </button>
-
-          <div class="text-[11px] sm:text-xs text-slate-500 bg-slate-50 p-2.5 rounded-lg text-center border border-slate-200 flex flex-col sm:flex-row items-center justify-center gap-1.5 shadow-inner">
-            <div class="flex items-center gap-1.5">
-              <lucide-icon [img]="icons.Info" class="w-3.5 h-3.5 text-slate-400" />
-              <span>Tap dot to <strong class="text-slate-700">Remove</strong>.</span>
+          </div>
+          <div class="space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-1">Site Photograph</label>
+              <input type="file" (change)="onFileSelected($event, 'real')" accept="image/*" 
+                class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-bold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 transition-colors cursor-pointer"/>
             </div>
-            <span class="hidden sm:inline-block text-slate-300">•</span>
-            <span>Tap & drag to <strong class="text-slate-700">Move</strong>.</span>
-            <span class="hidden sm:inline-block text-slate-300">•</span>
-            <span>Tap to <strong class="text-slate-700">Add new</strong>.</span>
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-1">Structural Design</label>
+              <input type="file" (change)="onFileSelected($event, 'design')" accept="image/*"
+                class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-bold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200 transition-colors cursor-pointer"/>
+            </div>
           </div>
         </div>
 
-        <!-- Tab Body: Scale Reference -->
-        <div *ngIf="mode === 'ref'" class="animate-fade-in space-y-4">
-          <div class="text-[11px] sm:text-xs text-slate-500 bg-slate-50 p-2.5 rounded-lg text-center border border-slate-200 flex items-center justify-center gap-1.5 shadow-inner">
-            <lucide-icon [img]="icons.Info" class="w-3.5 h-3.5 text-slate-400" />
-            <span>Click on the image to place exactly 2 scale points.</span>
+        <div class="card shadow-sm hover:shadow-md transition-shadow flex flex-col" *ngIf="realImagePreview">
+          <div class="flex border-b border-slate-200 mb-4 shrink-0">
+            <button (click)="setMode('rods')" 
+                    class="flex-1 pb-2 px-2 text-sm font-bold transition-all"
+                    [class.text-primary]="mode === 'rods'"
+                    [class.border-b-2]="mode === 'rods'"
+                    [class.border-primary]="mode === 'rods'"
+                    [class.text-slate-500]="mode !== 'rods'">
+              Mark {{ viewMode === 'top' ? 'Rods' : 'Bars' }}
+            </button>
+            <button (click)="setMode('ref')" 
+                    class="flex-1 pb-2 px-2 text-sm font-bold transition-all"
+                    [class.text-primary]="mode === 'ref'"
+                    [class.border-b-2]="mode === 'ref'"
+                    [class.border-primary]="mode === 'ref'"
+                    [class.text-slate-500]="mode !== 'ref'">
+              Set Scale
+            </button>
           </div>
-          <div>
+
+          <div *ngIf="mode === 'rods'" class="animate-fade-in space-y-4">
+            <button (click)="autoDetect()" [disabled]="isAutoDetecting" class="w-full btn bg-purple-50 text-purple-700 border border-purple-200 hover:bg-purple-100 justify-center active:scale-[0.98]">
+              <lucide-icon [img]="icons.Wand2" class="w-4 h-4 mr-2" />
+              {{ isAutoDetecting ? 'Detecting...' : 'Re-run Auto-Detect' }}
+            </button>
+          </div>
+
+          <div *ngIf="mode === 'ref'" class="animate-fade-in space-y-4">
             <label class="block text-xs font-bold text-blue-700 uppercase mb-1">Reference Length (mm)</label>
-            <input type="number" [(ngModel)]="refLengthInput" class="w-full px-3 py-2 border border-blue-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow">
+            <input type="number" [(ngModel)]="refLengthInput" class="w-full px-3 py-2 text-sm border border-blue-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow">
+          </div>
+
+          <div class="flex justify-between items-center border-t border-slate-100 pt-4 mt-4 shrink-0">
+            <button (click)="undoLast()" class="btn btn-outline text-xs py-1.5 px-3">
+              <lucide-icon [img]="icons.Undo2" class="w-3.5 h-3.5" /> Undo
+            </button>
+            <div class="text-[11px] font-mono text-slate-400 bg-slate-50 px-2 py-1 rounded border border-slate-100">
+              Pts: <span class="text-slate-700 font-bold">{{rodPoints.length}}</span> | Sc: <span class="text-slate-700 font-bold">{{refPoints.length}}/2</span>
+            </div>
           </div>
         </div>
 
-        <!-- Footer actions -->
-        <div class="flex justify-between items-center border-t border-slate-100 pt-4 mt-4">
-          <button (click)="undoLast()" class="btn btn-outline text-sm py-1.5 px-3 active:scale-[0.95]">
-            <lucide-icon [img]="icons.Undo2" class="w-4 h-4" /> Undo
-          </button>
-          <div class="text-xs font-mono text-slate-400 bg-slate-50 px-3 py-1.5 rounded-md border border-slate-100">
-            Points: <span class="text-slate-700 font-bold">{{rodPoints.length}}</span> | 
-            Scale: <span class="text-slate-700 font-bold">{{refPoints.length}}/2</span>
-          </div>
+        <button *ngIf="realImagePreview" 
+          (click)="analyze()" 
+          [disabled]="isAnalyzing || rodPoints.length < 2 || isAutoDetecting"
+          class="w-full btn btn-primary justify-center text-sm py-3 sm:py-4 shadow-xl shadow-blue-900/10 hover:-translate-y-0.5 transition-all mt-auto shrink-0">
+          <span *ngIf="!isAnalyzing" class="flex items-center gap-2"><lucide-icon [img]="icons.ScanLine" class="w-4 h-4" /> Run Analysis Engine</span>
+          <span *ngIf="isAnalyzing" class="flex items-center gap-2">
+            <div class="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div> Processing...
+          </span>
+        </button>
+
+        <div *ngIf="errorMsg" class="bg-red-50 text-red-700 p-3 rounded-lg border border-red-200 flex items-start gap-2 text-sm">
+          <lucide-icon [img]="icons.AlertCircle" class="w-4 h-4 mt-0.5 shrink-0" />
+          <span>{{ errorMsg }}</span>
         </div>
       </div>
 
-      <button *ngIf="realImagePreview && !result" 
-        (click)="analyze()" 
-        [disabled]="isAnalyzing || rodPoints.length < 2 || isAutoDetecting"
-        class="w-full btn btn-primary justify-center text-lg py-3 sm:py-4 shadow-xl shadow-blue-900/10 hover:-translate-y-0.5 transition-all">
-        <span *ngIf="!isAnalyzing">Run Analysis Engine</span>
-        <span *ngIf="isAnalyzing" class="flex items-center gap-2">
-          <div class="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full"></div>
-          Processing...
-        </span>
-      </button>
-
-      <div *ngIf="errorMsg" class="bg-red-50 text-red-700 p-4 rounded-lg border border-red-200 flex items-start gap-3 animate-fade-in">
-        <lucide-icon [img]="icons.AlertCircle" class="w-5 h-5 mt-0.5 flex-shrink-0" />
-        <div>
-          <p class="font-bold">Analysis Failed</p>
-          <p class="text-sm opacity-90">{{ errorMsg }}</p>
+      <!-- Right Column: Interactive Canvas -->
+      <div class="lg:col-span-8 xl:col-span-9 flex flex-col lg:min-h-0 h-full pb-4 lg:pb-0">
+        
+        <div *ngIf="!realImagePreview" class="flex-1 min-h-[300px] border-2 border-dashed border-slate-300 rounded-xl flex flex-col items-center justify-center text-slate-400 bg-slate-50/50">
+          <lucide-icon [img]="icons.Upload" class="w-10 h-10 mb-3 opacity-50" />
+          <p class="font-medium text-sm">Select View Mode & Upload Photo</p>
         </div>
+
+        <div *ngIf="realImagePreview" class="relative rounded-xl overflow-hidden shadow-lg border border-slate-200 bg-slate-900 group select-none flex items-center justify-center flex-1 min-h-[400px] lg:min-h-0">
+          <img #imageRef [src]="realImagePreview" (load)="onImageLoad($event)" (click)="onImageClick($event)" class="w-full h-auto block cursor-crosshair touch-manipulation">
+          
+          <!-- Overlays... -->
+          <div *ngIf="isAutoDetecting" class="absolute inset-0 bg-slate-900/80 backdrop-blur-sm flex flex-col items-center justify-center z-30 text-white animate-fade-in">
+             <div class="animate-spin h-10 w-10 border-4 border-purple-500 border-t-transparent rounded-full mb-4"></div>
+             <div class="font-mono text-3xl font-black text-purple-200 mb-6 flex items-center gap-2">
+               <lucide-icon [img]="icons.Timer" class="w-6 h-6 opacity-70"></lucide-icon>{{ timers.autoDetect | number:'1.2-2' }}s
+             </div>
+             <button (click)="cancelAutoDetect()" class="px-5 py-2 bg-white/10 hover:bg-white/20 border border-white/30 rounded-full text-sm font-medium backdrop-blur transition-all active:scale-95">Cancel</button>
+          </div>
+
+          <div *ngIf="isAnalyzing" class="absolute inset-0 bg-slate-900/80 backdrop-blur-md flex flex-col items-center justify-center z-20 text-white animate-fade-in">
+             <div class="animate-spin h-10 w-10 border-4 border-blue-500 border-t-transparent rounded-full mb-4"></div>
+             <div class="font-mono text-4xl font-black text-blue-300 mb-6 flex items-center gap-2">
+               <lucide-icon [img]="icons.Timer" class="w-8 h-8 opacity-70"></lucide-icon>{{ timers.total | number:'1.2-2' }}s
+             </div>
+             <div class="grid grid-cols-2 gap-3 mb-8 w-full max-w-sm px-4">
+               <div class="bg-slate-800/60 border border-slate-700 p-3 rounded-lg flex flex-col items-center">
+                 <div class="text-[10px] uppercase text-slate-400 mb-1">Vision Engine</div>
+                 <div class="font-mono font-bold" [class.text-white]="timers.cvRunning" [class.text-green-400]="!timers.cvRunning && timers.cv > 0">{{ timers.cv | number:'1.2-2' }}s</div>
+               </div>
+               <div class="bg-slate-800/60 border border-slate-700 p-3 rounded-lg flex flex-col items-center" [class.opacity-50]="!designImageFile">
+                 <div class="text-[10px] uppercase text-slate-400 mb-1">Gemini AI</div>
+                 <div class="font-mono font-bold" [class.text-white]="timers.aiRunning" [class.text-green-400]="!timers.aiRunning && timers.ai > 0">
+                   {{ designImageFile ? (timers.ai | number:'1.2-2') + 's' : 'N/A' }}
+                 </div>
+               </div>
+             </div>
+             <button (click)="cancelAnalysis()" class="px-6 py-2 bg-white/10 hover:bg-white/20 border border-white/30 rounded-full text-sm font-medium">Cancel Execution</button>
+          </div>
+
+          <ng-container *ngIf="imgNatWidth > 0 && !isAnalyzing">
+            <div *ngFor="let p of rodPoints; let i = index; trackBy: trackByIndex" 
+                 class="dot-rod" (pointerdown)="onPointerDown($event, i, 'rod')" (pointermove)="onPointerMove($event)" (pointerup)="onPointerUp($event, i, 'rod')" (pointercancel)="onPointerUp($event, i, 'rod')"
+                 [style.left.%]="(p[0] / imgNatWidth) * 100" [style.top.%]="(p[1] / imgNatHeight) * 100">{{i + 1}}</div>
+            <div *ngFor="let p of refPoints; let i = index; trackBy: trackByIndex" 
+                 class="dot-ref" (pointerdown)="onPointerDown($event, i, 'ref')" (pointermove)="onPointerMove($event)" (pointerup)="onPointerUp($event, i, 'ref')" (pointercancel)="onPointerUp($event, i, 'ref')"
+                 [style.left.%]="(p[0] / imgNatWidth) * 100" [style.top.%]="(p[1] / imgNatHeight) * 100"></div>
+          </ng-container>
+        </div>
+
       </div>
     </div>
 
-    <!-- Right column -->
-    <div class="lg:col-span-7">
+    <!-- ========================================== -->
+    <!-- STATE 2: DASHBOARD RESULT VIEW (FULL VIEW) -->
+    <!-- ========================================== -->
+    <div *ngIf="result" class="flex flex-col gap-4 flex-1 lg:min-h-0 animate-fade-in">
       
-      <div *ngIf="!realImagePreview" class="h-64 sm:h-96 border-2 border-dashed border-slate-300 rounded-xl flex flex-col items-center justify-center text-slate-400 bg-slate-50/50">
-        <lucide-icon [img]="icons.Upload" class="w-12 h-12 mb-4 opacity-50" />
-        <p class="font-medium text-center px-4">Select a View Mode & Upload Photo to Begin</p>
+      <!-- Top Row: Alert Banner & Global Actions -->
+      <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 shrink-0">
+        
+        <!-- Quality Tier Alert Banner -->
+        <div *ngIf="result.quality_tier as tier" 
+             class="flex-1 w-full lg:max-w-xl px-4 py-2.5 rounded-lg border shadow-sm flex items-center gap-3 transition-all"
+             [class.bg-green-50]="tier.color === 'green'" [class.border-green-200]="tier.color === 'green'"
+             [class.bg-yellow-50]="tier.color === 'yellow'" [class.border-yellow-200]="tier.color === 'yellow'"
+             [class.bg-red-50]="tier.color === 'red'" [class.border-red-200]="tier.color === 'red'">
+             <div class="p-1.5 rounded-full shrink-0"
+                  [class.bg-green-100]="tier.color === 'green'" [class.text-green-600]="tier.color === 'green'"
+                  [class.bg-yellow-100]="tier.color === 'yellow'" [class.text-yellow-600]="tier.color === 'yellow'"
+                  [class.bg-red-100]="tier.color === 'red'" [class.text-red-600]="tier.color === 'red'">
+                 <lucide-icon [img]="tier.color === 'green' ? icons.CheckCircle2 : icons.AlertCircle" class="w-5 h-5" />
+             </div>
+             <div>
+                 <h3 class="font-bold text-sm sm:text-base leading-tight"
+                     [class.text-green-800]="tier.color === 'green'"
+                     [class.text-yellow-800]="tier.color === 'yellow'"
+                     [class.text-red-800]="tier.color === 'red'">
+                     {{ tier.color === 'green' ? 'Work is acceptable.' : (tier.color === 'yellow' ? 'Review Recommended.' : 'Improvement needed.') }} ({{ tier.label }})
+                 </h3>
+                 <p class="text-[11px] sm:text-xs mt-0.5"
+                    [class.text-green-700]="tier.color === 'green'"
+                    [class.text-yellow-700]="tier.color === 'yellow'"
+                    [class.text-red-700]="tier.color === 'red'">
+                     {{ tier.color === 'green' ? 'Similarity score meets the quality thresholds.' : (tier.color === 'yellow' ? 'Similarity score indicates a minor deviation.' : 'Similarity score has fallen below 80%.') }}
+                 </p>
+             </div>
+        </div>
+
+        <!-- Dashboard Actions -->
+        <div class="flex flex-wrap lg:flex-nowrap items-center gap-2 w-full lg:w-auto shrink-0">
+          <button *ngIf="viewMode === 'top' && revitData" (click)="downloadRevitJson()" class="btn bg-orange-100 text-orange-700 hover:bg-orange-200 border border-orange-200 text-xs py-2 px-3 shadow-sm flex-1 lg:flex-none">
+             <lucide-icon [img]="icons.FileJson" class="w-3.5 h-3.5" /> Revit Data
+          </button>
+          <button *ngIf="viewMode === 'top'" (click)="downloadRodLinesJson()" class="btn bg-green-100 text-green-700 hover:bg-green-200 border border-green-200 text-xs py-2 px-3 shadow-sm flex-1 lg:flex-none">
+             <lucide-icon [img]="icons.FileJson" class="w-3.5 h-3.5" /> Rod Lines
+          </button>
+          <button (click)="downloadCSV()" class="btn bg-blue-100 text-blue-700 hover:bg-blue-200 border border-blue-200 text-xs py-2 px-3 shadow-sm flex-1 lg:flex-none">
+             <lucide-icon [img]="icons.FileJson" class="w-3.5 h-3.5" /> CSV
+          </button>
+          <button (click)="result = null" class="btn btn-outline bg-white text-xs py-2 px-3 shadow-sm hover:bg-slate-100 flex items-center justify-center flex-1 lg:flex-none">
+             <lucide-icon [img]="icons.Undo2" class="w-3.5 h-3.5" /> New Analysis
+          </button>
+        </div>
       </div>
 
-      <div *ngIf="realImagePreview && !result" class="relative rounded-xl overflow-hidden shadow-lg border border-slate-200 bg-slate-900 group select-none flex items-center justify-center min-h-[400px]">
+      <!-- Main Results Panel Split -->
+      <div class="flex flex-col lg:flex-row gap-4 flex-1 lg:min-h-0">
         
-        <!-- Interactive Canvas Image -->
-        <img #imageRef [src]="realImagePreview" (load)="onImageLoad($event)" (click)="onImageClick($event)" class="w-full h-auto block select-none cursor-crosshair touch-manipulation">
-        
-        <!-- Auto Detect Processing Overlay with Live Time -->
-        <div *ngIf="isAutoDetecting" class="absolute inset-0 bg-slate-900/80 backdrop-blur-sm flex flex-col items-center justify-center z-30 text-white animate-fade-in">
-           <div class="animate-spin h-10 w-10 border-4 border-purple-500 border-t-transparent rounded-full mb-4 shadow-lg"></div>
-           <p class="font-bold tracking-wide drop-shadow-md mb-2 text-purple-50">Auto-detecting rods...</p>
-           
-           <div class="font-mono text-3xl font-black text-purple-200 mb-6 drop-shadow-md tracking-wider flex items-center gap-2">
-             <lucide-icon [img]="icons.Timer" class="w-6 h-6 opacity-70"></lucide-icon>
-             {{ timers.autoDetect | number:'1.2-2' }}s
-           </div>
-
-           <button (click)="cancelAutoDetect()" class="px-5 py-2 bg-white/10 hover:bg-white/20 border border-white/30 rounded-full text-sm font-medium backdrop-blur transition-all active:scale-95">
-              Cancel
-           </button>
-        </div>
-
-        <!-- Engine Analysis Loading Overlay with Sequential Live Timers -->
-        <div *ngIf="isAnalyzing" class="absolute inset-0 bg-slate-900/80 backdrop-blur-md flex flex-col items-center justify-center z-20 text-white animate-fade-in">
-           <div class="animate-spin h-10 w-10 border-4 border-blue-500 border-t-transparent rounded-full mb-4 shadow-lg"></div>
-           <p class="font-bold text-lg tracking-wide drop-shadow-md mb-2 text-blue-50">Running Analysis Engine...</p>
-           
-           <!-- Main Total Timer -->
-           <div class="font-mono text-4xl font-black text-blue-300 mb-6 drop-shadow-md tracking-wider flex items-center gap-2">
-             <lucide-icon [img]="icons.Timer" class="w-8 h-8 opacity-70"></lucide-icon>
-             {{ timers.total | number:'1.2-2' }}s
-           </div>
-
-           <!-- Pipeline Sub-Processes Matrix (2 Boxes) -->
-           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-8 w-full max-w-[90%] sm:max-w-sm px-4">
-
-             <!-- Gemini AI Timer Box -->
-             <div class="bg-slate-800/60 border border-slate-700 p-3 rounded-lg flex flex-col items-center justify-center relative overflow-hidden transition-all" [class.opacity-50]="!designImageFile">
-               <div *ngIf="timers.aiRunning" class="absolute inset-0 bg-blue-500/20 animate-pulse"></div>
-               <div class="text-[10px] uppercase tracking-widest text-slate-400 mb-1 flex items-center gap-1.5 z-10">
-                 <lucide-icon [img]="icons.Wand2" class="w-3 h-3"></lucide-icon> Gemini AI
-               </div>
-               <div class="font-mono text-lg font-bold z-10" [class.text-white]="timers.aiRunning" [class.text-green-400]="!timers.aiRunning && timers.ai > 0">
-                 <span *ngIf="designImageFile">{{ timers.ai | number:'1.2-2' }}s</span>
-                 <span *ngIf="!designImageFile">N/A</span>
-               </div>
-             </div>
-
-             <!-- Computer Vision Timer Box -->
-             <div class="bg-slate-800/60 border border-slate-700 p-3 rounded-lg flex flex-col items-center justify-center relative overflow-hidden transition-all">
-               <div *ngIf="timers.cvRunning" class="absolute inset-0 bg-blue-500/20 animate-pulse"></div>
-               <div class="text-[10px] uppercase tracking-widest text-slate-400 mb-1 flex items-center gap-1.5 z-10">
-                 <lucide-icon [img]="icons.ScanLine" class="w-3 h-3"></lucide-icon> Vision Engine
-               </div>
-               <div class="font-mono text-lg font-bold z-10" [class.text-white]="timers.cvRunning" [class.text-green-400]="!timers.cvRunning && timers.cv > 0">
-                 {{ timers.cv | number:'1.2-2' }}s
-               </div>
-             </div>
-
-           </div>
-
-           <button (click)="cancelAnalysis()" class="px-6 py-2 bg-white/10 hover:bg-white/20 border border-white/30 rounded-full text-sm font-medium backdrop-blur transition-all active:scale-95 shadow-sm">
-              Cancel Execution
-           </button>
-        </div>
-
-        <!-- Render Points -->
-        <ng-container *ngIf="imgNatWidth > 0 && !isAnalyzing">
-          <div *ngFor="let p of rodPoints; let i = index; trackBy: trackByIndex" 
-               class="dot-rod" 
-               (pointerdown)="onPointerDown($event, i, 'rod')"
-               (pointermove)="onPointerMove($event)"
-               (pointerup)="onPointerUp($event, i, 'rod')"
-               (pointercancel)="onPointerUp($event, i, 'rod')"
-               [style.left.%]="(p[0] / imgNatWidth) * 100" 
-               [style.top.%]="(p[1] / imgNatHeight) * 100">
-            {{i + 1}}
-          </div>
-          <div *ngFor="let p of refPoints; let i = index; trackBy: trackByIndex" 
-               class="dot-ref" 
-               (pointerdown)="onPointerDown($event, i, 'ref')"
-               (pointermove)="onPointerMove($event)"
-               (pointerup)="onPointerUp($event, i, 'ref')"
-               (pointercancel)="onPointerUp($event, i, 'ref')"
-               [style.left.%]="(p[0] / imgNatWidth) * 100" 
-               [style.top.%]="(p[1] / imgNatHeight) * 100">
-          </div>
-        </ng-container>
-      </div>
-
-      <!-- Results Panel -->
-      <div *ngIf="result" class="space-y-6 animate-fade-in">
-
-        <div class="mb-4" *ngIf="result.quality_tier as tier">
-          <!-- Green: Excellent / Acceptable -->
-          <div *ngIf="tier.color === 'green'" class="bg-green-50 border-l-4 border-green-500 p-4 sm:p-5 rounded-r-lg shadow-sm flex items-start gap-4 transition-all">
-            <div class="bg-green-100 p-2 rounded-full mt-1 shrink-0">
-              <lucide-icon [img]="icons.CheckCircle2" class="w-5 h-5 sm:w-6 sm:h-6 text-green-600" />
-            </div>
-            <div>
-              <h3 class="text-lg sm:text-xl font-bold text-green-800">Work is acceptable. ({{ tier.label }})</h3>
-              <p class="text-green-700 mt-1 text-sm sm:text-base">Similarity score meets the quality thresholds. You may proceed to the next work.</p>
-            </div>
-          </div>
-
-          <!-- Yellow: Minor Deviation -->
-          <div *ngIf="tier.color === 'yellow'" class="bg-yellow-50 border-l-4 border-yellow-500 p-4 sm:p-5 rounded-r-lg shadow-sm flex items-start gap-4 transition-all">
-            <div class="bg-yellow-100 p-2 rounded-full mt-1 shrink-0">
-              <lucide-icon [img]="icons.AlertCircle" class="w-5 h-5 sm:w-6 sm:h-6 text-yellow-600" />
-            </div>
-            <div>
-              <h3 class="text-lg sm:text-xl font-bold text-yellow-800">Review Recommended. ({{ tier.label }})</h3>
-              <p class="text-yellow-700 mt-1 text-sm sm:text-base">Similarity score indicates a minor deviation. Please review the parameter mismatches below.</p>
-            </div>
-          </div>
-
-          <!-- Red: Major Deviation / Defective -->
-          <div *ngIf="tier.color === 'red'" class="bg-red-50 border-l-4 border-red-500 p-4 sm:p-5 rounded-r-lg shadow-sm flex items-start gap-4 transition-all">
-            <div class="bg-red-100 p-2 rounded-full mt-1 shrink-0">
-              <lucide-icon [img]="icons.AlertCircle" class="w-5 h-5 sm:w-6 sm:h-6 text-red-600" />
-            </div>
-            <div class="flex-1">
-              <h3 class="text-lg sm:text-xl font-bold text-red-800">Please wait. Work needs improvement. ({{ tier.label }})</h3>
-              <p class="text-red-700 mt-1 mb-4 text-sm sm:text-base">Similarity score has fallen below 80%. The higher authority must be notified.</p>
-              
-              <div *ngIf="!emailSent" class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-                <input type="text" [(ngModel)]="columnNumber" placeholder="Col No." 
-                      class="w-full sm:w-24 px-4 py-2 border border-red-300 rounded focus:outline-none focus:ring-2 focus:ring-red-500 shadow-sm" 
-                      [disabled]="isEmailSending">
-                      
-                <input type="email" [(ngModel)]="authorityEmail" placeholder="Authority Email ID" 
-                      class="w-full sm:w-auto flex-1 px-4 py-2 border border-red-300 rounded focus:outline-none focus:ring-2 focus:ring-red-500 shadow-sm" 
-                      [disabled]="isEmailSending">
-                      
-                <button (click)="sendEmailReport()" [disabled]="isEmailSending" 
-                        class="w-full sm:w-auto bg-red-600 hover:bg-red-700 text-white px-5 py-2 rounded font-medium transition-colors flex items-center justify-center gap-2 disabled:opacity-70 active:scale-95 shadow-sm">
-                  <span *ngIf="isEmailSending" class="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></span>
-                  {{ isEmailSending ? 'Sending...' : 'Notify Authority' }}
+        <!-- =================== LEFT PANEL (Compact Image & Score) =================== -->
+        <div class="w-full lg:w-1/3 flex flex-col gap-4 shrink-0">
+            
+            <!-- Compact Score Card -->
+            <div class="card p-4 flex flex-col shadow-sm border-slate-200 shrink-0 relative bg-white">
+                <button (click)="toggleScoreModal()" class="absolute top-3 right-3 p-1.5 rounded hover:bg-slate-100 text-slate-400 transition-colors focus:outline-none" title="View Evaluation Methodology">
+                    <lucide-icon [img]="icons.Calculator" class="w-4 h-4" />
                 </button>
-              </div>
-
-              <div *ngIf="emailSent" class="bg-green-100 text-green-800 border border-green-200 px-4 py-3 rounded-md text-sm font-medium inline-flex items-center gap-2 mt-2 w-full sm:w-auto">
-                <lucide-icon [img]="icons.CheckCircle2" class="w-5 h-5 text-green-600 shrink-0" />
-                Report sent successfully! Await further instructions.
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <h2 class="text-xl sm:text-2xl font-bold text-slate-800">Compliance Report</h2>
-            <div class="flex flex-wrap sm:justify-end gap-2 w-full sm:w-auto">
-                <!-- Download revit highlight JSON -->
-                <button *ngIf="viewMode === 'top' && revitData" (click)="downloadRevitJson()" 
-                  class="btn bg-orange-100 text-orange-700 border border-orange-200 hover:bg-orange-200 text-xs sm:text-sm py-1.5 px-3 flex-1 sm:flex-none justify-center active:scale-95">
-                    <lucide-icon [img]="icons.FileJson" class="w-3.5 h-3.5 sm:w-4 sm:h-4" /> Revit Data
-                </button>
-
-                <!-- Download rod lines JSON -->
-                <button *ngIf="viewMode === 'top' && result" (click)="downloadRodLinesJson()" 
-                  class="btn bg-green-100 text-green-700 border border-green-200 hover:bg-green-200 text-xs sm:text-sm py-1.5 px-3 flex-1 sm:flex-none justify-center active:scale-95">
-                    <lucide-icon [img]="icons.FileJson" class="w-3.5 h-3.5 sm:w-4 sm:h-4" /> Rod Lines
-                </button>
-
-                <!-- Download CSV -->
-                <button *ngIf="result" (click)="downloadCSV()" 
-                  class="btn bg-blue-100 text-blue-700 border border-blue-200 hover:bg-blue-200 text-xs sm:text-sm py-1.5 px-3 flex-1 sm:flex-none justify-center active:scale-95">
-                    <lucide-icon [img]="icons.FileJson" class="w-3.5 h-3.5 sm:w-4 sm:h-4" /> CSV
-                </button>
+                <span class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Similarity Score</span>
                 
-                <button (click)="result = null" class="btn btn-outline text-xs sm:text-sm py-1.5 px-3 w-full sm:w-auto sm:flex-none justify-center active:scale-95">
-                    <lucide-icon [img]="icons.Undo2" class="w-3.5 h-3.5 sm:w-4 sm:h-4" /> New Analysis
-                </button>
+                <div class="flex items-baseline gap-2 mb-2">
+                    <div class="text-5xl font-black tracking-tight" 
+                         [class.text-green-600]="result.quality_tier?.color === 'green'"
+                         [class.text-yellow-500]="result.quality_tier?.color === 'yellow'"
+                         [class.text-red-600]="result.quality_tier?.color === 'red'">
+                        {{ result.score }}%
+                    </div>
+                </div>
+
+                <!-- Sub-metrics Grid -->
+                <div class="grid grid-cols-3 gap-2 pt-3 border-t border-slate-100 mt-1">
+                    <div *ngIf="result.score_count !== null" class="bg-slate-50 border border-slate-200 rounded p-1.5 flex flex-col items-center">
+                        <span class="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Count</span>
+                        <span class="text-sm font-bold text-slate-700">{{ result.score_count }}%</span>
+                    </div>
+                    <div *ngIf="result.score_radius !== null" class="bg-slate-50 border border-slate-200 rounded p-1.5 flex flex-col items-center">
+                        <span class="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Radius</span>
+                        <span class="text-sm font-bold text-slate-700">{{ result.score_radius }}%</span>
+                    </div>
+                    <div *ngIf="result.score_spacing !== null" class="bg-slate-50 border border-slate-200 rounded p-1.5 flex flex-col items-center">
+                        <span class="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Spacing</span>
+                        <span class="text-sm font-bold text-slate-700">{{ result.score_spacing }}%</span>
+                    </div>
+                </div>
+
+                <!-- Integrated Red Alert Email Form -->
+                <div *ngIf="result.quality_tier?.color === 'red'" class="mt-3 pt-3 border-t border-red-100 flex flex-col gap-2 bg-red-50 p-3 rounded-lg border border-red-200">
+                    <div class="flex items-center gap-1.5 mb-1 text-red-700">
+                        <lucide-icon [img]="icons.AlertCircle" class="w-4 h-4"></lucide-icon>
+                        <span class="text-[10px] font-bold uppercase tracking-widest">Notify Authority</span>
+                    </div>
+                    <div *ngIf="!emailSent" class="flex flex-col gap-2">
+                        <div class="flex gap-2">
+                            <input type="text" [(ngModel)]="columnNumber" placeholder="Col No." class="w-16 px-2 py-1 text-xs border border-red-300 rounded focus:outline-none focus:ring-1 focus:ring-red-500 shadow-sm" [disabled]="isEmailSending">
+                            <input type="email" [(ngModel)]="authorityEmail" placeholder="Authority Email ID" class="flex-1 px-2 py-1 text-xs border border-red-300 rounded focus:outline-none focus:ring-1 focus:ring-red-500 shadow-sm" [disabled]="isEmailSending">
+                        </div>
+                        <button (click)="sendEmailReport()" [disabled]="isEmailSending" class="w-full bg-red-600 hover:bg-red-700 text-white text-xs px-3 py-1.5 rounded font-medium transition-colors flex items-center justify-center gap-2 active:scale-95 shadow-sm">
+                          <span *ngIf="isEmailSending" class="animate-spin h-3 w-3 border-2 border-white border-t-transparent rounded-full"></span>
+                          {{ isEmailSending ? 'Sending...' : 'Send Alert Report' }}
+                        </button>
+                    </div>
+                    <div *ngIf="emailSent" class="bg-green-100 text-green-800 border border-green-200 px-3 py-2 rounded text-xs font-medium inline-flex items-center gap-2 w-full">
+                        <lucide-icon [img]="icons.CheckCircle2" class="w-4 h-4 text-green-600 shrink-0" /> Report sent successfully!
+                    </div>
+                </div>
+
             </div>
+
+            <!-- Annotated Image Card -->
+            <div class="bg-slate-900 border border-slate-800 shadow-inner rounded-xl lg:flex-1 lg:min-h-0 relative overflow-hidden flex items-center justify-center cursor-pointer">
+                <!-- Mobile: Scales dynamically up to 60vh | Desktop: Absolute fill to utilize remaining flex container height perfectly -->
+                <img [src]="result.annotated_image" class="w-full h-auto max-h-[60vh] lg:max-h-none lg:absolute lg:inset-0 lg:h-full object-contain block">
+            </div>
+
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div class="card flex flex-col items-center justify-center text-center p-6 sm:p-8 bg-white border border-slate-200 shadow-sm relative">
+        <!-- =================== RIGHT PANEL (Maximized Table) =================== -->
+        <div class="w-full lg:w-2/3 flex flex-col gap-4 flex-1 lg:min-h-0">
+            
+            <!-- Compliance Table (Takes Maximum Space) -->
+            <div class="card p-0 flex flex-col flex-1 lg:min-h-0 overflow-hidden shadow-sm border border-slate-200 bg-white h-96 lg:h-auto">
+                <div class="bg-slate-100 px-4 py-3 border-b border-slate-200 flex justify-between items-center shrink-0">
+                    <h2 class="text-xs font-bold text-slate-600 uppercase tracking-widest flex items-center gap-2">
+                      <lucide-icon [img]="icons.CheckCircle2" class="w-4 h-4 text-slate-400" /> Compliance Report
+                    </h2>
+                </div>
                 
-                <!-- Info Button For Score Formula -->
-                <button (click)="toggleScoreModal()" class="absolute top-4 right-4 p-2 rounded-full hover:bg-slate-100 text-slate-500 transition-colors focus:outline-none border border-transparent hover:border-slate-300" title="View Evaluation Methodology">
-                    <lucide-icon [img]="icons.Calculator" class="w-5 h-5" />
-                </button>
-
-                <div class="text-xs sm:text-sm font-bold text-slate-400 uppercase tracking-widest mb-2">Overall Score</div>
-                <div class="text-5xl sm:text-6xl font-black mb-3 text-slate-800" 
-                     [class.text-green-600]="result.quality_tier?.color === 'green'"
-                     [class.text-yellow-500]="result.quality_tier?.color === 'yellow'"
-                     [class.text-red-600]="result.quality_tier?.color === 'red'">
-                    {{ result.score }}%
+                <!-- Inner Table Scroll Container -->
+                <div class="overflow-y-auto overflow-x-auto flex-1 bg-white table-scrollbar relative">
+                    <table class="w-full text-sm text-left min-w-[500px]">
+                        <thead class="bg-white/95 backdrop-blur sticky top-0 z-10 text-slate-500 uppercase text-[10px] font-bold border-b border-slate-200">
+                            <tr>
+                                <th class="px-4 py-3 whitespace-nowrap">Parameter</th>
+                                <th class="px-4 py-3 whitespace-nowrap">Design Spec</th>
+                                <th class="px-4 py-3 whitespace-nowrap">Site Actual</th>
+                                <th class="px-4 py-3 whitespace-nowrap">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100 bg-white">
+                            <tr *ngFor="let row of result.comparison_table; trackBy: trackByIndex" class="hover:bg-slate-50/80 transition-colors group">
+                                <td class="px-4 py-2.5 font-medium text-slate-700 whitespace-nowrap">{{ row.parameter }}</td>
+                                <td class="px-4 py-2.5 font-mono text-slate-500 text-xs">{{ row.design }}</td>
+                                <td class="px-4 py-2.5 font-mono text-slate-800 font-semibold text-xs">{{ row.actual }}</td>
+                                <td class="px-4 py-2.5 whitespace-nowrap">
+                                    <span [class]="'status-badge ' + getStatusClass(row.status)">{{ row.status }}</span>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
-                <div class="inline-flex items-center gap-1.5 px-3 sm:px-4 py-1.5 rounded-full text-xs sm:text-sm font-medium shadow-sm border"
-                    [class.bg-green-50]="result.quality_tier?.color === 'green'" 
-                    [class.text-green-700]="result.quality_tier?.color === 'green'" 
-                    [class.border-green-200]="result.quality_tier?.color === 'green'"
-                    [class.bg-yellow-50]="result.quality_tier?.color === 'yellow'" 
-                    [class.text-yellow-700]="result.quality_tier?.color === 'yellow'" 
-                    [class.border-yellow-200]="result.quality_tier?.color === 'yellow'"
-                    [class.bg-red-50]="result.quality_tier?.color === 'red'" 
-                    [class.text-red-700]="result.quality_tier?.color === 'red'" 
-                    [class.border-red-200]="result.quality_tier?.color === 'red'">
-                    <lucide-icon [img]="result.quality_tier?.color === 'green' ? icons.CheckCircle2 : icons.AlertCircle" class="w-4 h-4" />
-                    {{ result.quality_tier?.label }}
-                </div>
-
-                <!-- Individual Param Breakout -->
-                <div class="w-full mt-6 pt-5 border-t border-slate-200 flex flex-wrap items-center justify-center gap-3 sm:gap-4">
-                    
-                    <div *ngIf="result.score_count !== null && result.score_count !== undefined" class="flex-1 min-w-[80px] p-3 rounded-lg bg-slate-50 border border-slate-200 flex flex-col items-center justify-center">
-                        <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Count</span>
-                        <span class="text-xl sm:text-2xl font-bold" 
-                              [class.text-green-600]="result.score_count >= 90" 
-                              [class.text-yellow-600]="result.score_count >= 80 && result.score_count < 90"
-                              [class.text-red-600]="result.score_count < 80">
-                            {{ result.score_count }}%
-                        </span>
-                    </div>
-
-                    <div *ngIf="result.score_radius !== null && result.score_radius !== undefined" class="flex-1 min-w-[80px] p-3 rounded-lg bg-slate-50 border border-slate-200 flex flex-col items-center justify-center">
-                        <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Radius</span>
-                        <span class="text-xl sm:text-2xl font-bold" 
-                              [class.text-green-600]="result.score_radius >= 90" 
-                              [class.text-yellow-600]="result.score_radius >= 80 && result.score_radius < 90"
-                              [class.text-red-600]="result.score_radius < 80">
-                            {{ result.score_radius }}%
-                        </span>
-                    </div>
-
-                    <div *ngIf="result.score_spacing !== null && result.score_spacing !== undefined" class="flex-1 min-w-[80px] p-3 rounded-lg bg-slate-50 border border-slate-200 flex flex-col items-center justify-center">
-                        <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Spacing</span>
-                        <span class="text-xl sm:text-2xl font-bold" 
-                              [class.text-green-600]="result.score_spacing >= 90" 
-                              [class.text-yellow-600]="result.score_spacing >= 80 && result.score_spacing < 90"
-                              [class.text-red-600]="result.score_spacing < 80">
-                            {{ result.score_spacing }}%
-                        </span>
-                    </div>
-                </div>
-
             </div>
 
-            <div class="relative rounded-xl overflow-hidden shadow-sm border border-slate-200 bg-slate-900">
-                <img [src]="result.annotated_image" class="w-full h-full object-cover">
+            <!-- Compact Execution Profiler Footer -->
+            <div class="card p-2.5 shrink-0 bg-white shadow-sm border border-slate-200 flex items-center justify-between text-xs overflow-x-auto gap-4 rounded-lg">
+                <div class="flex items-center gap-2 font-bold text-slate-500 shrink-0 uppercase tracking-widest pl-2">
+                    <lucide-icon [img]="icons.Timer" class="w-4 h-4"></lucide-icon> Execution Runtime
+                </div>
+                <div class="flex items-center gap-4 sm:gap-6 shrink-0 pr-2">
+                    <div class="flex flex-col text-right">
+                        <span class="text-[9px] text-slate-400 uppercase tracking-wider">Detection</span>
+                        <span class="font-mono font-medium text-slate-700">{{ timers.autoDetect | number:'1.2-2' }}s</span>
+                    </div>
+                    <div class="w-px h-6 bg-slate-200"></div>
+                    <div class="flex flex-col text-right">
+                        <span class="text-[9px] text-slate-400 uppercase tracking-wider">Vision Engine</span>
+                        <span class="font-mono font-medium text-slate-700">{{ timers.cv | number:'1.2-2' }}s</span>
+                    </div>
+                    <div class="w-px h-6 bg-slate-200"></div>
+                    <div class="flex flex-col text-right">
+                        <span class="text-[9px] text-slate-400 uppercase tracking-wider">Gemini AI</span>
+                        <span class="font-mono font-medium" [class.text-slate-700]="designImageFile" [class.text-slate-400]="!designImageFile">
+                          {{ designImageFile ? (timers.ai | number:'1.2-2') + 's' : 'N/A' }}
+                        </span>
+                    </div>
+                    <div class="w-px h-6 bg-slate-200"></div>
+                    <div class="flex flex-col text-right">
+                        <span class="text-[9px] text-primary uppercase font-bold tracking-wider">Total Pipeline</span>
+                        <span class="font-mono font-black text-primary">{{ timers.total | number:'1.2-2' }}s</span>
+                    </div>
+                </div>
             </div>
-        </div>
 
-        <!-- Table Responsive Wrapper -->
-        <div class="card overflow-hidden p-0 shadow-sm border border-slate-200">
-          <div class="overflow-x-auto w-full">
-            <table class="w-full text-sm text-left min-w-[500px]">
-                <thead class="bg-slate-100 text-slate-600 uppercase text-[11px] sm:text-xs font-bold border-b border-slate-200">
-                    <tr>
-                        <th class="px-4 sm:px-6 py-3 sm:py-4">Parameter</th>
-                        <th class="px-4 sm:px-6 py-3 sm:py-4">Design Spec</th>
-                        <th class="px-4 sm:px-6 py-3 sm:py-4">Site Actual</th>
-                        <th class="px-4 sm:px-6 py-3 sm:py-4">Status</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-200 bg-white">
-                    <tr *ngFor="let row of result.comparison_table; trackBy: trackByIndex" class="hover:bg-slate-50 transition-colors">
-                        <td class="px-4 sm:px-6 py-3 sm:py-4 font-medium text-slate-800">{{ row.parameter }}</td>
-                        <td class="px-4 sm:px-6 py-3 sm:py-4 font-mono text-slate-600 text-xs sm:text-sm">{{ row.design }}</td>
-                        <td class="px-4 sm:px-6 py-3 sm:py-4 font-mono text-slate-700 font-semibold text-xs sm:text-sm">{{ row.actual }}</td>
-                        <td class="px-4 sm:px-6 py-3 sm:py-4">
-                            <span [class]="'status-badge ' + getStatusClass(row.status)">
-                                {{ row.status }}
-                            </span>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-          </div>
         </div>
-
-        <!-- Sleek Engineering Execution Performance Profiler -->
-        <div class="mt-8 border border-slate-200 rounded-lg overflow-hidden bg-white shadow-sm animate-fade-in">
-          <div class="bg-slate-50 px-4 sm:px-5 py-3 border-b border-slate-200 flex items-center gap-2">
-            <lucide-icon [img]="icons.Timer" class="w-4 h-4 text-slate-500"></lucide-icon>
-            <h3 class="text-xs sm:text-sm font-bold text-slate-700 uppercase tracking-widest">Execution Time</h3>
-          </div>
-          <div class="p-4 sm:p-6">
-            <div class="font-mono text-xs sm:text-sm text-slate-600 space-y-3 sm:space-y-4">
-              
-              <div class="flex justify-between items-center border-b border-slate-100 border-dashed pb-2">
-                <span class="text-slate-500 flex items-center gap-2"><lucide-icon [img]="icons.Wand2" class="w-3 h-3 sm:w-4 sm:h-4"></lucide-icon> Auto-Detection Mapping</span>
-                <span class="font-medium text-slate-800" *ngIf="timers.autoDetect > 0">{{ timers.autoDetect | number:'1.2-2' }}s</span>
-                <span class="text-slate-400 text-[10px] sm:text-xs tracking-wider" *ngIf="timers.autoDetect === 0">MANUAL OVERRIDE</span>
-              </div>
-              
-              <div class="flex justify-between items-center border-b border-slate-100 border-dashed pb-2">
-                <span class="text-slate-500 flex items-center gap-2"><lucide-icon [img]="icons.ScanLine" class="w-3 h-3 sm:w-4 sm:h-4"></lucide-icon> Computer Vision Engine</span>
-                <span class="font-medium text-slate-800">{{ timers.cv | number:'1.2-2' }}s</span>
-              </div>
-              
-              <div class="flex justify-between items-center border-b border-slate-100 border-dashed pb-2" [class.opacity-50]="!designImageFile">
-                <span class="text-slate-500 flex items-center gap-2"><lucide-icon [img]="icons.Wand2" class="w-3 h-3 sm:w-4 sm:h-4"></lucide-icon> Gemini AI (Design & Defect Extraction)</span>
-                <span class="font-medium text-slate-800" *ngIf="designImageFile">{{ timers.ai | number:'1.2-2' }}s</span>
-                <span class="text-slate-400 text-[10px] sm:text-xs tracking-wider" *ngIf="!designImageFile">SKIPPED (NO DESIGN)</span>
-              </div>
-              
-              <div class="pt-2 mt-4 flex justify-between items-center">
-                <span class="font-bold text-slate-800 uppercase tracking-wide">Total Pipeline Execution</span>
-                <span class="font-black text-primary text-base sm:text-lg">{{ timers.total | number:'1.2-2' }}s</span>
-              </div>
-              
-            </div>
-          </div>
-        </div>
-
       </div>
     </div>
   </main>
 </div>
 
-<!-- CLEAN, PROFESSIONAL ENGINEERING EVALUATION MODAL -->
+<!-- Evaluation Methodology Modal (Kept clean & untouched) -->
 <div *ngIf="showScoreModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 animate-fade-in">
   <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" (click)="toggleScoreModal()"></div>
   <div class="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col relative z-10 border border-slate-300">
@@ -480,11 +378,11 @@
       </button>
     </div>
     <div class="p-6 md:p-8 overflow-y-auto flex-1 space-y-8 text-slate-700 text-sm sm:text-base">
-      <section>
+       <section>
         <h4 class="font-bold text-slate-900 border-b border-slate-200 pb-2 mb-4 text-lg">1. Final Similarity Score</h4>
         <p class="mb-4">The system computes a final similarity score based on dimensional and quantitative limits specified by the Indian Standard (IS) codes. The final score maps to the following quality matrix:</p>
         
-        <div class="overflow-x-auto border border-slate-200 rounded-lg shadow-sm mb-4">
+        <div class="overflow-x-auto border border-slate-200 rounded-lg shadow-sm mb-4 table-scrollbar">
           <table class="w-full text-left border-collapse min-w-[500px]">
             <thead>
               <tr class="bg-slate-100">
@@ -494,35 +392,14 @@
               </tr>
             </thead>
             <tbody class="divide-y divide-slate-200 bg-white">
-              <tr>
-                <td class="p-3 font-mono text-slate-800">> 95</td>
-                <td class="p-3 text-green-700 font-bold">Excellent</td>
-                <td class="p-3 text-slate-600">Acceptable, no action.</td>
-              </tr>
-              <tr>
-                <td class="p-3 font-mono text-slate-800">90 – 95</td>
-                <td class="p-3 text-green-700 font-bold">Acceptable</td>
-                <td class="p-3 text-slate-600">Acceptable, no action.</td>
-              </tr>
-              <tr>
-                <td class="p-3 font-mono text-slate-800">80 – 89.9</td>
-                <td class="p-3 text-yellow-600 font-bold">Minor Deviation</td>
-                <td class="p-3 text-slate-600">Review Required. No email sent.</td>
-              </tr>
-              <tr>
-                <td class="p-3 font-mono text-slate-800">70 – 79.9</td>
-                <td class="p-3 text-red-600 font-bold">Major Deviation</td>
-                <td class="p-3 text-red-600 font-medium">Email Alert Triggered.</td>
-              </tr>
-              <tr>
-                <td class="p-3 font-mono text-slate-800">< 70</td>
-                <td class="p-3 text-red-600 font-bold">Defective</td>
-                <td class="p-3 text-red-600 font-medium">Email Alert Triggered.</td>
-              </tr>
+              <tr><td class="p-3 font-mono text-slate-800">> 95</td><td class="p-3 text-green-700 font-bold">Excellent</td><td class="p-3 text-slate-600">Acceptable, no action.</td></tr>
+              <tr><td class="p-3 font-mono text-slate-800">90 – 95</td><td class="p-3 text-green-700 font-bold">Acceptable</td><td class="p-3 text-slate-600">Acceptable, no action.</td></tr>
+              <tr><td class="p-3 font-mono text-slate-800">80 – 89.9</td><td class="p-3 text-yellow-600 font-bold">Minor Deviation</td><td class="p-3 text-slate-600">Review Required. No email sent.</td></tr>
+              <tr><td class="p-3 font-mono text-slate-800">70 – 79.9</td><td class="p-3 text-red-600 font-bold">Major Deviation</td><td class="p-3 text-red-600 font-medium">Email Alert Triggered.</td></tr>
+              <tr><td class="p-3 font-mono text-slate-800">< 70</td><td class="p-3 text-red-600 font-bold">Defective</td><td class="p-3 text-red-600 font-medium">Email Alert Triggered.</td></tr>
             </tbody>
           </table>
         </div>
-
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div class="bg-slate-50 border border-slate-200 p-4 rounded-lg">
             <div class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Top View Score Formula</div>
@@ -537,7 +414,7 @@
       </section>
       <section>
         <h4 class="font-bold text-slate-900 border-b border-slate-200 pb-2 mb-4 text-lg">2. IS Code Tolerance Limits</h4>
-        <div class="overflow-x-auto border border-slate-200 rounded-lg shadow-sm">
+        <div class="overflow-x-auto border border-slate-200 rounded-lg shadow-sm table-scrollbar">
           <table class="w-full text-left border-collapse min-w-[600px]">
             <thead>
               <tr class="bg-slate-100">
@@ -592,14 +469,8 @@
       <section>
         <h4 class="font-bold text-slate-900 border-b border-slate-200 pb-2 mb-4 text-lg">3. Processing Methodology</h4>
         <div class="space-y-4">
-          <div>
-            <strong class="text-slate-800">Top View Evaluation:</strong>
-            <p class="mt-1">Extracts the main perimeter rods, verifies the exact count (Rc), calculates the median localized pixel radius (Rr) mapped to mm, and assesses the sequential perimeter gaps (Rs) between consecutive rods in a clockwise arrangement.</p>
-          </div>
-          <div>
-            <strong class="text-slate-800">Side View Evaluation:</strong>
-            <p class="mt-1">Isolates the foreground horizontal ties (stirrups). The evaluation focuses on the vertical pitch spacing (Rs) between consecutive bars. Checks are made against the IS 456 limit (least of column dim, 16× dia, or 300mm) and designed spacing (±10mm/±15mm). If any interval exceeds limits, it drops to 0%, affecting the whole average.</p>
-          </div>
+          <div><strong class="text-slate-800">Top View Evaluation:</strong><p class="mt-1">Extracts the main perimeter rods, verifies the exact count (Rc), calculates the median localized pixel radius (Rr) mapped to mm, and assesses the sequential perimeter gaps (Rs) between consecutive rods in a clockwise arrangement.</p></div>
+          <div><strong class="text-slate-800">Side View Evaluation:</strong><p class="mt-1">Isolates the foreground horizontal ties (stirrups). The evaluation focuses on the vertical pitch spacing (Rs) between consecutive bars. Checks are made against the IS 456 limit (least of column dim, 16× dia, or 300mm) and designed spacing (±10mm/±15mm). If any interval exceeds limits, it drops to 0%, affecting the whole average.</p></div>
         </div>
       </section>
       <section>
@@ -607,17 +478,11 @@
         <div class="flex flex-col sm:flex-row gap-4">
           <div class="flex-1 p-4 bg-green-50 border border-green-200 rounded-lg flex items-start gap-3">
             <lucide-icon [img]="icons.CheckCircle2" class="w-5 h-5 text-green-600 shrink-0 mt-0.5" />
-            <div>
-              <strong class="text-green-800 block">Acceptable (100%)</strong>
-              <span class="text-sm text-green-700">The measured parameter is strictly within the allowable limit.</span>
-            </div>
+            <div><strong class="text-green-800 block">Acceptable (100%)</strong><span class="text-sm text-green-700">The measured parameter is strictly within the allowable limit.</span></div>
           </div>
           <div class="flex-1 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
             <lucide-icon [img]="icons.AlertCircle" class="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
-            <div>
-              <strong class="text-red-800 block">Not Acceptable (0%)</strong>
-              <span class="text-sm text-red-700">The measurement exceeds the permissible allowance.</span>
-            </div>
+            <div><strong class="text-red-800 block">Not Acceptable (0%)</strong><span class="text-sm text-red-700">The measurement exceeds the permissible allowance.</span></div>
           </div>
         </div>
       </section>

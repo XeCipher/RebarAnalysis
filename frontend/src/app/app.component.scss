@@ -93,3 +93,17 @@
 .active-view {
   @apply bg-white shadow-sm text-primary ring-1 ring-slate-200/50;
 }
+
+/* Elegant Scrollbars tailored for tables and panels */
+.table-scrollbar {
+  &::-webkit-scrollbar { 
+    width: 6px; 
+    height: 6px; 
+  }
+  &::-webkit-scrollbar-track { 
+    background: transparent; 
+  }
+  &::-webkit-scrollbar-thumb { 
+    @apply bg-slate-200 rounded-full hover:bg-slate-300 transition-colors; 
+  }
+}
