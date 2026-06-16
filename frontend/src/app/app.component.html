@@ -125,39 +125,39 @@
           <p class="font-medium text-sm">Select View Mode & Upload Photo</p>
         </div>
 
-        <div *ngIf="realImagePreview" class="rounded-xl overflow-hidden shadow-lg border border-slate-200 bg-slate-900 group select-none flex items-center justify-center flex-1 min-h-[400px] lg:min-h-0 p-2 sm:p-4">
+        <div *ngIf="realImagePreview" class="rounded-xl overflow-hidden shadow-lg border border-slate-200 bg-slate-900 group select-none flex items-center justify-center flex-1 min-h-[400px] lg:min-h-0 p-2 sm:p-4 relative">
           
-          <!-- Inner Tight Wrapper (Fixes Dot Placement Offset Issue) -->
+          <!-- Inner Tight Wrapper -->
           <div class="image-wrapper max-w-full rounded shadow-md">
             <img #imageRef [src]="realImagePreview" (load)="onImageLoad($event)" (click)="onImageClick($event)" class="w-auto h-auto max-w-full max-h-[60vh] lg:max-h-[75vh] block touch-manipulation rounded">
             
-            <!-- Overlays & Loaders now bound directly to the image -->
-            <div *ngIf="isAutoDetecting" class="absolute inset-0 bg-slate-900/80 backdrop-blur-sm flex flex-col items-center justify-center z-30 text-white animate-fade-in rounded">
-               <div class="animate-spin h-10 w-10 border-4 border-purple-500 border-t-transparent rounded-full mb-4"></div>
-               <div class="font-mono text-3xl font-black text-purple-200 mb-6 flex items-center gap-2">
-                 <lucide-icon [img]="icons.Timer" class="w-6 h-6 opacity-70"></lucide-icon>{{ timers.autoDetect | number:'1.2-2' }}s
+            <!-- Loader Overlays (Fixed line-height inherit issue and added scaling & scrolling responsiveness) -->
+            <div *ngIf="isAutoDetecting" class="absolute inset-0 bg-slate-900/80 backdrop-blur-sm flex flex-col items-center justify-center z-30 text-white animate-fade-in rounded overflow-y-auto p-4 leading-normal">
+               <div class="animate-spin h-8 w-8 sm:h-10 sm:w-10 border-4 border-purple-500 border-t-transparent rounded-full mb-3 sm:mb-4 shrink-0"></div>
+               <div class="font-mono text-2xl sm:text-3xl font-black text-purple-200 mb-4 sm:mb-6 flex items-center gap-2 shrink-0">
+                 <lucide-icon [img]="icons.Timer" class="w-5 h-5 sm:w-6 sm:h-6 opacity-70"></lucide-icon>{{ timers.autoDetect | number:'1.2-2' }}s
                </div>
-               <button (click)="cancelAutoDetect()" class="px-5 py-2 bg-white/10 hover:bg-white/20 border border-white/30 rounded-full text-sm font-medium backdrop-blur transition-all active:scale-95">Cancel</button>
+               <button (click)="cancelAutoDetect()" class="px-4 sm:px-5 py-1.5 sm:py-2 bg-white/10 hover:bg-white/20 border border-white/30 rounded-full text-xs sm:text-sm font-medium backdrop-blur transition-all active:scale-95 shrink-0">Cancel</button>
             </div>
 
-            <div *ngIf="isAnalyzing" class="absolute inset-0 bg-slate-900/80 backdrop-blur-md flex flex-col items-center justify-center z-20 text-white animate-fade-in rounded">
-               <div class="animate-spin h-10 w-10 border-4 border-blue-500 border-t-transparent rounded-full mb-4"></div>
-               <div class="font-mono text-4xl font-black text-blue-300 mb-6 flex items-center gap-2">
-                 <lucide-icon [img]="icons.Timer" class="w-8 h-8 opacity-70"></lucide-icon>{{ timers.total | number:'1.2-2' }}s
+            <div *ngIf="isAnalyzing" class="absolute inset-0 bg-slate-900/80 backdrop-blur-md flex flex-col items-center justify-center z-20 text-white animate-fade-in rounded overflow-y-auto p-4 leading-normal">
+               <div class="animate-spin h-8 w-8 sm:h-10 sm:w-10 border-4 border-blue-500 border-t-transparent rounded-full mb-3 sm:mb-4 shrink-0"></div>
+               <div class="font-mono text-3xl sm:text-4xl font-black text-blue-300 mb-4 sm:mb-6 flex items-center gap-2 shrink-0">
+                 <lucide-icon [img]="icons.Timer" class="w-6 h-6 sm:w-8 sm:h-8 opacity-70"></lucide-icon>{{ timers.total | number:'1.2-2' }}s
                </div>
-               <div class="grid grid-cols-2 gap-3 mb-8 w-full max-w-sm px-4">
-                 <div class="bg-slate-800/60 border border-slate-700 p-3 rounded-lg flex flex-col items-center">
-                   <div class="text-[10px] uppercase text-slate-400 mb-1">Vision Engine</div>
-                   <div class="font-mono font-bold" [class.text-white]="timers.cvRunning" [class.text-green-400]="!timers.cvRunning && timers.cv > 0">{{ timers.cv | number:'1.2-2' }}s</div>
+               <div class="grid grid-cols-2 gap-2 sm:gap-3 mb-6 sm:mb-8 w-full max-w-sm px-2 sm:px-4 shrink-0">
+                 <div class="bg-slate-800/60 border border-slate-700 p-2 sm:p-3 rounded-lg flex flex-col items-center justify-center">
+                   <div class="text-[9px] sm:text-[10px] uppercase text-slate-400 mb-1 text-center">Vision Engine</div>
+                   <div class="font-mono font-bold text-sm sm:text-base text-center" [class.text-white]="timers.cvRunning" [class.text-green-400]="!timers.cvRunning && timers.cv > 0">{{ timers.cv | number:'1.2-2' }}s</div>
                  </div>
-                 <div class="bg-slate-800/60 border border-slate-700 p-3 rounded-lg flex flex-col items-center" [class.opacity-50]="!designImageFile">
-                   <div class="text-[10px] uppercase text-slate-400 mb-1">Gemini AI</div>
-                   <div class="font-mono font-bold" [class.text-white]="timers.aiRunning" [class.text-green-400]="!timers.aiRunning && timers.ai > 0">
+                 <div class="bg-slate-800/60 border border-slate-700 p-2 sm:p-3 rounded-lg flex flex-col items-center justify-center" [class.opacity-50]="!designImageFile">
+                   <div class="text-[9px] sm:text-[10px] uppercase text-slate-400 mb-1 text-center">Gemini AI</div>
+                   <div class="font-mono font-bold text-sm sm:text-base text-center" [class.text-white]="timers.aiRunning" [class.text-green-400]="!timers.aiRunning && timers.ai > 0">
                      {{ designImageFile ? (timers.ai | number:'1.2-2') + 's' : 'N/A' }}
                    </div>
                  </div>
                </div>
-               <button (click)="cancelAnalysis()" class="px-6 py-2 bg-white/10 hover:bg-white/20 border border-white/30 rounded-full text-sm font-medium">Cancel Execution</button>
+               <button (click)="cancelAnalysis()" class="px-5 sm:px-6 py-1.5 sm:py-2 bg-white/10 hover:bg-white/20 border border-white/30 rounded-full text-xs sm:text-sm font-medium transition-all active:scale-95 shrink-0">Cancel Execution</button>
             </div>
 
             <ng-container *ngIf="imgNatWidth > 0 && !isAnalyzing">
