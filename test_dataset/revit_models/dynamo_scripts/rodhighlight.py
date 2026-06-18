@@ -31,7 +31,66 @@ else:
         .WhereElementIsNotElementType()
         .ToElements()
     )
-    rebar_sets.sort(key=lambda r: r.Id.Value)
+
+    # 1. Collect all vertical bars dynamically
+    bars = []
+    for rebar in rebar_sets:
+        if not rebar.IsRebarShapeDriven():
+            continue
+            
+        curves = rebar.GetCenterlineCurves(False, False, False, MultiplanarOption.IncludeOnlyPlanarCurves, 0)
+        if not curves: continue
+        
+        c = curves[0]
+        p1 = c.GetEndPoint(0)
+        p2 = c.GetEndPoint(1)
+        
+        # Filter for vertical bars (longitudinal) - Ignore horizontal stirrups
+        if abs(p1.Z - p2.Z) < 0.5:
+            continue
+            
+        base_point = c.Evaluate(0.5, True)
+        accessor = rebar.GetShapeDrivenAccessor()
+        
+        for b_idx in range(rebar.NumberOfBarPositions):
+            transform = accessor.GetBarPositionTransform(b_idx)
+            bar_center = base_point.Add(transform.Origin)
+            bars.append({
+                'rebar': rebar,
+                'x': bar_center.X,
+                'y': bar_center.Y,
+                'z': bar_center.Z
+            })
+            
+    # 2. Sort bars to match frontend logic (Clockwise from Top-Left in Image Coordinates)
+    if bars:
+        img_bars = []
+        for b in bars:
+            img_bars.append({
+                'b': b,
+                'ix': b['x'],
+                'iy': -b['y']  # Invert Y to match image Canvas coordinates
+            })
+
+        icx = sum(ib['ix'] for ib in img_bars) / len(img_bars)
+        icy = sum(ib['iy'] for ib in img_bars) / len(img_bars)
+
+        def get_angle(ib):
+            return math.atan2(ib['iy'] - icy, ib['ix'] - icx)
+
+        img_bars.sort(key=get_angle)
+
+        min_sum = float('inf')
+        top_left_idx = 0
+        for i, ib in enumerate(img_bars):
+            val = ib['ix'] + ib['iy']
+            if val < min_sum:
+                min_sum = val
+                top_left_idx = i
+
+        sorted_bars = img_bars[top_left_idx:] + img_bars[:top_left_idx]
+    else:
+        sorted_bars = []
 
     TransactionManager.Instance.EnsureInTransaction(doc)
 
@@ -57,39 +116,28 @@ else:
         TransactionManager.Instance.TransactionTaskDone()
         OUT = "Reset done. All highlights cleared."
 
-    elif TARGET_ROD is None or TARGET_ROD < 1 or TARGET_ROD > 8:
+    elif not sorted_bars:
         TransactionManager.Instance.TransactionTaskDone()
-        OUT = "ERROR: Invalid rod number in JSON. Must be 1-8."
+        OUT = "ERROR: No vertical bars found in the model."
+
+    elif TARGET_ROD is None or TARGET_ROD < 1 or TARGET_ROD > len(sorted_bars):
+        TransactionManager.Instance.TransactionTaskDone()
+        OUT = "ERROR: Invalid rod number in JSON. Must be 1-" + str(len(sorted_bars)) + "."
 
     else:
-        zero_index = TARGET_ROD - 1
-        set_index  = zero_index // 4
-        bar_index  = zero_index % 4
+        target_data = sorted_bars[TARGET_ROD - 1]['b']
+        
+        cx = target_data['x']
+        cy = target_data['y']
 
-        target_set = rebar_sets[set_index]
-
-        base_curves = list(target_set.GetCenterlineCurves(
-            False, False, False,
-            MultiplanarOption.IncludeOnlyPlanarCurves, 0))
-        base_point = base_curves[0].Evaluate(0.5, True)
-        world_x = base_point.X
-        world_y = base_point.Y
-
-        accessor = target_set.GetShapeDrivenAccessor()
-        local_offset_y = accessor.GetBarPositionTransform(bar_index).Origin.Y
-
-        cx = world_x
-        cy = world_y + local_offset_y
-
-        rebar_type = doc.GetElement(target_set.GetTypeId())
+        rebar_type = doc.GetElement(target_data['rebar'].GetTypeId())
         bar_diameter = rebar_type.LookupParameter("Bar Diameter").AsDouble()
-        r = bar_diameter * 0.1
+        r = bar_diameter * 0.1  # Arbitrary highlight radius scaling
 
         view_bb = active_view.get_BoundingBox(None)
         cz = view_bb.Max.Z - 0.05
 
-        plane = Plane.CreateByOriginAndBasis(
-            XYZ(cx, cy, cz), XYZ(1, 0, 0), XYZ(0, 1, 0))
+        plane = Plane.CreateByOriginAndBasis(XYZ(cx, cy, cz), XYZ(1, 0, 0), XYZ(0, 1, 0))
 
         arc1 = Arc.Create(plane, r, 0, math.pi)
         arc2 = Arc.Create(plane, r, math.pi, 2 * math.pi)

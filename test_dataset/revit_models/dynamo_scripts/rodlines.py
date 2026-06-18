@@ -6,6 +6,7 @@ from Autodesk.Revit.DB import *
 from Autodesk.Revit.DB.Structure import *
 from RevitServices.Persistence import DocumentManager
 from RevitServices.Transactions import TransactionManager
+import math
 import json
 import os
 
@@ -24,44 +25,73 @@ else:
     doc = DocumentManager.Instance.CurrentDBDocument
     active_view = doc.ActiveView
 
-    # ── Get all 8 rod world positions ─────────────────────────
     rebar_sets = list(
         FilteredElementCollector(doc)
         .OfClass(Rebar)
         .WhereElementIsNotElementType()
         .ToElements()
     )
-    rebar_sets.sort(key=lambda r: r.Id.Value)
 
-    # Frontend perimeter order → Revit rod number
-    FRONTEND_TO_REVIT = {
-        1: 1,
-        2: 2,
-        3: 3,
-        4: 4,
-        5: 8,
-        6: 7,
-        7: 6,
-	8: 5
-    }
-
-    # Build dict: rod_number (1-8) -> XYZ world position
+    # 1. Collect all vertical bars dynamically
+    bars = []
+    for rebar in rebar_sets:
+        if not rebar.IsRebarShapeDriven():
+            continue
+            
+        curves = rebar.GetCenterlineCurves(False, False, False, MultiplanarOption.IncludeOnlyPlanarCurves, 0)
+        if not curves: continue
+        
+        c = curves[0]
+        p1 = c.GetEndPoint(0)
+        p2 = c.GetEndPoint(1)
+        
+        # Filter for vertical bars (longitudinal) - Ignore horizontal stirrups
+        if abs(p1.Z - p2.Z) < 0.5:
+            continue
+            
+        base_point = c.Evaluate(0.5, True)
+        accessor = rebar.GetShapeDrivenAccessor()
+        
+        for b_idx in range(rebar.NumberOfBarPositions):
+            transform = accessor.GetBarPositionTransform(b_idx)
+            bar_center = base_point.Add(transform.Origin)
+            bars.append({
+                'x': bar_center.X,
+                'y': bar_center.Y,
+            })
+            
+    # 2. Sort bars to match frontend logic (Clockwise from Top-Left in Image Coordinates)
     rod_positions = {}
+    if bars:
+        img_bars = []
+        for b in bars:
+            img_bars.append({
+                'b': b,
+                'ix': b['x'],
+                'iy': -b['y']  # Invert Y to match image Canvas coordinates
+            })
 
-    for s_idx, rebar_set in enumerate(rebar_sets):
-        base_curves = list(rebar_set.GetCenterlineCurves(
-            False, False, False,
-            MultiplanarOption.IncludeOnlyPlanarCurves, 0))
-        base_point = base_curves[0].Evaluate(0.5, True)
-        world_x = base_point.X
-        world_y = base_point.Y
+        icx = sum(ib['ix'] for ib in img_bars) / len(img_bars)
+        icy = sum(ib['iy'] for ib in img_bars) / len(img_bars)
 
-        accessor = rebar_set.GetShapeDrivenAccessor()
+        def get_angle(ib):
+            return math.atan2(ib['iy'] - icy, ib['ix'] - icx)
 
-        for b_idx in range(4):
-            rod_number = s_idx * 4 + b_idx + 1  # 1 to 8
-            local_offset_y = accessor.GetBarPositionTransform(b_idx).Origin.Y
-            rod_positions[rod_number] = (world_x, world_y + local_offset_y)
+        img_bars.sort(key=get_angle)
+
+        min_sum = float('inf')
+        top_left_idx = 0
+        for i, ib in enumerate(img_bars):
+            val = ib['ix'] + ib['iy']
+            if val < min_sum:
+                min_sum = val
+                top_left_idx = i
+
+        sorted_bars = img_bars[top_left_idx:] + img_bars[:top_left_idx]
+        
+        # Build dict: rod_number (1 to N) -> (X, Y)
+        for i, ib in enumerate(sorted_bars):
+            rod_positions[i + 1] = (ib['b']['x'], ib['b']['y'])
 
     # ── Get draw Z from view ───────────────────────────────────
     view_bb = active_view.get_BoundingBox(None)
@@ -109,8 +139,8 @@ else:
         skipped = 0
 
         for entry in lines_data:
-            from_rod = FRONTEND_TO_REVIT.get(entry.get("from"))
-            to_rod   = FRONTEND_TO_REVIT.get(entry.get("to"))
+            from_rod = entry.get("from")
+            to_rod   = entry.get("to")
             status   = entry.get("status", "NA")
 
             if from_rod not in rod_positions or to_rod not in rod_positions:
