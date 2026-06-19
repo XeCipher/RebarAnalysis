@@ -478,7 +478,7 @@ export class AppComponent implements OnInit, OnDestroy {
         ? { spacing_mm: 0, least_lateral_dim_mm: 0, longitudinal_bar_dia_mm: 0 } 
         : { count: 0, radius_mm: 0, spacings_mm: [] };
 
-      // 1. Run Gemini Engine For Design Extraction (Sequential Block 1 - from SIM branch)
+      // 1. Run Gemini Engine For Design Extraction (SIM Branch Flow)
       if (this.designImageFile) {
         this.timers.aiRunning = true;
         aiStart = performance.now();
@@ -490,7 +490,7 @@ export class AppComponent implements OnInit, OnDestroy {
         this.timers.ai = (performance.now() - aiStart) / 1000;
       }
 
-      // 2. Run Computer Vision Service with Simulation Mapping (Sequential Block 2)
+      // 2. Run Computer Vision Service with Simulation Mapping
       this.timers.cvRunning = true;
       cvStart = performance.now();
       
@@ -522,8 +522,10 @@ export class AppComponent implements OnInit, OnDestroy {
         scoreData = this.scoring.calculateSideScore(designData, cvRes.actual_data, cvRes.has_scale);
       }
 
-      // 4. Derive specific defect isolation for Revit BIM integration (from SIM branch)
-      let defectData = { reset: true, rod: null as number | null };
+      // 4. Derive specific defect isolation for Revit BIM integration & Column ID
+      const aCount = cvRes.actual_data.count || 8;
+      let defectData: any = { reset: true, rod: null as number | null, column_id: 'C' + aCount };
+      
       if (this.viewMode === 'top' && scoreData.score < 100) {
         defectData.reset = false;
         let worstRod = 1;
@@ -549,7 +551,7 @@ export class AppComponent implements OnInit, OnDestroy {
         }
       }
 
-      // 5. Quality Tier evaluation (from MAIN branch)
+      // 5. Quality Tier evaluation
       const qualityTier = this.getQualityTier(scoreData.score);
 
       this.result = {
@@ -634,7 +636,9 @@ export class AppComponent implements OnInit, OnDestroy {
       }
     }
 
-    const rodLinesData = { reset: lines.length === 0, lines: lines };
+    const rodCount = this.result.comparison_table.find(r => r.parameter === 'Number of rods')?.actual || '8';
+    const rodLinesData = { reset: lines.length === 0, column_id: 'C' + rodCount, lines: lines };
+    
     const jsonString = JSON.stringify(rodLinesData, null, 2);
     const blob = new Blob([jsonString], { type: 'application/json' });
     const url = window.URL.createObjectURL(blob);
