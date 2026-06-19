@@ -1,7 +1,7 @@
-import { Component, ElementRef, ViewChild, ChangeDetectionStrategy, ChangeDetectorRef, OnInit, OnDestroy } from '@angular/core';
+import { Component, ElementRef, ViewChild, ChangeDetectionStrategy, ChangeDetectorRef, OnInit, OnDestroy, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
-import { LucideAngularModule, Upload, ScanLine, Ruler, CheckCircle2, AlertCircle, Trash2, Undo2, ArrowRight, Layers, ArrowUpDown, FileJson, Wand2, Info, HelpCircle, Calculator, X, Timer } from 'lucide-angular';
+import { LucideAngularModule, Upload, ScanLine, Ruler, CheckCircle2, AlertCircle, Trash2, Undo2, ArrowRight, Layers, ArrowUpDown, FileJson, Wand2, Info, HelpCircle, Calculator, X, Timer, DownloadCloud, Copy, FileCode, Box } from 'lucide-angular';
 import { FormsModule } from '@angular/forms';
 import { Subscription, firstValueFrom } from 'rxjs';
 import { environment } from '../environments/environment';
@@ -29,7 +29,7 @@ export interface ApiResponse {
   changeDetection: ChangeDetectionStrategy.OnPush 
 })
 export class AppComponent implements OnInit, OnDestroy {
-  icons = { Upload, ScanLine, Ruler, CheckCircle2, AlertCircle, Trash2, Undo2, ArrowRight, Layers, ArrowUpDown, FileJson, Wand2, Info, HelpCircle, Calculator, X, Timer };
+  icons = { Upload, ScanLine, Ruler, CheckCircle2, AlertCircle, Trash2, Undo2, ArrowRight, Layers, ArrowUpDown, FileJson, Wand2, Info, HelpCircle, Calculator, X, Timer, DownloadCloud, Copy, FileCode, Box };
 
   // State
   viewMode: 'top' | 'side' = 'top';
@@ -54,6 +54,8 @@ export class AppComponent implements OnInit, OnDestroy {
   revitData: any = null;
 
   showScoreModal: boolean = false;
+  showDownloadsMenu: boolean = false;
+  copiedStates: { [key: string]: boolean } = {};
 
   // Email notification state
   columnNumber: string = '';
@@ -83,6 +85,7 @@ export class AppComponent implements OnInit, OnDestroy {
   hasMoved = false;
 
   @ViewChild('imageRef') imageElement!: ElementRef<HTMLImageElement>;
+  @ViewChild('downloadsMenuRef') downloadsMenuRef?: ElementRef;
 
   constructor(
     private http: HttpClient, 
@@ -114,6 +117,20 @@ export class AppComponent implements OnInit, OnDestroy {
   ngOnDestroy() {
     this.intervals.forEach(i => clearInterval(i));
     if (this.analysisSub) this.analysisSub.unsubscribe();
+  }
+
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: MouseEvent) {
+    // Closes the downloads dropdown if the click target is outside the dropdown container
+    if (this.showDownloadsMenu && this.downloadsMenuRef && !this.downloadsMenuRef.nativeElement.contains(event.target)) {
+      this.showDownloadsMenu = false;
+      this.cdr.markForCheck();
+    }
+  }
+
+  toggleDownloadsMenu() {
+    this.showDownloadsMenu = !this.showDownloadsMenu;
+    this.cdr.markForCheck();
   }
 
   // --- Quality Status Classifier ---
@@ -597,6 +614,24 @@ export class AppComponent implements OnInit, OnDestroy {
         this.cdr.markForCheck();
       }
     });
+  }
+
+  async copyScript(scriptName: string) {
+    try {
+      const response = await firstValueFrom(this.http.get(`assets/downloads/${scriptName}`, { responseType: 'text' }));
+      await navigator.clipboard.writeText(response);
+      
+      this.copiedStates[scriptName] = true;
+      this.cdr.markForCheck();
+      
+      setTimeout(() => {
+        this.copiedStates[scriptName] = false;
+        this.cdr.markForCheck();
+      }, 2000);
+    } catch (err) {
+      console.error(err);
+      alert(`Could not load ${scriptName}. Make sure it is placed in the frontend/public/assets/downloads/ folder.`);
+    }
   }
 
   trackByIndex(index: number): number { return index; }
