@@ -10,12 +10,61 @@
         <span class="font-bold text-lg sm:text-xl tracking-tight text-slate-800">Rebar<span class="text-primary">Analysis</span></span>
       </div>
       
-      <!-- Stealth Mode Toggle: Looks like a simple status text instead of a button -->
-      <div 
-        class="flex items-center text-xs sm:text-sm font-medium text-slate-400 select-none cursor-default transition-opacity hover:opacity-80" 
-        (click)="toggleViewMode()">
-        <lucide-icon [img]="viewMode === 'top' ? icons.Layers : icons.ArrowUpDown" class="w-4 h-4 mr-1.5 hidden sm:block" />
-        {{ viewMode === 'top' ? 'Top View' : 'Side View' }}
+      <!-- Right Side Actions (View Mode & BIM Downloads) -->
+      <div class="flex items-center gap-4 sm:gap-6">
+        
+        <!-- Stealth Mode Toggle -->
+        <div 
+          class="flex items-center text-xs sm:text-sm font-medium text-slate-400 select-none cursor-pointer transition-colors hover:text-slate-800" 
+          (click)="toggleViewMode()">
+          <lucide-icon [img]="viewMode === 'top' ? icons.Layers : icons.ArrowUpDown" class="w-4 h-4 mr-1.5 hidden sm:block" />
+          {{ viewMode === 'top' ? 'Top View' : 'Side View' }}
+        </div>
+
+        <!-- Downloads & BIM Assets Dropdown -->
+        <div class="relative" #downloadsMenuRef>
+          <button (click)="toggleDownloadsMenu()" class="bg-primary/10 text-primary hover:bg-primary/20 p-2 rounded-lg transition-colors focus:outline-none" title="BIM Assets & Scripts">
+            <lucide-icon [img]="icons.DownloadCloud" class="w-5 h-5" />
+          </button>
+
+          <!-- Dropdown Menu -->
+          <div *ngIf="showDownloadsMenu" class="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-2xl border border-slate-100 z-50 overflow-hidden animate-fade-in flex flex-col">
+            <div class="px-4 py-3 bg-slate-50 border-b border-slate-100 flex items-center gap-2">
+              <lucide-icon [img]="icons.Box" class="w-4 h-4 text-slate-500" />
+              <span class="text-xs font-bold uppercase tracking-widest text-slate-600">BIM Integration</span>
+            </div>
+            
+            <a href="assets/downloads/models.rvt" download="models.rvt" class="px-4 py-3 hover:bg-slate-50 transition-colors flex items-center justify-between group border-b border-slate-50">
+              <div class="flex items-center gap-3 text-sm font-medium text-slate-700">
+                <div class="p-1.5 bg-blue-100 text-blue-600 rounded-md group-hover:scale-110 transition-transform">
+                  <lucide-icon [img]="icons.DownloadCloud" class="w-4 h-4" />
+                </div>
+                Revit Model (.rvt)
+              </div>
+            </a>
+
+            <button (click)="copyScript('rodhighlight.py')" class="w-full text-left px-4 py-3 hover:bg-slate-50 transition-colors flex items-center justify-between group border-b border-slate-50">
+              <div class="flex items-center gap-3 text-sm font-medium text-slate-700">
+                <div class="p-1.5 bg-purple-100 text-purple-600 rounded-md group-hover:scale-110 transition-transform">
+                  <lucide-icon [img]="icons.FileCode" class="w-4 h-4" />
+                </div>
+                rodhighlight.py
+              </div>
+              <lucide-icon [img]="copiedStates['rodhighlight.py'] ? icons.CheckCircle2 : icons.Copy" [class.text-green-500]="copiedStates['rodhighlight.py']" [class.text-slate-400]="!copiedStates['rodhighlight.py']" class="w-4 h-4" />
+            </button>
+
+            <button (click)="copyScript('rodlines.py')" class="w-full text-left px-4 py-3 hover:bg-slate-50 transition-colors flex items-center justify-between group">
+              <div class="flex items-center gap-3 text-sm font-medium text-slate-700">
+                <div class="p-1.5 bg-orange-100 text-orange-600 rounded-md group-hover:scale-110 transition-transform">
+                  <lucide-icon [img]="icons.FileCode" class="w-4 h-4" />
+                </div>
+                rodlines.py
+              </div>
+              <lucide-icon [img]="copiedStates['rodlines.py'] ? icons.CheckCircle2 : icons.Copy" [class.text-green-500]="copiedStates['rodlines.py']" [class.text-slate-400]="!copiedStates['rodlines.py']" class="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
       </div>
     </div>
   </nav>
