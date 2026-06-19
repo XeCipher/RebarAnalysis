@@ -526,6 +526,18 @@ export class AppComponent implements OnInit, OnDestroy {
         scoreData = this.scoring.calculateSideScore(designData, cvRes.actual_data, cvRes.has_scale);
       }
 
+      // --- Feature 1: Force Rod Highlight fallback if AI misses an unacceptable distance ---
+      if (this.viewMode === 'top' && defectData.reset) {
+        const badDistanceRow = scoreData.table.find(r => r.status === 'Not Acceptable' && r.parameter.includes('Distance'));
+        if (badDistanceRow) {
+          const match = badDistanceRow.parameter.match(/Distance R(\d+)/i);
+          if (match && match[1]) {
+            defectData.reset = false;
+            defectData.rod = parseInt(match[1], 10);
+          }
+        }
+      }
+
       // 4. Inject Dynamic Column ID for Revit Scripts
       const aCount = cvRes.actual_data.count || 8;
       defectData.column_id = 'C' + aCount;
