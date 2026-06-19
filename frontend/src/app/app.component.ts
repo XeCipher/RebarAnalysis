@@ -526,28 +526,15 @@ export class AppComponent implements OnInit, OnDestroy {
       const aCount = cvRes.actual_data.count || 8;
       let defectData: any = { reset: true, rod: null as number | null, column_id: 'C' + aCount };
       
-      if (this.viewMode === 'top' && scoreData.score < 100) {
-        defectData.reset = false;
-        let worstRod = 1;
-        let maxErr = 0;
-        
-        const aSpacings = cvRes.actual_data.distances || [];
-        const dSpacings = designData.spacings_mm || [];
-        for (let i = 0; i < aSpacings.length; i++) {
-            const act = aSpacings[i];
-            const des = dSpacings[i] || 0;
-            if (des > 0) {
-                const err = Math.abs(act - des);
-                if (err > maxErr) {
-                    maxErr = err;
-                    worstRod = ((i + 1) % aSpacings.length) + 1;
-                }
-            }
-        }
-        if (maxErr > 10) {
-            defectData.rod = worstRod;
-        } else {
-            defectData.reset = true;
+      if (this.viewMode === 'top') {
+        // Fallback: Check if any distance is "Not Acceptable" according to the IS Code metrics
+        const badDistanceRow = scoreData.table.find(r => r.status === 'Not Acceptable' && r.parameter.includes('Distance'));
+        if (badDistanceRow) {
+          const match = badDistanceRow.parameter.match(/Distance R(\d+)/i);
+          if (match && match[1]) {
+            defectData.reset = false;
+            defectData.rod = parseInt(match[1], 10);
+          }
         }
       }
 
