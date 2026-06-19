@@ -495,9 +495,11 @@ export class AppComponent implements OnInit, OnDestroy {
          throw new Error("Computer Vision processing failed.");
       }
 
-      // 2. Run Gemini Engine
-      let designData: any = this.viewMode === 'side' ? { spacing_mm: 0, least_lateral_dim_mm: 0, longitudinal_bar_dia_mm: 0 } : { count: 0, radius_mm: 0, spacings_mm: [] };
-      let defectData = { reset: true, rod: null };
+      // 2. Run Gemini Engine, passing the annotated image
+      let designData: any = this.viewMode === 'side' 
+        ? { spacing_mm: 0, least_lateral_dim_mm: 0, longitudinal_bar_dia_mm: 0 } 
+        : { count: 0, radius_mm: 0, spacings_mm: [] };
+      let defectData = { reset: true, rod: null as number | null, column_id: 'C8' };
 
       if (this.designImageFile) {
         this.timers.aiRunning = true;
@@ -506,6 +508,7 @@ export class AppComponent implements OnInit, OnDestroy {
         const designB64 = await this.gemini.fileToBase64(this.designImageFile, 700);
         const annotatedB64 = cvRes.annotated_image.split(',')[1];
         
+        // Use analyzeDesignAndDefects for the original website
         const aiRes = await this.gemini.analyzeDesignAndDefects(designB64, annotatedB64, this.viewMode);
         
         designData = aiRes.design;
@@ -523,6 +526,11 @@ export class AppComponent implements OnInit, OnDestroy {
         scoreData = this.scoring.calculateSideScore(designData, cvRes.actual_data, cvRes.has_scale);
       }
 
+      // 4. Inject Dynamic Column ID for Revit Scripts
+      const aCount = cvRes.actual_data.count || 8;
+      defectData.column_id = 'C' + aCount;
+
+      // 5. Quality Tier evaluation
       const qualityTier = this.getQualityTier(scoreData.score);
 
       this.result = {
@@ -607,7 +615,9 @@ export class AppComponent implements OnInit, OnDestroy {
       }
     }
 
-    const rodLinesData = { reset: lines.length === 0, lines: lines };
+    const rodCount = this.result.comparison_table.find(r => r.parameter === 'Number of rods')?.actual || '8';
+    const rodLinesData = { reset: lines.length === 0, column_id: 'C' + rodCount, lines: lines };
+    
     const jsonString = JSON.stringify(rodLinesData, null, 2);
     const blob = new Blob([jsonString], { type: 'application/json' });
     const url = window.URL.createObjectURL(blob);

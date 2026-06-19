@@ -21,76 +21,28 @@ else:
 
     reset = data.get("reset", False)
     TARGET_ROD = data.get("rod", None)
+    COLUMN_ID = data.get("column_id", "C8") # Default to C8 if not provided
 
     doc = DocumentManager.Instance.CurrentDBDocument
     active_view = doc.ActiveView
 
-    rebar_sets = list(
+    # 1. Collect all Rebar elements
+    rebar_elements = list(
         FilteredElementCollector(doc)
         .OfClass(Rebar)
         .WhereElementIsNotElementType()
         .ToElements()
     )
 
-    # 1. Collect all vertical bars dynamically
-    bars = []
-    for rebar in rebar_sets:
-        if not rebar.IsRebarShapeDriven():
-            continue
+    # 2. Filter to only the specified column
+    column_rebar = []
+    for r in rebar_elements:
+        mark_param = r.LookupParameter("Host Mark")
+        if mark_param and mark_param.AsString() == COLUMN_ID:
+            column_rebar.append(r)
             
-        curves = rebar.GetCenterlineCurves(False, False, False, MultiplanarOption.IncludeOnlyPlanarCurves, 0)
-        if not curves: continue
-        
-        c = curves[0]
-        p1 = c.GetEndPoint(0)
-        p2 = c.GetEndPoint(1)
-        
-        # Filter for vertical bars (longitudinal) - Ignore horizontal stirrups
-        if abs(p1.Z - p2.Z) < 0.5:
-            continue
-            
-        base_point = c.Evaluate(0.5, True)
-        accessor = rebar.GetShapeDrivenAccessor()
-        
-        for b_idx in range(rebar.NumberOfBarPositions):
-            transform = accessor.GetBarPositionTransform(b_idx)
-            bar_center = base_point.Add(transform.Origin)
-            bars.append({
-                'rebar': rebar,
-                'x': bar_center.X,
-                'y': bar_center.Y,
-                'z': bar_center.Z
-            })
-            
-    # 2. Sort bars to match frontend logic (Clockwise from Top-Left in Image Coordinates)
-    if bars:
-        img_bars = []
-        for b in bars:
-            img_bars.append({
-                'b': b,
-                'ix': b['x'],
-                'iy': -b['y']  # Invert Y to match image Canvas coordinates
-            })
-
-        icx = sum(ib['ix'] for ib in img_bars) / len(img_bars)
-        icy = sum(ib['iy'] for ib in img_bars) / len(img_bars)
-
-        def get_angle(ib):
-            return math.atan2(ib['iy'] - icy, ib['ix'] - icx)
-
-        img_bars.sort(key=get_angle)
-
-        min_sum = float('inf')
-        top_left_idx = 0
-        for i, ib in enumerate(img_bars):
-            val = ib['ix'] + ib['iy']
-            if val < min_sum:
-                min_sum = val
-                top_left_idx = i
-
-        sorted_bars = img_bars[top_left_idx:] + img_bars[:top_left_idx]
-    else:
-        sorted_bars = []
+    # Sort to ensure consistent processing order
+    column_rebar.sort(key=lambda r: r.Id.Value)
 
     TransactionManager.Instance.EnsureInTransaction(doc)
 
@@ -107,54 +59,94 @@ else:
         except:
             pass
 
-    # Always reset all rebar overrides
+    # Always reset all rebar overrides for the selected column
     empty_override = OverrideGraphicSettings()
-    for rs in rebar_sets:
+    for rs in column_rebar:
         active_view.SetElementOverrides(rs.Id, empty_override)
 
     if reset:
         TransactionManager.Instance.TransactionTaskDone()
-        OUT = "Reset done. All highlights cleared."
+        OUT = "Reset done. All highlights cleared for " + COLUMN_ID
 
-    elif not sorted_bars:
+    elif not column_rebar:
         TransactionManager.Instance.TransactionTaskDone()
-        OUT = "ERROR: No vertical bars found in the model."
+        OUT = "ERROR: No rebar found for column with Host Mark: " + COLUMN_ID
 
-    elif TARGET_ROD is None or TARGET_ROD < 1 or TARGET_ROD > len(sorted_bars):
+    elif TARGET_ROD is None:
         TransactionManager.Instance.TransactionTaskDone()
-        OUT = "ERROR: Invalid rod number in JSON. Must be 1-" + str(len(sorted_bars)) + "."
+        OUT = "ERROR: No rod specified in JSON."
 
     else:
-        target_data = sorted_bars[TARGET_ROD - 1]['b']
+        # 3. Dynamically map rods and build dictionary
+        rebar_refs = {}
+        rod_number = 1
         
-        cx = target_data['x']
-        cy = target_data['y']
+        for rebar_set in column_rebar:
+            accessor = rebar_set.GetShapeDrivenAccessor()
+            count = rebar_set.Quantity
+            for b_idx in range(count):
+                rebar_refs[rod_number] = (rebar_set, b_idx)
+                rod_number += 1
+                
+        total_rods = len(rebar_refs)
+        
+        # Select dictionary based on total rods
+        if total_rods == 8:
+            FRONTEND_TO_REVIT = {1: 1, 2: 2, 3: 3, 4: 4, 5: 8, 6: 7, 7: 6, 8: 5}
+        elif total_rods == 4:
+            FRONTEND_TO_REVIT = {1: 1, 2: 2, 3: 4, 4: 3}
+        else:
+            # Fallback direct mapping
+            FRONTEND_TO_REVIT = {i: i for i in range(1, total_rods + 1)}
 
-        rebar_type = doc.GetElement(target_data['rebar'].GetTypeId())
-        bar_diameter = rebar_type.LookupParameter("Bar Diameter").AsDouble()
-        r = bar_diameter * 0.1  # Arbitrary highlight radius scaling
+        # Get the actual Revit index
+        revit_rod_num = FRONTEND_TO_REVIT.get(TARGET_ROD)
+        
+        if revit_rod_num is None or revit_rod_num not in rebar_refs:
+            TransactionManager.Instance.TransactionTaskDone()
+            OUT = "ERROR: Target rod " + str(TARGET_ROD) + " could not be mapped."
+        else:
+            target_set, bar_index = rebar_refs[revit_rod_num]
 
-        view_bb = active_view.get_BoundingBox(None)
-        cz = view_bb.Max.Z - 0.05
+            base_curves = list(target_set.GetCenterlineCurves(
+                False, False, False,
+                MultiplanarOption.IncludeOnlyPlanarCurves, 0))
+            base_point = base_curves[0].Evaluate(0.5, True)
+            world_x = base_point.X
+            world_y = base_point.Y
 
-        plane = Plane.CreateByOriginAndBasis(XYZ(cx, cy, cz), XYZ(1, 0, 0), XYZ(0, 1, 0))
+            accessor = target_set.GetShapeDrivenAccessor()
+            local_offset_y = accessor.GetBarPositionTransform(bar_index).Origin.Y
 
-        arc1 = Arc.Create(plane, r, 0, math.pi)
-        arc2 = Arc.Create(plane, r, math.pi, 2 * math.pi)
+            cx = world_x
+            cy = world_y + local_offset_y
 
-        sketch_plane = SketchPlane.Create(doc, plane)
+            rebar_type = doc.GetElement(target_set.GetTypeId())
+            bar_diameter = rebar_type.LookupParameter("Bar Diameter").AsDouble()
+            r = bar_diameter * 0.1
 
-        mc1 = doc.Create.NewModelCurve(arc1, sketch_plane)
-        mc2 = doc.Create.NewModelCurve(arc2, sketch_plane)
+            view_bb = active_view.get_BoundingBox(None)
+            cz = view_bb.Max.Z - 0.05
 
-        red = Color(255, 0, 0)
-        override = OverrideGraphicSettings()
-        override.SetProjectionLineColor(red)
-        override.SetProjectionLineWeight(6)
+            plane = Plane.CreateByOriginAndBasis(
+                XYZ(cx, cy, cz), XYZ(1, 0, 0), XYZ(0, 1, 0))
 
-        active_view.SetElementOverrides(mc1.Id, override)
-        active_view.SetElementOverrides(mc2.Id, override)
+            arc1 = Arc.Create(plane, r, 0, math.pi)
+            arc2 = Arc.Create(plane, r, math.pi, 2 * math.pi)
 
-        TransactionManager.Instance.TransactionTaskDone()
+            sketch_plane = SketchPlane.Create(doc, plane)
 
-        OUT = "Rod " + str(TARGET_ROD) + " highlighted → X:" + str(round(cx, 4)) + " Y:" + str(round(cy, 4))
+            mc1 = doc.Create.NewModelCurve(arc1, sketch_plane)
+            mc2 = doc.Create.NewModelCurve(arc2, sketch_plane)
+
+            red = Color(255, 0, 0)
+            override = OverrideGraphicSettings()
+            override.SetProjectionLineColor(red)
+            override.SetProjectionLineWeight(6)
+
+            active_view.SetElementOverrides(mc1.Id, override)
+            active_view.SetElementOverrides(mc2.Id, override)
+
+            TransactionManager.Instance.TransactionTaskDone()
+
+            OUT = "Rod " + str(TARGET_ROD) + " highlighted in " + COLUMN_ID

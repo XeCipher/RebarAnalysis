@@ -1,4 +1,8 @@
 import clr
+import math
+import json
+import os
+
 clr.AddReference('RevitAPI')
 clr.AddReference('RevitServices')
 
@@ -6,11 +10,7 @@ from Autodesk.Revit.DB import *
 from Autodesk.Revit.DB.Structure import *
 from RevitServices.Persistence import DocumentManager
 from RevitServices.Transactions import TransactionManager
-import math
-import json
-import os
 
-# ── Read JSON ──────────────────────────────────────────────
 json_path = os.path.join(os.path.expanduser("~"), "Downloads", "rod_lines.json")
 
 if not os.path.exists(json_path):
@@ -20,97 +20,87 @@ else:
         data = json.load(f)
 
     reset      = data.get("reset", False)
+    COLUMN_ID  = data.get("column_id", "C8")
     lines_data = data.get("lines", [])
 
     doc = DocumentManager.Instance.CurrentDBDocument
     active_view = doc.ActiveView
 
-    rebar_sets = list(
+    rebar_elements = list(
         FilteredElementCollector(doc)
         .OfClass(Rebar)
         .WhereElementIsNotElementType()
         .ToElements()
     )
 
-    # 1. Collect all vertical bars dynamically
-    bars = []
-    for rebar in rebar_sets:
-        if not rebar.IsRebarShapeDriven():
-            continue
-            
-        curves = rebar.GetCenterlineCurves(False, False, False, MultiplanarOption.IncludeOnlyPlanarCurves, 0)
+    column_rebar = []
+    for r in rebar_elements:
+        mark_param = r.LookupParameter("Host Mark")
+        if mark_param and mark_param.AsString() == COLUMN_ID:
+            column_rebar.append(r)
+
+    # 1. Extract ONLY Vertical Rods (Ignore Stirrups)
+    raw_rods = []
+    for rs in column_rebar:
+        curves = list(rs.GetCenterlineCurves(False, False, False, MultiplanarOption.IncludeOnlyPlanarCurves, 0))
         if not curves: continue
         
-        c = curves[0]
-        p1 = c.GetEndPoint(0)
-        p2 = c.GetEndPoint(1)
+        # Check if the bar is vertical by looking at the Z difference of its endpoints
+        p_start = curves[0].GetEndPoint(0)
+        p_end = curves[0].GetEndPoint(1)
         
-        # Filter for vertical bars (longitudinal) - Ignore horizontal stirrups
-        if abs(p1.Z - p2.Z) < 0.5:
+        # If Z difference is very small, it's a horizontal stirrup. Skip it!
+        if abs(p_start.Z - p_end.Z) < 0.5:
             continue
             
-        base_point = c.Evaluate(0.5, True)
-        accessor = rebar.GetShapeDrivenAccessor()
+        base_point = curves[0].Evaluate(0.5, True)
+        accessor = rs.GetShapeDrivenAccessor()
+        count = rs.Quantity
         
-        for b_idx in range(rebar.NumberOfBarPositions):
+        for b_idx in range(count):
             transform = accessor.GetBarPositionTransform(b_idx)
-            bar_center = base_point.Add(transform.Origin)
-            bars.append({
-                'x': bar_center.X,
-                'y': bar_center.Y,
-            })
+            # Apply both X and Y layout offsets to the base point
+            tx = base_point.X + transform.Origin.X
+            ty = base_point.Y + transform.Origin.Y
+            raw_rods.append({'x': tx, 'y': ty, 'z': base_point.Z})
+
+    # 2. Dynamic Spatial Sorting
+    if raw_rods:
+        cx = sum(r['x'] for r in raw_rods) / len(raw_rods)
+        cy = sum(r['y'] for r in raw_rods) / len(raw_rods)
+
+        def get_angle(r):
+            return math.atan2(r['y'] - cy, r['x'] - cx)
             
-    # 2. Sort bars to match frontend logic (Clockwise from Top-Left in Image Coordinates)
-    rod_positions = {}
-    if bars:
-        img_bars = []
-        for b in bars:
-            img_bars.append({
-                'b': b,
-                'ix': b['x'],
-                'iy': -b['y']  # Invert Y to match image Canvas coordinates
-            })
+        raw_rods.sort(key=get_angle, reverse=True)
 
-        icx = sum(ib['ix'] for ib in img_bars) / len(img_bars)
-        icy = sum(ib['iy'] for ib in img_bars) / len(img_bars)
-
-        def get_angle(ib):
-            return math.atan2(ib['iy'] - icy, ib['ix'] - icx)
-
-        img_bars.sort(key=get_angle)
-
-        min_sum = float('inf')
         top_left_idx = 0
-        for i, ib in enumerate(img_bars):
-            val = ib['ix'] + ib['iy']
-            if val < min_sum:
-                min_sum = val
+        min_val = float('inf')
+        for i, r in enumerate(raw_rods):
+            val = r['x'] - r['y']
+            if val < min_val:
+                min_val = val
                 top_left_idx = i
 
-        sorted_bars = img_bars[top_left_idx:] + img_bars[:top_left_idx]
+        sorted_rods = raw_rods[top_left_idx:] + raw_rods[:top_left_idx]
         
-        # Build dict: rod_number (1 to N) -> (X, Y)
-        for i, ib in enumerate(sorted_bars):
-            rod_positions[i + 1] = (ib['b']['x'], ib['b']['y'])
+        rod_positions = {}
+        for i, r in enumerate(sorted_rods):
+            rod_positions[i + 1] = (r['x'], r['y'])
+    else:
+        rod_positions = {}
 
-    # ── Get draw Z from view ───────────────────────────────────
     view_bb = active_view.get_BoundingBox(None)
     cz = view_bb.Max.Z - 0.05
 
-    # ── Status to Color mapping ────────────────────────────────
     def get_color(status):
-        if status == "Acceptable":
-            return Color(0, 200, 0)       # Green
-        elif status == "Minor Mismatch":
-            return Color(255, 200, 0)     # Yellow
-        elif status == "Not Acceptable":
-            return Color(255, 0, 0)       # Red
-        else:
-            return Color(180, 180, 180)   # Grey for NA
+        if status == "Acceptable": return Color(0, 200, 0)
+        elif status == "Minor Mismatch": return Color(255, 200, 0)
+        elif status == "Not Acceptable": return Color(255, 0, 0)
+        else: return Color(180, 180, 180)
 
     TransactionManager.Instance.EnsureInTransaction(doc)
 
-    # ── Always delete ALL previous model curves ────────────────
     all_lines = list(
         FilteredElementCollector(doc)
         .OfCategory(BuiltInCategory.OST_Lines)
@@ -118,26 +108,23 @@ else:
         .ToElements()
     )
     for el in all_lines:
-        try:
-            doc.Delete(el.Id)
-        except:
-            pass
+        try: doc.Delete(el.Id)
+        except: pass
 
-    # ── Reset: just clear, don't draw ─────────────────────────
     if reset:
         TransactionManager.Instance.TransactionTaskDone()
-        OUT = "Reset done. All lines cleared."
-
-    # ── Draw lines between rods ────────────────────────────────
+        OUT = "Reset done. All lines cleared for " + COLUMN_ID
+    elif not column_rebar:
+        TransactionManager.Instance.TransactionTaskDone()
+        OUT = "ERROR: No rebar found for column with Host Mark: " + COLUMN_ID
     else:
         sketch_plane = SketchPlane.Create(
             doc,
             Plane.CreateByNormalAndOrigin(XYZ.BasisZ, XYZ(0, 0, cz))
         )
 
-        drawn   = 0
+        drawn = 0
         skipped = 0
-
         for entry in lines_data:
             from_rod = entry.get("from")
             to_rod   = entry.get("to")
@@ -153,11 +140,14 @@ else:
             p1 = XYZ(x1, y1, cz)
             p2 = XYZ(x2, y2, cz)
 
-            # Create line between the two rod centers
+            # Safety Check: Prevent Revit crash if points are identical
+            if p1.DistanceTo(p2) < 0.01:
+                skipped += 1
+                continue
+
             line = Line.CreateBound(p1, p2)
             mc   = doc.Create.NewModelCurve(line, sketch_plane)
 
-            # Apply color override
             color    = get_color(status)
             override = OverrideGraphicSettings()
             override.SetProjectionLineColor(color)
@@ -167,5 +157,4 @@ else:
             drawn += 1
 
         TransactionManager.Instance.TransactionTaskDone()
-
-        OUT = "Done! Drew " + str(drawn) + " lines. Skipped " + str(skipped) + " invalid entries."
+        OUT = "Success! Drew " + str(drawn) + " lines for " + COLUMN_ID + ". Skipped " + str(skipped) + " lines."
