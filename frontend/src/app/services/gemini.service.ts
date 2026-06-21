@@ -22,8 +22,8 @@ Extract the following specifications:
 PART 2: DEFECT DETECTION (From Annotated Photo)
 Look at the annotated site photograph where the rods are explicitly labeled (R1, R2, R3...).
 Identify if any specific rod is significantly misplaced, bent, or missing compared to a standard symmetrical rectangular arrangement.
-- If all rods look generally aligned and acceptable, set reset=true, rod=null.
-- If a rod is clearly out of alignment, set reset=false and provide its integer number (e.g., 3 for R3).
+- If all rods look generally aligned and acceptable, set reset=true, rods=[].
+- If rods are clearly out of alignment, set reset=false and provide a list of their integer numbers (e.g., [3] or [2, 4]).
 
 Output Structure (Strict JSON):
 {
@@ -34,7 +34,7 @@ Output Structure (Strict JSON):
   },
   "defect": {
     "reset": Boolean,
-    "rod": Integer or null
+    "rods": [List of Integers]
   }
 }`;
 
@@ -57,7 +57,7 @@ Output Structure (Strict JSON):
   },
   "defect": {
     "reset": true,
-    "rod": null
+    "rods": []
   }
 }`;
 
@@ -127,23 +127,20 @@ export class GeminiService {
     });
   }
 
-  // Merged Call: Passes the annotated CV image straight to Gemini for hyper-accurate visual defect marking
   async analyzeDesignAndDefects(designB64: string, annotatedB64: string | null, viewMode: 'top' | 'side'): Promise<any> {
     const prompt = viewMode === 'side' ? PROMPT_COMBINED_SIDE : PROMPT_COMBINED_TOP;
-    
-    // Side view doesn't process annotated image for defects currently
     const images = (annotatedB64 && viewMode === 'top') ? [designB64, annotatedB64] : [designB64];
     
     const data = await this.askGemini(prompt, images);
 
     if (!data) {
-      if (viewMode === 'side') return { design: { spacing_mm: 0, least_lateral_dim_mm: 0, longitudinal_bar_dia_mm: 0 }, defect: { reset: true, rod: null } };
-      return { design: { count: 0, radius_mm: 0, spacings_mm: [] }, defect: { reset: true, rod: null } };
+      if (viewMode === 'side') return { design: { spacing_mm: 0, least_lateral_dim_mm: 0, longitudinal_bar_dia_mm: 0 }, defect: { reset: true, rods: [] } };
+      return { design: { count: 0, radius_mm: 0, spacings_mm: [] }, defect: { reset: true, rods: [] } };
     }
 
     return {
       design: data.design || (viewMode === 'side' ? { spacing_mm: 0, least_lateral_dim_mm: 0, longitudinal_bar_dia_mm: 0 } : { count: 0, radius_mm: 0, spacings_mm: [] }),
-      defect: data.defect || { reset: true, rod: null }
+      defect: data.defect || { reset: true, rods: [] }
     };
   }
 

@@ -53,17 +53,17 @@ export class AppComponent implements OnInit, OnDestroy {
   errorMsg: string | null = null;
   revitData: any = null;
 
-  showScoreModal: boolean = false;
-  showDownloadsMenu: boolean = false;
-  copiedStates: { [key: string]: boolean } = {};
-
   // Email notification state
   columnNumber: string = '';
   authorityEmail: string = '';
   isEmailSending: boolean = false;
   emailSent: boolean = false;
 
-  // Performance Timers (Merged AI)
+  showScoreModal: boolean = false;
+  showDownloadsMenu: boolean = false;
+  copiedStates: { [key: string]: boolean } = {};
+
+  // Performance Timers
   timers = {
     autoDetect: 0,
     autoDetectRunning: false,
@@ -121,7 +121,6 @@ export class AppComponent implements OnInit, OnDestroy {
 
   @HostListener('document:click', ['$event'])
   onDocumentClick(event: MouseEvent) {
-    // Closes the downloads dropdown if the click target is outside the dropdown container
     if (this.showDownloadsMenu && this.downloadsMenuRef && !this.downloadsMenuRef.nativeElement.contains(event.target)) {
       this.showDownloadsMenu = false;
       this.cdr.markForCheck();
@@ -133,7 +132,6 @@ export class AppComponent implements OnInit, OnDestroy {
     this.cdr.markForCheck();
   }
 
-  // --- Quality Status Classifier ---
   getQualityTier(score: number): { label: string, color: 'green' | 'yellow' | 'red' } {
     if (score > 95) return { label: 'Excellent', color: 'green' };
     if (score >= 90) return { label: 'Acceptable', color: 'green' };
@@ -142,7 +140,6 @@ export class AppComponent implements OnInit, OnDestroy {
     return { label: 'Defective', color: 'red' };
   }
 
-  // --- Image Handling & Compression Tool ---
   async compressFile(file: File, maxDim: number, quality: number = 0.85): Promise<File> {
     return new Promise((resolve) => {
       const img = new Image();
@@ -349,32 +346,27 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   sortPointsClockwise(points: number[][]): number[][] {
+    // Only used for the Auto-Detect to set a clean default arrangement.
+    // Manual marking completely bypasses this function.
     if (!points || points.length === 0) return [];
-    
-    // Calculate geometric centroid
+    const originalFirst = points[0];
     const cx = points.reduce((sum, p) => sum + p[0], 0) / points.length;
     const cy = points.reduce((sum, p) => sum + p[1], 0) / points.length;
-    
-    // Sort around the centroid
     let sortedPts = [...points].sort((a, b) => {
       const angleA = Math.atan2(a[1] - cy, a[0] - cx);
       const angleB = Math.atan2(b[1] - cy, b[0] - cx);
       return angleA - angleB;
     });
-    
-    // Locate the absolute top-left point by finding minimum (x + y) value
-    let topLeftIdx = 0;
-    let minSum = Infinity;
-    
+    let firstIdx = 0;
+    let minDist = Infinity;
     for (let i = 0; i < sortedPts.length; i++) {
-      const sum = sortedPts[i][0] + sortedPts[i][1];
-      if (sum < minSum) {
-        minSum = sum;
-        topLeftIdx = i;
+      const dist = Math.pow(sortedPts[i][0] - originalFirst[0], 2) + Math.pow(sortedPts[i][1] - originalFirst[1], 2);
+      if (dist < minDist) {
+        minDist = dist;
+        firstIdx = i;
       }
     }
-    
-    return [...sortedPts.slice(topLeftIdx), ...sortedPts.slice(0, topLeftIdx)];
+    return [...sortedPts.slice(firstIdx), ...sortedPts.slice(0, firstIdx)];
   }
 
   async autoDetect() {
@@ -484,21 +476,20 @@ export class AppComponent implements OnInit, OnDestroy {
       this.cdr.markForCheck();
     }, 30);
     this.intervals.push(aInterval);
-
     this.cdr.markForCheck();
     
     try {
-      const normRodPoints = this.rodPoints.map(p => [p[0] / this.imgNatWidth, p[1] / this.imgNatHeight]);
+      // STRICTLY bypassing any sorting function here to preserve user's manual sequence perfectly
+      const finalNormRodPoints = this.rodPoints.map(p => [p[0] / this.imgNatWidth, p[1] / this.imgNatHeight]);
       const normRefPoints = this.refPoints.map(p => [p[0] / this.imgNatWidth, p[1] / this.imgNatHeight]);
 
-      // 1. Run Computer Vision Service
       this.timers.cvRunning = true;
       cvStart = performance.now();
       
       const compressedReal = await this.compressFile(this.realImageFile!, 1600, 0.9);
       const formData = new FormData();
       formData.append('real_image', compressedReal);
-      formData.append('rod_points', JSON.stringify(normRodPoints));
+      formData.append('rod_points', JSON.stringify(finalNormRodPoints));
       formData.append('ref_points', JSON.stringify(normRefPoints));
       formData.append('ref_length', this.refPoints.length === 2 ? this.refLengthInput.toString() : '0');
 
@@ -512,11 +503,11 @@ export class AppComponent implements OnInit, OnDestroy {
          throw new Error("Computer Vision processing failed.");
       }
 
-      // 2. Run Gemini Engine, passing the annotated image
       let designData: any = this.viewMode === 'side' 
         ? { spacing_mm: 0, least_lateral_dim_mm: 0, longitudinal_bar_dia_mm: 0 } 
         : { count: 0, radius_mm: 0, spacings_mm: [] };
-      let defectData = { reset: true, rod: null as number | null, column_id: 'C8' };
+      
+      let defectData = { reset: true, rods: [] as number[], column_id: 'C8_Rect', frontend_points: finalNormRodPoints };
 
       if (this.designImageFile) {
         this.timers.aiRunning = true;
@@ -525,41 +516,68 @@ export class AppComponent implements OnInit, OnDestroy {
         const designB64 = await this.gemini.fileToBase64(this.designImageFile, 700);
         const annotatedB64 = cvRes.annotated_image.split(',')[1];
         
-        // Use analyzeDesignAndDefects for the original website
         const aiRes = await this.gemini.analyzeDesignAndDefects(designB64, annotatedB64, this.viewMode);
         
         designData = aiRes.design;
-        defectData = aiRes.defect;
+        defectData.reset = aiRes.defect.reset;
+        defectData.rods = Array.isArray(aiRes.defect.rods) ? aiRes.defect.rods : [];
 
         this.timers.aiRunning = false;
         this.timers.ai = (performance.now() - aiStart) / 1000;
       }
 
-      // 3. Final Scoring Calculations
       let scoreData;
       if (this.viewMode === 'top') {
         scoreData = this.scoring.calculateTopScore(designData, cvRes.actual_data, cvRes.has_scale);
+        
+        // --- Intelligent Frequency Scoring to identify worst rods (capped to 3) ---
+        const rodFrequencies = new Map<number, number>();
+        
+        scoreData.table.forEach(r => {
+          if (r.status === 'Not Acceptable' && r.parameter.includes('Distance R')) {
+            const match = r.parameter.match(/R(\d+)\s+to\s+R(\d+)/i);
+            if (match) {
+              const r1 = parseInt(match[1], 10);
+              const r2 = parseInt(match[2], 10);
+              rodFrequencies.set(r1, (rodFrequencies.get(r1) || 0) + 1);
+              rodFrequencies.set(r2, (rodFrequencies.get(r2) || 0) + 1);
+            }
+          }
+        });
+
+        if (Array.isArray(defectData.rods)) {
+            defectData.rods.forEach(id => {
+                rodFrequencies.set(id, (rodFrequencies.get(id) || 0) + 5);
+            });
+        }
+
+        const sortedDefective = Array.from(rodFrequencies.entries())
+            .sort((a, b) => b[1] - a[1]) 
+            .map(entry => entry[0]);
+
+        defectData.rods = sortedDefective.slice(0, 3);
+        defectData.reset = defectData.rods.length === 0;
+
+        // Shape Detection
+        const xs = finalNormRodPoints.map(p => p[0]);
+        const ys = finalNormRodPoints.map(p => p[1]);
+        const w = Math.max(...xs) - Math.min(...xs);
+        const h = Math.max(...ys) - Math.min(...ys);
+        const aspectRatio = Math.max(w, h) / (Math.min(w, h) || 1);
+
+        let shape = 'Rect';
+        if (aspectRatio <= 1.3) shape = 'Square';
+
+        const aCount = cvRes.actual_data.count || this.rodPoints.length;
+        let column_id = `C${aCount}`;
+        if ([8, 12, 16].includes(aCount)) {
+            column_id = `C${aCount}_${shape}`;
+        }
+        defectData.column_id = column_id;
       } else {
         scoreData = this.scoring.calculateSideScore(designData, cvRes.actual_data, cvRes.has_scale);
       }
 
-      // --- Feature 1: Force Rod Highlight fallback if AI misses an unacceptable distance ---
-      if (this.viewMode === 'top' && defectData.reset) {
-        const badDistanceRow = scoreData.table.find(r => r.status === 'Not Acceptable' && r.parameter.includes('Distance'));
-        if (badDistanceRow) {
-          const match = badDistanceRow.parameter.match(/Distance R(\d+)/i);
-          if (match && match[1]) {
-            defectData.reset = false;
-            defectData.rod = parseInt(match[1], 10);
-          }
-        }
-      }
-
-      // 4. Inject Dynamic Column ID for Revit Scripts
-      const aCount = cvRes.actual_data.count || 8;
-      defectData.column_id = 'C' + aCount;
-
-      // 5. Quality Tier evaluation
       const qualityTier = this.getQualityTier(scoreData.score);
 
       this.result = {
@@ -662,8 +680,12 @@ export class AppComponent implements OnInit, OnDestroy {
       }
     }
 
-    const rodCount = this.result.comparison_table.find(r => r.parameter === 'Number of rods')?.actual || '8';
-    const rodLinesData = { reset: lines.length === 0, column_id: 'C' + rodCount, lines: lines };
+    const rodLinesData = { 
+      reset: lines.length === 0, 
+      column_id: this.revitData?.column_id || 'C8_Rect', 
+      lines: lines,
+      frontend_points: this.revitData?.frontend_points || []
+    };
     
     const jsonString = JSON.stringify(rodLinesData, null, 2);
     const blob = new Blob([jsonString], { type: 'application/json' });
