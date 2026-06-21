@@ -1,7 +1,7 @@
 import { Component, ElementRef, ViewChild, ChangeDetectionStrategy, ChangeDetectorRef, OnInit, OnDestroy, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
-import { LucideAngularModule, Upload, ScanLine, Ruler, CheckCircle2, AlertCircle, Trash2, Undo2, ArrowRight, Layers, ArrowUpDown, FileJson, Wand2, Info, HelpCircle, Calculator, X, Timer, DownloadCloud, Copy, FileCode, Box } from 'lucide-angular';
+import { LucideAngularModule, Upload, ScanLine, Ruler, CheckCircle2, AlertCircle, Trash2, Undo2, ArrowRight, Layers, ArrowUpDown, FileJson, Wand2, Info, HelpCircle, Calculator, X, Timer, DownloadCloud, Copy, FileCode, Box, ExternalLink } from 'lucide-angular';
 import { FormsModule } from '@angular/forms';
 import { Subscription, firstValueFrom } from 'rxjs';
 import { environment } from '../environments/environment';
@@ -29,7 +29,7 @@ export interface ApiResponse {
   changeDetection: ChangeDetectionStrategy.OnPush 
 })
 export class AppComponent implements OnInit, OnDestroy {
-  icons = { Upload, ScanLine, Ruler, CheckCircle2, AlertCircle, Trash2, Undo2, ArrowRight, Layers, ArrowUpDown, FileJson, Wand2, Info, HelpCircle, Calculator, X, Timer, DownloadCloud, Copy, FileCode, Box };
+  icons = { Upload, ScanLine, Ruler, CheckCircle2, AlertCircle, Trash2, Undo2, ArrowRight, Layers, ArrowUpDown, FileJson, Wand2, Info, HelpCircle, Calculator, X, Timer, DownloadCloud, Copy, FileCode, Box, ExternalLink };
 
   // State
   viewMode: 'top' | 'side' = 'top';
@@ -487,7 +487,7 @@ export class AppComponent implements OnInit, OnDestroy {
         ? { spacing_mm: 0, least_lateral_dim_mm: 0, longitudinal_bar_dia_mm: 0 } 
         : { count: 0, radius_mm: 0, spacings_mm: [] };
 
-      // 1. Run Gemini Engine For Design Extraction (SIM Branch Flow)
+      // --- 1. AI Analysis Phase (Design Blueprint Info Retrieval) ---
       if (this.designImageFile) {
         this.timers.aiRunning = true;
         aiStart = performance.now();
@@ -499,7 +499,7 @@ export class AppComponent implements OnInit, OnDestroy {
         this.timers.ai = (performance.now() - aiStart) / 1000;
       }
 
-      // 2. Run Computer Vision Service with Simulation Mapping
+      // --- 2. CV Initial Measurement & Simulation Phase ---
       this.timers.cvRunning = true;
       cvStart = performance.now();
       
@@ -510,7 +510,7 @@ export class AppComponent implements OnInit, OnDestroy {
       formData.append('ref_points', JSON.stringify(normRefPoints));
       formData.append('ref_length', this.refPoints.length === 2 ? this.refLengthInput.toString() : '0');
       
-      // Inject AI output down into CV Engine
+      // Inject AI output down into CV Engine for simulation randomness bounding
       formData.append('design_data', JSON.stringify(designData));
 
       const endpoint = this.viewMode === 'top' ? '/analyze-cv' : '/analyze-cv/side';
@@ -523,14 +523,15 @@ export class AppComponent implements OnInit, OnDestroy {
          throw new Error("Computer Vision processing failed.");
       }
 
-      // 3. Final Scoring Calculations & Revit Defect Isolation
+      // --- 3. Compliance Scoring & BIM Mapping Phase ---
       let defectData = { reset: true, rods: [] as number[], column_id: 'C8_Rect', frontend_points: finalNormRodPoints };
+      let finalAnnotatedImage = cvRes.annotated_image;
       let scoreData;
 
       if (this.viewMode === 'top') {
         scoreData = this.scoring.calculateTopScore(designData, cvRes.actual_data, cvRes.has_scale);
         
-        // --- Intelligent Frequency Scoring to identify worst rods (capped to 3) ---
+        // Intelligent Frequency Scoring to identify worst rods based on spacing limits (capped to 3)
         const rodFrequencies = new Map<number, number>();
         
         scoreData.table.forEach(r => {
@@ -552,7 +553,7 @@ export class AppComponent implements OnInit, OnDestroy {
         defectData.rods = sortedDefective.slice(0, 3);
         defectData.reset = defectData.rods.length === 0;
 
-        // Shape Detection
+        // Shape Detection for BIM host targeting
         const xs = finalNormRodPoints.map(p => p[0]);
         const ys = finalNormRodPoints.map(p => p[1]);
         const w = Math.max(...xs) - Math.min(...xs);
@@ -572,6 +573,41 @@ export class AppComponent implements OnInit, OnDestroy {
         scoreData = this.scoring.calculateSideScore(designData, cvRes.actual_data, cvRes.has_scale);
       }
 
+      // --- 4. Color Re-annotation Phase (Redraws with statuses logic) ---
+      if (this.designImageFile) {
+        let statuses: string[] = [];
+        if (this.viewMode === 'top') {
+            for (let i = 0; i < cvRes.actual_data.distances.length; i++) {
+                const rStart = i + 1;
+                const rEnd = ((i + 1) % cvRes.actual_data.distances.length) + 1;
+                const paramLabel = `Distance R${rStart} to R${rEnd}`;
+                const row = scoreData.table.find(r => r.parameter === paramLabel);
+                statuses.push(row ? row.status : "NA");
+            }
+        } else {
+            for (let i = 0; i < cvRes.actual_data.spacings.length; i++) {
+                const paramLabel = `Spacing Bar ${i+1} to ${i+2}`;
+                const row = scoreData.table.find(r => r.parameter === paramLabel);
+                statuses.push(row ? row.status : "NA");
+            }
+        }
+
+        // Send a lightning-fast secondary call to dynamically color the image properly
+        // Note: The python backend deterministically seeds using rod points so the variance simulation perfectly mirrors pass #1
+        const formDataFinal = new FormData();
+        formDataFinal.append('real_image', compressedReal);
+        formDataFinal.append('rod_points', JSON.stringify(finalNormRodPoints));
+        formDataFinal.append('ref_points', JSON.stringify(normRefPoints));
+        formDataFinal.append('ref_length', this.refPoints.length === 2 ? this.refLengthInput.toString() : '0');
+        formDataFinal.append('design_data', JSON.stringify(designData)); 
+        formDataFinal.append('statuses', JSON.stringify(statuses));
+
+        const cvResFinal = await firstValueFrom(this.http.post<any>(`${environment.apiBaseUrl}${endpoint}`, formDataFinal));
+        if (cvResFinal?.status === 'success') {
+            finalAnnotatedImage = cvResFinal.annotated_image;
+        }
+      }
+
       const qualityTier = this.getQualityTier(scoreData.score);
 
       this.result = {
@@ -582,7 +618,7 @@ export class AppComponent implements OnInit, OnDestroy {
         score_radius: scoreData.score_radius,
         score_spacing: scoreData.score_spacing,
         comparison_table: scoreData.table,
-        annotated_image: cvRes.annotated_image,
+        annotated_image: finalAnnotatedImage,
       };
       
       this.revitData = defectData;
@@ -647,6 +683,29 @@ export class AppComponent implements OnInit, OnDestroy {
     } catch (err) {
       console.error(err);
       alert(`Could not load ${scriptName}. Make sure it is placed in the frontend/public/assets/downloads/ folder.`);
+    }
+  }
+
+  openImageInNewTab(base64Image: string) {
+    const newTab = window.open();
+    if (newTab) {
+      newTab.document.write(`
+        <html>
+          <head>
+            <title>Annotated Site Image - RebarAnalysis</title>
+            <style>
+              body { margin: 0; background: #0f172a; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+              img { max-width: 100%; max-height: 100vh; object-fit: contain; }
+            </style>
+          </head>
+          <body>
+            <img src="${base64Image}" alt="Annotated Image">
+          </body>
+        </html>
+      `);
+      newTab.document.close();
+    } else {
+      alert("Pop-up blocked. Please allow pop-ups for this site to open the image.");
     }
   }
 

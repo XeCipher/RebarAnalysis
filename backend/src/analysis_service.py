@@ -12,7 +12,6 @@ TEXT_BG_ALPHA = 0.6
 # Colors (BGR Format)
 COLOR_ROD_CIRCLE = (50, 205, 50)       # Lime Green (Detected)
 COLOR_FALLBACK_CIRCLE = (0, 165, 255)  # Orange (Fallback)
-COLOR_LINE = (0, 0, 255)               # Red
 COLOR_REF_LINE = (255, 255, 0)         # Cyan
 COLOR_TEXT = (255, 255, 255)           # White
 COLOR_TEXT_OUTLINE = (0, 0, 0)         # Black
@@ -130,12 +129,19 @@ def find_rod_circle(image, seed_point):
         
     return seed_point, final_radius, False
 
-def process_image(img_array, rod_points, ref_points, ref_length_mm, design_data=None):
+def process_image(img_array, rod_points, ref_points, ref_length_mm, design_data=None, statuses=None):
     """
-    Main orchestrator logic with Environmental Calibration & Simulation Layer.
+    Main orchestrator logic with Environmental Calibration & Simulation Layer, 
+    and dynamic coloring for acceptable/non-acceptable structural boundaries.
     """
     annotated_img = img_array.copy()
     
+    # Seed the random generator deterministically based on the rod coordinates.
+    # This prevents the variance numbers from changing between the first CV pass (measurement) 
+    # and the secondary CV pass (color re-annotation).
+    seed_val = int(sum([p[0] + p[1] for p in rod_points]) + ref_length_mm)
+    random.seed(seed_val)
+
     # 1. Detect Rods
     detected_circles = [] 
     for pt in rod_points:
@@ -222,8 +228,22 @@ def process_image(img_array, rod_points, ref_points, ref_length_mm, design_data=
             
             rod_data["distances"].append(dist_metric)
             
-            # Draw Line (Red)
-            cv2.line(annotated_img, p1, p2, COLOR_LINE, 2, cv2.LINE_AA)
+            # Determine Line Color based on evaluated status passed from the second pass
+            if statuses and i < len(statuses):
+                status = statuses[i]
+                if status == "Acceptable":
+                    line_color = (0, 255, 0)     # Green BGR
+                elif status == "Minor Mismatch":
+                    line_color = (0, 255, 255)   # Yellow BGR
+                elif status == "Not Acceptable":
+                    line_color = (0, 0, 255)     # Red BGR
+                else:
+                    line_color = (255, 255, 0)   # Cyan BGR (Fallback)
+            else:
+                line_color = (255, 255, 0)       # Cyan BGR (Default for pre-analysis image)
+            
+            # Draw Line
+            cv2.line(annotated_img, p1, p2, line_color, 2, cv2.LINE_AA)
             
             # Draw Label (Distance) using the calibrated simulated metric to keep UI perfectly synced
             mid = ((p1[0]+p2[0])//2, (p1[1]+p2[1])//2)

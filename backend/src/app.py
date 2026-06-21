@@ -46,7 +46,10 @@ def analyze_top_cv():
         norm_rod_points = json.loads(request.form.get('rod_points', '[]'))
         norm_ref_points = json.loads(request.form.get('ref_points', '[]'))
         ref_length = float(request.form.get('ref_length', 0))
+        
         design_data = json.loads(request.form.get('design_data', '{}'))
+        statuses_str = request.form.get('statuses')
+        statuses = json.loads(statuses_str) if statuses_str else None
 
         img_array = cv2.imdecode(np.frombuffer(real_bytes, np.uint8), cv2.IMREAD_COLOR)
         if img_array is None:
@@ -57,9 +60,9 @@ def analyze_top_cv():
         rod_points = [[int(p[0] * w), int(p[1] * h)] for p in norm_rod_points]
         ref_points = [[int(p[0] * w), int(p[1] * h)] for p in norm_ref_points]
 
-        # Run Heavy Matrix Math calculations with Calibration Layer
+        # Run Heavy Matrix Math calculations with Calibration Layer and Dynamic Coloring
         annotated_img, actual_data, has_scale = analysis_service.process_image(
-            img_array, rod_points, ref_points, ref_length, design_data
+            img_array, rod_points, ref_points, ref_length, design_data, statuses
         )
 
         encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 80]
@@ -90,7 +93,10 @@ def analyze_side_cv():
         norm_rod_points = json.loads(request.form.get('rod_points', '[]'))
         norm_ref_points = json.loads(request.form.get('ref_points', '[]'))
         ref_length = float(request.form.get('ref_length', 0))
+        
         design_data = json.loads(request.form.get('design_data', '{}'))
+        statuses_str = request.form.get('statuses')
+        statuses = json.loads(statuses_str) if statuses_str else None
 
         img_array = cv2.imdecode(np.frombuffer(real_bytes, np.uint8), cv2.IMREAD_COLOR)
         if img_array is None:
@@ -101,7 +107,7 @@ def analyze_side_cv():
         ref_points = [[int(p[0] * w), int(p[1] * h)] for p in norm_ref_points]
 
         annotated_img, actual_data, has_scale = side_view_service.process_side_view(
-            img_array, rod_points, ref_points, ref_length, design_data
+            img_array, rod_points, ref_points, ref_length, design_data, statuses
         )
 
         encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 80]

@@ -145,11 +145,15 @@ def fit_line_standard(points):
     else:
         return 0, ys[0]
 
-def process_side_view(img_array, rod_points, ref_points=None, ref_length=0, design_data=None):
+def process_side_view(img_array, rod_points, ref_points=None, ref_length=0, design_data=None, statuses=None):
     if img_array is None: return None, {}, False
     
     annotated_img = img_array.copy()
     gray = cv2.cvtColor(img_array, cv2.COLOR_BGR2GRAY)
+    
+    # Seed random for stable simulation output across passes
+    seed_val = int(sum([p[0] + p[1] for p in rod_points]) + ref_length)
+    random.seed(seed_val)
     
     # --- X-RAY IMAGE ---
     morph_gray = enhance_horizontal_structures(gray)
@@ -238,8 +242,22 @@ def process_side_view(img_array, rod_points, ref_points=None, ref_length=0, desi
             
             results["spacings"].append(spacing_val)
             
-            cv2.arrowedLine(annotated_img, (measure_x, y1), (measure_x, y2), COLOR_DIM_LINE, 2, tipLength=0.05)
-            cv2.arrowedLine(annotated_img, (measure_x, y2), (measure_x, y1), COLOR_DIM_LINE, 2, tipLength=0.05)
+            if statuses and i < len(statuses):
+                status = statuses[i]
+                if status == "Acceptable":
+                    line_color = (0, 255, 0)
+                elif status == "Minor Mismatch":
+                    line_color = (0, 255, 255)
+                elif status == "Not Acceptable":
+                    line_color = (0, 0, 255)
+                else:
+                    line_color = (255, 255, 0)
+            else:
+                line_color = (255, 255, 0)
+            
+            # Arrow
+            cv2.arrowedLine(annotated_img, (measure_x, y1), (measure_x, y2), line_color, 2, tipLength=0.05)
+            cv2.arrowedLine(annotated_img, (measure_x, y2), (measure_x, y1), line_color, 2, tipLength=0.05)
             
             unit = "mm" if px_per_mm else "px"
             label_text = f"Sp {i+1}-{i+2}: {spacing_val:.1f} {unit}"
