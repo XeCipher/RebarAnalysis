@@ -19,79 +19,21 @@ else:
     with open(json_path, "r") as f:
         data = json.load(f)
 
-    reset      = data.get("reset", False)
-    COLUMN_ID  = data.get("column_id", "C8")
+    reset = data.get("reset", False)
+    COLUMN_ID = data.get("column_id", "C8_Rect")
     lines_data = data.get("lines", [])
+    FRONTEND_POINTS = data.get("frontend_points", [])
 
     doc = DocumentManager.Instance.CurrentDBDocument
     active_view = doc.ActiveView
 
-    rebar_elements = list(
-        FilteredElementCollector(doc)
-        .OfClass(Rebar)
-        .WhereElementIsNotElementType()
-        .ToElements()
-    )
+    rebar_elements = list(FilteredElementCollector(doc).OfClass(Rebar).WhereElementIsNotElementType().ToElements())
 
     column_rebar = []
     for r in rebar_elements:
         mark_param = r.LookupParameter("Host Mark")
         if mark_param and mark_param.AsString() == COLUMN_ID:
             column_rebar.append(r)
-
-    # 1. Extract ONLY Vertical Rods (Ignore Stirrups)
-    raw_rods = []
-    for rs in column_rebar:
-        curves = list(rs.GetCenterlineCurves(False, False, False, MultiplanarOption.IncludeOnlyPlanarCurves, 0))
-        if not curves: continue
-        
-        # Check if the bar is vertical by looking at the Z difference of its endpoints
-        p_start = curves[0].GetEndPoint(0)
-        p_end = curves[0].GetEndPoint(1)
-        
-        # If Z difference is very small, it's a horizontal stirrup. Skip it!
-        if abs(p_start.Z - p_end.Z) < 0.5:
-            continue
-            
-        base_point = curves[0].Evaluate(0.5, True)
-        accessor = rs.GetShapeDrivenAccessor()
-        count = rs.Quantity
-        
-        for b_idx in range(count):
-            transform = accessor.GetBarPositionTransform(b_idx)
-            # Apply both X and Y layout offsets to the base point
-            tx = base_point.X + transform.Origin.X
-            ty = base_point.Y + transform.Origin.Y
-            raw_rods.append({'x': tx, 'y': ty, 'z': base_point.Z})
-
-    # 2. Dynamic Spatial Sorting
-    if raw_rods:
-        cx = sum(r['x'] for r in raw_rods) / len(raw_rods)
-        cy = sum(r['y'] for r in raw_rods) / len(raw_rods)
-
-        def get_angle(r):
-            return math.atan2(r['y'] - cy, r['x'] - cx)
-            
-        raw_rods.sort(key=get_angle, reverse=True)
-
-        top_left_idx = 0
-        min_val = float('inf')
-        for i, r in enumerate(raw_rods):
-            val = r['x'] - r['y']
-            if val < min_val:
-                min_val = val
-                top_left_idx = i
-
-        sorted_rods = raw_rods[top_left_idx:] + raw_rods[:top_left_idx]
-        
-        rod_positions = {}
-        for i, r in enumerate(sorted_rods):
-            rod_positions[i + 1] = (r['x'], r['y'])
-    else:
-        rod_positions = {}
-
-    view_bb = active_view.get_BoundingBox(None)
-    cz = view_bb.Max.Z - 0.05
 
     def get_color(status):
         if status == "Acceptable": return Color(0, 200, 0)
@@ -101,13 +43,11 @@ else:
 
     TransactionManager.Instance.EnsureInTransaction(doc)
 
-    all_lines = list(
-        FilteredElementCollector(doc)
-        .OfCategory(BuiltInCategory.OST_Lines)
-        .WhereElementIsNotElementType()
-        .ToElements()
-    )
-    for el in all_lines:
+    # Clean up old lines and any leftover text
+    for el in list(FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_Lines).WhereElementIsNotElementType().ToElements()):
+        try: doc.Delete(el.Id)
+        except: pass
+    for el in list(FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_ModelText).WhereElementIsNotElementType().ToElements()):
         try: doc.Delete(el.Id)
         except: pass
 
@@ -118,10 +58,94 @@ else:
         TransactionManager.Instance.TransactionTaskDone()
         OUT = "ERROR: No rebar found for column with Host Mark: " + COLUMN_ID
     else:
-        sketch_plane = SketchPlane.Create(
-            doc,
-            Plane.CreateByNormalAndOrigin(XYZ.BasisZ, XYZ(0, 0, cz))
-        )
+        raw_rods = []
+        for rs in column_rebar:
+            curves = list(rs.GetCenterlineCurves(False, False, False, MultiplanarOption.IncludeOnlyPlanarCurves, 0))
+            if not curves: continue
+            
+            p_start = curves[0].GetEndPoint(0)
+            p_end = curves[0].GetEndPoint(1)
+            if abs(p_start.Z - p_end.Z) < 0.5: continue
+            
+            base_point = curves[0].Evaluate(0.5, True)
+            accessor = rs.GetShapeDrivenAccessor()
+            
+            for b_idx in range(rs.Quantity):
+                transform = accessor.GetBarPositionTransform(b_idx)
+                tx = base_point.X + transform.Origin.X
+                ty = base_point.Y + transform.Origin.Y
+                raw_rods.append({'x': tx, 'y': ty, 'z': base_point.Z, 'rs': rs})
+
+        # === Intelligent Aspect-Ratio Rotation Mapping ===
+        min_rx = min(r['x'] for r in raw_rods)
+        max_rx = max(r['x'] for r in raw_rods)
+        min_ry = min(r['y'] for r in raw_rods)
+        max_ry = max(r['y'] for r in raw_rods)
+        rw = max_rx - min_rx if (max_rx - min_rx) > 0.001 else 1.0
+        rh = max_ry - min_ry if (max_ry - min_ry) > 0.001 else 1.0
+
+        # Normalize Revit coordinates (Y inverted so 0.0 is Top)
+        for r in raw_rods:
+            r['nx'] = (r['x'] - min_rx) / rw
+            r['ny'] = (max_ry - r['y']) / rh
+
+        min_fx = min(p[0] for p in FRONTEND_POINTS)
+        max_fx = max(p[0] for p in FRONTEND_POINTS)
+        min_fy = min(p[1] for p in FRONTEND_POINTS)
+        max_fy = max(p[1] for p in FRONTEND_POINTS)
+        fw = max_fx - min_fx if (max_fx - min_fx) > 0.001 else 1.0
+        fh = max_fy - min_fy if (max_fy - min_fy) > 0.001 else 1.0
+
+        # Normalize Frontend coordinates
+        norm_front = []
+        for p in FRONTEND_POINTS:
+            xf = (p[0] - min_fx) / fw
+            yf = (p[1] - min_fy) / fh # Frontend Y naturally goes down, so 0.0 is Top
+            norm_front.append({'nx': xf, 'ny': yf})
+
+        # Check aspect ratios to detect orientation mismatch (Threshold 1.15)
+        is_revit_vert = rh > rw * 1.15
+        is_revit_horiz = rw > rh * 1.15
+        is_front_vert = fh > fw * 1.15
+        is_front_horiz = fw > fh * 1.15
+
+        if is_front_horiz and is_revit_vert:
+            # Website is Horizontal, Revit is Vertical -> Rotate Frontend 90 degrees Clockwise
+            # This perfectly shifts the 4 Top rods to become the 4 Right rods
+            for fp in norm_front:
+                old_x, old_y = fp['nx'], fp['ny']
+                fp['nx'] = 1.0 - old_y
+                fp['ny'] = old_x
+        elif is_front_vert and is_revit_horiz:
+            # Rotate 90 degrees Counter-Clockwise
+            for fp in norm_front:
+                old_x, old_y = fp['nx'], fp['ny']
+                fp['nx'] = old_y
+                fp['ny'] = 1.0 - old_x
+
+        # Lock indices to physical positions purely via 1:1 distance
+        mapping = {}
+        avail = list(range(len(raw_rods)))
+        
+        for f_idx, fp in enumerate(norm_front):
+            best_r = -1
+            best_dist = float('inf')
+            for r_idx in avail:
+                rp = raw_rods[r_idx]
+                dist = (fp['nx'] - rp['nx'])**2 + (fp['ny'] - rp['ny'])**2
+                if dist < best_dist:
+                    best_dist = dist
+                    best_r = r_idx
+            
+            mapping[f_idx] = best_r
+            if best_r in avail: avail.remove(best_r)
+
+        rod_mapping = { (f_idx + 1): raw_rods[r_idx] for f_idx, r_idx in mapping.items() }
+
+        # Setup Sketch Plane
+        view_bb = active_view.get_BoundingBox(None)
+        cz_lines = view_bb.Max.Z + 0.1
+        sketch_plane_lines = SketchPlane.Create(doc, Plane.CreateByNormalAndOrigin(XYZ.BasisZ, XYZ(0, 0, cz_lines)))
 
         drawn = 0
         skipped = 0
@@ -130,31 +154,26 @@ else:
             to_rod   = entry.get("to")
             status   = entry.get("status", "NA")
 
-            if from_rod not in rod_positions or to_rod not in rod_positions:
+            if from_rod not in rod_mapping or to_rod not in rod_mapping:
                 skipped += 1
                 continue
 
-            x1, y1 = rod_positions[from_rod]
-            x2, y2 = rod_positions[to_rod]
+            rp1 = rod_mapping[from_rod]
+            rp2 = rod_mapping[to_rod]
 
-            p1 = XYZ(x1, y1, cz)
-            p2 = XYZ(x2, y2, cz)
+            p1 = XYZ(rp1['x'], rp1['y'], cz_lines)
+            p2 = XYZ(rp2['x'], rp2['y'], cz_lines)
 
-            # Safety Check: Prevent Revit crash if points are identical
             if p1.DistanceTo(p2) < 0.01:
                 skipped += 1
                 continue
 
-            line = Line.CreateBound(p1, p2)
-            mc   = doc.Create.NewModelCurve(line, sketch_plane)
-
-            color    = get_color(status)
+            mc = doc.Create.NewModelCurve(Line.CreateBound(p1, p2), sketch_plane_lines)
             override = OverrideGraphicSettings()
-            override.SetProjectionLineColor(color)
+            override.SetProjectionLineColor(get_color(status))
             override.SetProjectionLineWeight(5)
             active_view.SetElementOverrides(mc.Id, override)
-
             drawn += 1
 
         TransactionManager.Instance.TransactionTaskDone()
-        OUT = "Success! Drew " + str(drawn) + " lines for " + COLUMN_ID + ". Skipped " + str(skipped) + " lines."
+        OUT = "Success! Drew " + str(drawn) + " lines for " + COLUMN_ID + ". Skipped " + str(skipped) + "."

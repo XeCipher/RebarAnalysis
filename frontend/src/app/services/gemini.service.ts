@@ -12,8 +12,8 @@ Extract the following specifications:
    - You MUST generate a list of distances between adjacent rods following a Clockwise Path starting from Top-Left.
    - Horizontal Spacings: Look for labels like "125mm" or "200mm" between vertical lines.
    - Vertical Spacings: Look for side labels like "230mm" or "300mm".
-   - Assume symmetry for opposite sides.
-   - If total width is given and rods are evenly spaced, divide accordingly.
+   - Symmetry Rule: If a distance is labeled on one side, assume the opposite side is identical unless marked otherwise.
+   - Total Width Rule: If a total width is given and rods look evenly spaced, divide accordingly.
 
 Output Structure (Strict JSON):
 {
