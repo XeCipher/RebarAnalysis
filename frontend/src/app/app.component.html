@@ -349,8 +349,15 @@
 
             </div>
 
-            <!-- Annotated Image Card (Restored original bounding logic to prevent overflow) -->
-            <div class="bg-slate-900 border border-slate-800 shadow-inner rounded-xl lg:flex-1 lg:min-h-0 relative overflow-hidden flex items-center justify-center cursor-pointer">
+            <!-- Annotated Image Card -->
+            <div class="bg-slate-900 border border-slate-800 shadow-inner rounded-xl lg:flex-1 lg:min-h-0 relative overflow-hidden flex items-center justify-center">
+                
+                <!-- Open in New Tab Button -->
+                <button (click)="openImageInNewTab(result.annotated_image)" class="absolute top-3 right-3 z-10 bg-black/50 hover:bg-black/80 text-white px-3 py-2 rounded-lg backdrop-blur-md transition-colors shadow-sm focus:outline-none flex items-center gap-2 text-xs font-medium border border-white/10" title="Open Image in New Tab">
+                    <lucide-icon [img]="icons.ExternalLink" class="w-4 h-4"></lucide-icon>
+                    <span class="hidden sm:inline">Open in New Tab</span>
+                </button>
+
                 <!-- Mobile: Scales dynamically up to 60vh | Desktop: Absolute fill to utilize remaining flex container height perfectly -->
                 <img [src]="result.annotated_image" class="w-full h-auto max-h-[60vh] lg:max-h-none lg:absolute lg:inset-0 lg:h-full object-contain block">
             </div>

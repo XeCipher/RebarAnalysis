@@ -5,7 +5,6 @@ import cv2
 # --- Visual Constants ---
 COLOR_BAR_CENTER = (0, 255, 255)  # Yellow
 COLOR_BAR_EDGE = (255, 255, 0)    # Cyan
-COLOR_DIM_LINE = (0, 0, 255)      # Red Arrow
 COLOR_TEXT = (255, 255, 255)      # White
 COLOR_TEXT_BG = (0, 0, 0)         # Black
 TEXT_BG_ALPHA = 0.6
@@ -154,7 +153,7 @@ def fit_line_standard(points):
     else:
         return 0, ys[0]
 
-def process_side_view(img_array, rod_points, ref_points=None, ref_length=0):
+def process_side_view(img_array, rod_points, ref_points=None, ref_length=0, statuses=None):
     if img_array is None: return None, {}, False
     
     annotated_img = img_array.copy()
@@ -237,9 +236,22 @@ def process_side_view(img_array, rod_points, ref_points=None, ref_length=0):
             
             results["spacings"].append(spacing_val)
             
+            if statuses and i < len(statuses):
+                status = statuses[i]
+                if status == "Acceptable":
+                    line_color = (0, 255, 0)
+                elif status == "Minor Mismatch":
+                    line_color = (0, 255, 255)
+                elif status == "Not Acceptable":
+                    line_color = (0, 0, 255)
+                else:
+                    line_color = (255, 255, 0)
+            else:
+                line_color = (255, 255, 0)
+            
             # Arrow
-            cv2.arrowedLine(annotated_img, (measure_x, y1), (measure_x, y2), COLOR_DIM_LINE, 2, tipLength=0.05)
-            cv2.arrowedLine(annotated_img, (measure_x, y2), (measure_x, y1), COLOR_DIM_LINE, 2, tipLength=0.05)
+            cv2.arrowedLine(annotated_img, (measure_x, y1), (measure_x, y2), line_color, 2, tipLength=0.05)
+            cv2.arrowedLine(annotated_img, (measure_x, y2), (measure_x, y1), line_color, 2, tipLength=0.05)
             
             unit = "mm" if px_per_mm else "px"
             label_text = f"Sp {i+1}-{i+2}: {spacing_val:.1f} {unit}"
