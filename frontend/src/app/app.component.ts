@@ -560,8 +560,24 @@ export class AppComponent implements OnInit, OnDestroy {
         const h = Math.max(...ys) - Math.min(...ys);
         const aspectRatio = Math.max(w, h) / (Math.min(w, h) || 1);
 
-        let shape = 'Rect';
-        if (aspectRatio <= 1.3) shape = 'Square';
+        // Fallback: visual aspect ratio from perspective image
+        let shape = aspectRatio > 1.15 ? 'Rect' : 'Square';
+
+        // Intelligent Override: Use AI-extracted physical spacings for flawless shape detection
+        if (designData && Array.isArray(designData.spacings_mm) && designData.spacings_mm.length > 0) {
+            const validSpacings = designData.spacings_mm.filter((s: any) => typeof s === 'number' && s > 0);
+            if (validSpacings.length > 0) {
+                const maxSp = Math.max(...validSpacings);
+                const minSp = Math.min(...validSpacings);
+                
+                // If there's a significant variation in perimeter spacings (e.g., 150mm vs 100mm), it's a rectangle
+                if (maxSp > minSp * 1.1) {
+                    shape = 'Rect'; 
+                } else {
+                    shape = 'Square'; // Uniform perimeter spacings means Square
+                }
+            }
+        }
 
         const aCount = cvRes.actual_data.count || this.rodPoints.length;
         let column_id = `C${aCount}`;
