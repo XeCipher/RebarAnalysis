@@ -78,7 +78,6 @@ else:
             TransactionManager.Instance.TransactionTaskDone()
             OUT = "ERROR: Could not map rods to sequence properly. Check JSON inputs."
         else:
-            # === Intelligent Aspect-Ratio Rotation Mapping ===
             min_rx = min(r['x'] for r in raw_rods)
             max_rx = max(r['x'] for r in raw_rods)
             min_ry = min(r['y'] for r in raw_rods)
@@ -98,10 +97,10 @@ else:
             fh = max_fy - min_fy if (max_fy - min_fy) > 0.001 else 1.0
 
             norm_front = []
-            for p in FRONTEND_POINTS:
+            for i, p in enumerate(FRONTEND_POINTS):
                 xf = (p[0] - min_fx) / fw
                 yf = (p[1] - min_fy) / fh 
-                norm_front.append({'nx': xf, 'ny': yf})
+                norm_front.append({'nx': xf, 'ny': yf, 'original_index': i + 1})
 
             is_revit_vert = rh > rw * 1.15
             is_revit_horiz = rw > rh * 1.15
@@ -119,23 +118,54 @@ else:
                     fp['nx'] = old_y
                     fp['ny'] = 1.0 - old_x
 
-            mapping = {}
-            avail = list(range(len(raw_rods)))
-            
-            for f_idx, fp in enumerate(norm_front):
-                best_r = -1
-                best_dist = float('inf')
-                for r_idx in avail:
-                    rp = raw_rods[r_idx]
-                    dist = (fp['nx'] - rp['nx'])**2 + (fp['ny'] - rp['ny'])**2
-                    if dist < best_dist:
-                        best_dist = dist
-                        best_r = r_idx
+            # === Topological Angular Sort Mapping ===
+            cx_r = sum(r['nx'] for r in raw_rods) / len(raw_rods)
+            cy_r = sum(r['ny'] for r in raw_rods) / len(raw_rods)
+            for r in raw_rods:
+                r['angle'] = math.atan2(r['ny'] - cy_r, r['nx'] - cx_r)
                 
-                mapping[f_idx] = best_r
-                if best_r in avail: avail.remove(best_r)
+            cx_f = sum(p['nx'] for p in norm_front) / len(norm_front)
+            cy_f = sum(p['ny'] for p in norm_front) / len(norm_front)
+            for p in norm_front:
+                p['angle'] = math.atan2(p['ny'] - cy_f, p['nx'] - cx_f)
 
-            rod_mapping = { (f_idx + 1): raw_rods[r_idx] for f_idx, r_idx in mapping.items() }
+            sorted_revit = sorted(raw_rods, key=lambda r: r['angle'])
+            sorted_front = sorted(norm_front, key=lambda p: p['angle'])
+
+            rod_mapping = {}
+            
+            if len(sorted_front) == len(sorted_revit) and len(sorted_front) > 0:
+                N = len(sorted_front)
+                best_shift = 0
+                best_dist = float('inf')
+                for shift in range(N):
+                    total_dist = 0
+                    for i in range(N):
+                        f_pt = sorted_front[i]
+                        r_pt = sorted_revit[(i + shift) % N]
+                        total_dist += (f_pt['nx'] - r_pt['nx'])**2 + (f_pt['ny'] - r_pt['ny'])**2
+                    
+                    if total_dist < best_dist:
+                        best_dist = total_dist
+                        best_shift = shift
+                
+                for i in range(N):
+                    f_pt = sorted_front[i]
+                    r_pt = sorted_revit[(i + best_shift) % N]
+                    rod_mapping[f_pt['original_index']] = r_pt
+            else:
+                avail = list(range(len(raw_rods)))
+                for fp in norm_front:
+                    best_r = -1
+                    best_dist = float('inf')
+                    for r_idx in avail:
+                        rp = raw_rods[r_idx]
+                        dist = (fp['nx'] - rp['nx'])**2 + (fp['ny'] - rp['ny'])**2
+                        if dist < best_dist:
+                            best_dist = dist
+                            best_r = r_idx
+                    rod_mapping[fp['original_index']] = raw_rods[best_r]
+                    if best_r in avail: avail.remove(best_r)
 
             view_bb = active_view.get_BoundingBox(None)
             cz_lines = view_bb.Max.Z + 0.1
@@ -168,4 +198,4 @@ else:
                     active_view.SetElementOverrides(mc2.Id, override)
 
             TransactionManager.Instance.TransactionTaskDone()
-            OUT = "Highlighted " + str(len(TARGET_RODS)) + " incorrect rods for " + COLUMN_ID
+            OUT = "Highlighted " + str(len(TARGET_RODS)) + " incorrect rods correctly for " + COLUMN_ID

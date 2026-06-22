@@ -76,7 +76,7 @@ else:
                 ty = base_point.Y + transform.Origin.Y
                 raw_rods.append({'x': tx, 'y': ty, 'z': base_point.Z, 'rs': rs})
 
-        # === Intelligent Aspect-Ratio Rotation Mapping ===
+        # Calculate bounding boxes for normalization
         min_rx = min(r['x'] for r in raw_rods)
         max_rx = max(r['x'] for r in raw_rods)
         min_ry = min(r['y'] for r in raw_rods)
@@ -96,53 +96,86 @@ else:
         fw = max_fx - min_fx if (max_fx - min_fx) > 0.001 else 1.0
         fh = max_fy - min_fy if (max_fy - min_fy) > 0.001 else 1.0
 
-        # Normalize Frontend coordinates
+        # Normalize Frontend coordinates and retain original 1-based index mapping
         norm_front = []
-        for p in FRONTEND_POINTS:
+        for i, p in enumerate(FRONTEND_POINTS):
             xf = (p[0] - min_fx) / fw
             yf = (p[1] - min_fy) / fh # Frontend Y naturally goes down, so 0.0 is Top
-            norm_front.append({'nx': xf, 'ny': yf})
+            norm_front.append({'nx': xf, 'ny': yf, 'original_index': i + 1})
 
-        # Check aspect ratios to detect orientation mismatch (Threshold 1.15)
+        # Aspect-Ratio physical orientation alignment
         is_revit_vert = rh > rw * 1.15
         is_revit_horiz = rw > rh * 1.15
         is_front_vert = fh > fw * 1.15
         is_front_horiz = fw > fh * 1.15
 
         if is_front_horiz and is_revit_vert:
-            # Website is Horizontal, Revit is Vertical -> Rotate Frontend 90 degrees Clockwise
-            # This perfectly shifts the 4 Top rods to become the 4 Right rods
             for fp in norm_front:
                 old_x, old_y = fp['nx'], fp['ny']
                 fp['nx'] = 1.0 - old_y
                 fp['ny'] = old_x
         elif is_front_vert and is_revit_horiz:
-            # Rotate 90 degrees Counter-Clockwise
             for fp in norm_front:
                 old_x, old_y = fp['nx'], fp['ny']
                 fp['nx'] = old_y
                 fp['ny'] = 1.0 - old_x
 
-        # Lock indices to physical positions purely via 1:1 distance
-        mapping = {}
-        avail = list(range(len(raw_rods)))
-        
-        for f_idx, fp in enumerate(norm_front):
-            best_r = -1
-            best_dist = float('inf')
-            for r_idx in avail:
-                rp = raw_rods[r_idx]
-                dist = (fp['nx'] - rp['nx'])**2 + (fp['ny'] - rp['ny'])**2
-                if dist < best_dist:
-                    best_dist = dist
-                    best_r = r_idx
+        # === Topological Angular Sort (Prevents Criss-Crossing) ===
+        cx_r = sum(r['nx'] for r in raw_rods) / len(raw_rods)
+        cy_r = sum(r['ny'] for r in raw_rods) / len(raw_rods)
+        for r in raw_rods:
+            r['angle'] = math.atan2(r['ny'] - cy_r, r['nx'] - cx_r)
             
-            mapping[f_idx] = best_r
-            if best_r in avail: avail.remove(best_r)
+        cx_f = sum(p['nx'] for p in norm_front) / len(norm_front)
+        cy_f = sum(p['ny'] for p in norm_front) / len(norm_front)
+        for p in norm_front:
+            p['angle'] = math.atan2(p['ny'] - cy_f, p['nx'] - cx_f)
 
-        rod_mapping = { (f_idx + 1): raw_rods[r_idx] for f_idx, r_idx in mapping.items() }
+        sorted_revit = sorted(raw_rods, key=lambda r: r['angle'])
+        sorted_front = sorted(norm_front, key=lambda p: p['angle'])
 
-        # Setup Sketch Plane
+        rod_mapping = {}
+        
+        # If lengths match, utilize perfect Cyclic Shift alignment
+        if len(sorted_front) == len(sorted_revit) and len(sorted_front) > 0:
+            N = len(sorted_front)
+            best_shift = 0
+            best_dist = float('inf')
+            
+            # Find the optimal rotational starting point
+            for shift in range(N):
+                total_dist = 0
+                for i in range(N):
+                    f_pt = sorted_front[i]
+                    r_pt = sorted_revit[(i + shift) % N]
+                    total_dist += (f_pt['nx'] - r_pt['nx'])**2 + (f_pt['ny'] - r_pt['ny'])**2
+                
+                if total_dist < best_dist:
+                    best_dist = total_dist
+                    best_shift = shift
+            
+            # Apply the mapping mathematically
+            for i in range(N):
+                f_pt = sorted_front[i]
+                r_pt = sorted_revit[(i + best_shift) % N]
+                rod_mapping[f_pt['original_index']] = r_pt
+        else:
+            # Fallback Greedy Mapping (Only if counts drastically mismatch)
+            avail = list(range(len(raw_rods)))
+            for fp in norm_front:
+                best_r = -1
+                best_dist = float('inf')
+                for r_idx in avail:
+                    rp = raw_rods[r_idx]
+                    dist = (fp['nx'] - rp['nx'])**2 + (fp['ny'] - rp['ny'])**2
+                    if dist < best_dist:
+                        best_dist = dist
+                        best_r = r_idx
+                
+                rod_mapping[fp['original_index']] = raw_rods[best_r]
+                if best_r in avail: avail.remove(best_r)
+
+        # Draw the lines sequentially
         view_bb = active_view.get_BoundingBox(None)
         cz_lines = view_bb.Max.Z + 0.1
         sketch_plane_lines = SketchPlane.Create(doc, Plane.CreateByNormalAndOrigin(XYZ.BasisZ, XYZ(0, 0, cz_lines)))
@@ -176,4 +209,4 @@ else:
             drawn += 1
 
         TransactionManager.Instance.TransactionTaskDone()
-        OUT = "Success! Drew " + str(drawn) + " lines for " + COLUMN_ID + ". Skipped " + str(skipped) + "."
+        OUT = "Success! Drew " + str(drawn) + " perfectly sequential lines for " + COLUMN_ID + ". Skipped " + str(skipped) + "."
