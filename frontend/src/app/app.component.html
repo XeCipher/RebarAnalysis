@@ -52,7 +52,7 @@
                 </div>
                 rodhighlight.py
               </div>
-              <lucide-icon [img]="copiedStates['rodhighlight.py'] ? icons.CheckCircle2 : icons.Copy" [class.text-green-500]="copiedStates['rodhighlight.py']" [class.text-slate-400]="!copiedStates['rodhighlight.py']" class="w-4 h-4" />
+              <lucide-icon [img]="copiedStates['rodhighlight.py'] ? icons.CheckCircle2 : icons.Copy" [class.text-green-500]="copiedStates['rodhighlight.py']" [class.text-slate-400]="!copiedStates['rodhighlight.py']" [class.group-hover:text-purple-500]="!copiedStates['rodhighlight.py']" class="w-4 h-4 transition-colors" />
             </button>
 
             <button (click)="copyScript('rodlines.py')" class="w-full text-left px-4 py-3 hover:bg-slate-50 transition-colors flex items-center justify-between group">
@@ -62,7 +62,7 @@
                 </div>
                 rodlines.py
               </div>
-              <lucide-icon [img]="copiedStates['rodlines.py'] ? icons.CheckCircle2 : icons.Copy" [class.text-green-500]="copiedStates['rodlines.py']" [class.text-slate-400]="!copiedStates['rodlines.py']" class="w-4 h-4" />
+              <lucide-icon [img]="copiedStates['rodlines.py'] ? icons.CheckCircle2 : icons.Copy" [class.text-green-500]="copiedStates['rodlines.py']" [class.text-slate-400]="!copiedStates['rodlines.py']" [class.group-hover:text-orange-500]="!copiedStates['rodlines.py']" class="w-4 h-4 transition-colors" />
             </button>
           </div>
         </div>
