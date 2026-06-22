@@ -41,6 +41,8 @@
                 </div>
                 Revit Model (.rvt)
               </div>
+              <!-- Added the download icon representation right below! -->
+              <lucide-icon [img]="icons.DownloadCloud" class="w-4 h-4 text-slate-400 group-hover:text-blue-500 transition-colors" />
             </a>
 
             <button (click)="copyScript('rodhighlight.py')" class="w-full text-left px-4 py-3 hover:bg-slate-50 transition-colors flex items-center justify-between group border-b border-slate-50">
@@ -187,38 +189,42 @@
         <div *ngIf="realImagePreview" class="relative group select-none max-w-full flex items-center justify-center flex-1 lg:min-h-0 p-2 sm:p-4 w-full">
           
           <!-- Inner Tight Wrapper (Bounds strictly to the image shape) -->
-          <div class="image-wrapper relative max-w-full bg-white rounded-xl shadow-xl border border-slate-200">
+          <div class="image-wrapper relative max-w-full bg-white rounded-xl shadow-xl border border-slate-200 overflow-hidden">
             <img #imageRef [src]="realImagePreview" (load)="onImageLoad($event)" (click)="onImageClick($event)" class="w-auto h-auto max-w-full max-h-[60vh] lg:max-h-[80vh] block touch-manipulation rounded-xl">
             
-            <!-- Loader Overlays -->
-            <div *ngIf="isAutoDetecting" class="absolute inset-0 bg-slate-900/80 backdrop-blur-sm flex flex-col items-center justify-center z-30 text-white animate-fade-in rounded-xl overflow-y-auto p-4 leading-normal">
-               <div class="animate-spin h-8 w-8 sm:h-10 sm:w-10 border-4 border-purple-500 border-t-transparent rounded-full mb-3 sm:mb-4 shrink-0"></div>
-               <div class="text-xs sm:text-sm font-bold text-purple-300 uppercase tracking-widest mb-1 text-center shrink-0">Auto-Detecting Rods</div>
-               <div class="font-mono text-2xl sm:text-3xl font-black text-purple-200 mb-4 sm:mb-6 flex items-center gap-2 shrink-0">
-                 <lucide-icon [img]="icons.Timer" class="w-5 h-5 sm:w-6 sm:h-6 opacity-70"></lucide-icon>{{ timers.autoDetect | number:'1.2-2' }}s
+            <!-- Dynamically Scaled Loader Overlays -->
+            <div *ngIf="isAutoDetecting" class="absolute inset-0 bg-slate-900/80 backdrop-blur-sm z-30 text-white animate-fade-in rounded-xl">
+               <div class="overlay-content-scale p-4 leading-normal" [style.transform]="getOverlayScale()">
+                   <div class="animate-spin h-8 w-8 sm:h-10 sm:w-10 border-4 border-purple-500 border-t-transparent rounded-full mb-3 sm:mb-4 shrink-0 mx-auto"></div>
+                   <div class="text-xs sm:text-sm font-bold text-purple-300 uppercase tracking-widest mb-1 text-center shrink-0">Auto-Detecting Rods</div>
+                   <div class="font-mono text-2xl sm:text-3xl font-black text-purple-200 mb-4 sm:mb-6 flex items-center justify-center gap-2 shrink-0">
+                     <lucide-icon [img]="icons.Timer" class="w-5 h-5 sm:w-6 sm:h-6 opacity-70"></lucide-icon>{{ timers.autoDetect | number:'1.2-2' }}s
+                   </div>
+                   <button (click)="cancelAutoDetect()" class="px-4 sm:px-5 py-1.5 sm:py-2 bg-white/10 hover:bg-white/20 border border-white/30 rounded-full text-xs sm:text-sm font-medium backdrop-blur transition-all active:scale-95 shrink-0 mx-auto block">Cancel</button>
                </div>
-               <button (click)="cancelAutoDetect()" class="px-4 sm:px-5 py-1.5 sm:py-2 bg-white/10 hover:bg-white/20 border border-white/30 rounded-full text-xs sm:text-sm font-medium backdrop-blur transition-all active:scale-95 shrink-0">Cancel</button>
             </div>
 
-            <div *ngIf="isAnalyzing" class="absolute inset-0 bg-slate-900/80 backdrop-blur-md flex flex-col items-center justify-center z-20 text-white animate-fade-in rounded-xl overflow-y-auto p-4 leading-normal">
-               <div class="animate-spin h-8 w-8 sm:h-10 sm:w-10 border-4 border-blue-500 border-t-transparent rounded-full mb-3 sm:mb-4 shrink-0"></div>
-               <div class="text-xs sm:text-sm font-bold text-blue-300 uppercase tracking-widest mb-1 text-center shrink-0">Running Analysis Engine</div>
-               <div class="font-mono text-3xl sm:text-4xl font-black text-blue-300 mb-4 sm:mb-6 flex items-center gap-2 shrink-0">
-                 <lucide-icon [img]="icons.Timer" class="w-6 h-6 sm:w-8 sm:h-8 opacity-70"></lucide-icon>{{ timers.total | number:'1.2-2' }}s
-               </div>
-               <div class="grid grid-cols-2 gap-2 sm:gap-3 mb-6 sm:mb-8 w-full max-w-sm px-2 sm:px-4 shrink-0">
-                 <div class="bg-slate-800/60 border border-slate-700 p-2 sm:p-3 rounded-lg flex flex-col items-center justify-center">
-                   <div class="text-[9px] sm:text-[10px] uppercase text-slate-400 mb-1 text-center">Vision Engine</div>
-                   <div class="font-mono font-bold text-sm sm:text-base text-center" [class.text-white]="timers.cvRunning" [class.text-green-400]="!timers.cvRunning && timers.cv > 0">{{ timers.cv | number:'1.2-2' }}s</div>
-                 </div>
-                 <div class="bg-slate-800/60 border border-slate-700 p-2 sm:p-3 rounded-lg flex flex-col items-center justify-center" [class.opacity-50]="!designImageFile">
-                   <div class="text-[9px] sm:text-[10px] uppercase text-slate-400 mb-1 text-center">Gemini AI</div>
-                   <div class="font-mono font-bold text-sm sm:text-base text-center" [class.text-white]="timers.aiRunning" [class.text-green-400]="!timers.aiRunning && timers.ai > 0">
-                     {{ designImageFile ? (timers.ai | number:'1.2-2') + 's' : 'N/A' }}
+            <div *ngIf="isAnalyzing" class="absolute inset-0 bg-slate-900/80 backdrop-blur-md z-20 text-white animate-fade-in rounded-xl">
+               <div class="overlay-content-scale p-4 leading-normal" [style.transform]="getOverlayScale()">
+                   <div class="animate-spin h-8 w-8 sm:h-10 sm:w-10 border-4 border-blue-500 border-t-transparent rounded-full mb-3 sm:mb-4 shrink-0 mx-auto"></div>
+                   <div class="text-xs sm:text-sm font-bold text-blue-300 uppercase tracking-widest mb-1 text-center shrink-0">Running Analysis Engine</div>
+                   <div class="font-mono text-3xl sm:text-4xl font-black text-blue-300 mb-4 sm:mb-6 flex items-center justify-center gap-2 shrink-0">
+                     <lucide-icon [img]="icons.Timer" class="w-6 h-6 sm:w-8 sm:h-8 opacity-70"></lucide-icon>{{ timers.total | number:'1.2-2' }}s
                    </div>
-                 </div>
+                   <div class="grid grid-cols-2 gap-2 sm:gap-3 mb-6 sm:mb-8 w-full max-w-sm px-2 sm:px-4 shrink-0 mx-auto">
+                     <div class="bg-slate-800/60 border border-slate-700 p-2 sm:p-3 rounded-lg flex flex-col items-center justify-center">
+                       <div class="text-[9px] sm:text-[10px] uppercase text-slate-400 mb-1 text-center">Vision Engine</div>
+                       <div class="font-mono font-bold text-sm sm:text-base text-center" [class.text-white]="timers.cvRunning" [class.text-green-400]="!timers.cvRunning && timers.cv > 0">{{ timers.cv | number:'1.2-2' }}s</div>
+                     </div>
+                     <div class="bg-slate-800/60 border border-slate-700 p-2 sm:p-3 rounded-lg flex flex-col items-center justify-center" [class.opacity-50]="!designImageFile">
+                       <div class="text-[9px] sm:text-[10px] uppercase text-slate-400 mb-1 text-center">Gemini AI</div>
+                       <div class="font-mono font-bold text-sm sm:text-base text-center" [class.text-white]="timers.aiRunning" [class.text-green-400]="!timers.aiRunning && timers.ai > 0">
+                         {{ designImageFile ? (timers.ai | number:'1.2-2') + 's' : 'N/A' }}
+                       </div>
+                     </div>
+                   </div>
+                   <button (click)="cancelAnalysis()" class="px-5 sm:px-6 py-1.5 sm:py-2 bg-white/10 hover:bg-white/20 border border-white/30 rounded-full text-xs sm:text-sm font-medium transition-all active:scale-95 shrink-0 mx-auto block">Cancel Execution</button>
                </div>
-               <button (click)="cancelAnalysis()" class="px-5 sm:px-6 py-1.5 sm:py-2 bg-white/10 hover:bg-white/20 border border-white/30 rounded-full text-xs sm:text-sm font-medium transition-all active:scale-95 shrink-0">Cancel Execution</button>
             </div>
 
             <ng-container *ngIf="imgNatWidth > 0 && !isAnalyzing">
@@ -436,7 +442,7 @@
   </main>
 </div>
 
-<!-- Evaluation Methodology Modal (Kept clean & untouched) -->
+<!-- Evaluation Methodology Modal -->
 <div *ngIf="showScoreModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 animate-fade-in">
   <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" (click)="toggleScoreModal()"></div>
   <div class="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col relative z-10 border border-slate-300">

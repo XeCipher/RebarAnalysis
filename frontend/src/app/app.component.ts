@@ -48,6 +48,10 @@ export class AppComponent implements OnInit, OnDestroy {
   isAnalyzing = false;
   isAutoDetecting = false;
   analysisSub: Subscription | null = null;
+
+  // Execution tokens to prevent race conditions during cancellations
+  private currentAutoDetectId = 0;
+  private currentAnalysisId = 0;
   
   result: ApiResponse | null = null;
   errorMsg: string | null = null;
@@ -346,8 +350,6 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   sortPointsClockwise(points: number[][]): number[][] {
-    // Only used for the Auto-Detect to set a clean default arrangement.
-    // Manual marking completely bypasses this function.
     if (!points || points.length === 0) return [];
     const originalFirst = points[0];
     const cx = points.reduce((sum, p) => sum + p[0], 0) / points.length;
@@ -369,9 +371,31 @@ export class AppComponent implements OnInit, OnDestroy {
     return [...sortedPts.slice(firstIdx), ...sortedPts.slice(0, firstIdx)];
   }
 
+  // Scales down overlay contents intelligently based on the rendered dimension of the image
+  getOverlayScale(): string {
+    if (!this.imageElement || !this.imageElement.nativeElement) return 'scale(1)';
+    const height = this.imageElement.nativeElement.clientHeight;
+    const width = this.imageElement.nativeElement.clientWidth;
+    
+    let scaleH = 1;
+    if (height < 200) scaleH = 0.45;
+    else if (height < 300) scaleH = 0.65;
+    else if (height < 400) scaleH = 0.8;
+
+    let scaleW = 1;
+    if (width < 250) scaleW = 0.45;
+    else if (width < 350) scaleW = 0.65;
+    else if (width < 450) scaleW = 0.8;
+
+    return `scale(${Math.min(scaleH, scaleW)})`;
+  }
+
   async autoDetect() {
     if (!this.realImageFile) return;
     this.isAutoDetecting = true;
+    
+    // Invalidate any older executions
+    const execId = ++this.currentAutoDetectId;
     
     this.timers.autoDetectRunning = true;
     this.timers.autoDetect = 0;
@@ -400,6 +424,11 @@ export class AppComponent implements OnInit, OnDestroy {
       const tinyB64 = await this.gemini.fileToBase64(this.realImageFile, 400);
       const aiPoints = await this.gemini.getAutoDetectPoints(tinyB64, this.viewMode);
       
+      // Strict safety abort: If user cancelled or spawned a new detect, ignore this response entirely
+      if (this.currentAutoDetectId !== execId || !this.isAutoDetecting) {
+        return;
+      }
+
       if (!aiPoints || aiPoints.length === 0) {
           finishAutoDetect();
           return;
@@ -425,6 +454,7 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   cancelAutoDetect() {
+    this.currentAutoDetectId++; // Invalidate any running execution instantly
     this.timers.autoDetectRunning = false;
     this.isAutoDetecting = false;
     this.intervals.forEach(i => clearInterval(i));
@@ -433,6 +463,7 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   cancelAnalysis() {
+    this.currentAnalysisId++; // Invalidate any running execution instantly
     this.isAnalyzing = false;
     if (this.analysisSub) {
       this.analysisSub.unsubscribe();
@@ -454,6 +485,10 @@ export class AppComponent implements OnInit, OnDestroy {
     }
 
     this.isAnalyzing = true;
+    
+    // Invalidate any older executions
+    const execId = ++this.currentAnalysisId;
+    
     this.errorMsg = null;
     this.result = null;
     this.revitData = null;
@@ -479,7 +514,6 @@ export class AppComponent implements OnInit, OnDestroy {
     this.cdr.markForCheck();
     
     try {
-      // STRICTLY bypassing any sorting function here to preserve user's manual sequence perfectly
       const finalNormRodPoints = this.rodPoints.map(p => [p[0] / this.imgNatWidth, p[1] / this.imgNatHeight]);
       const normRefPoints = this.refPoints.map(p => [p[0] / this.imgNatWidth, p[1] / this.imgNatHeight]);
 
@@ -495,6 +529,9 @@ export class AppComponent implements OnInit, OnDestroy {
 
       const endpoint = this.viewMode === 'top' ? '/analyze-cv' : '/analyze-cv/side';
       const cvRes = await firstValueFrom(this.http.post<any>(`${environment.apiBaseUrl}${endpoint}`, formData));
+      
+      // Strict Abort Check
+      if (this.currentAnalysisId !== execId || !this.isAnalyzing) return;
       
       this.timers.cvRunning = false;
       this.timers.cv = (performance.now() - cvStart) / 1000;
@@ -520,6 +557,9 @@ export class AppComponent implements OnInit, OnDestroy {
         
         const aiRes = await this.gemini.analyzeDesignAndDefects(designB64, annotatedB64, this.viewMode);
         
+        // Strict Abort Check
+        if (this.currentAnalysisId !== execId || !this.isAnalyzing) return;
+        
         designData = aiRes.design;
         defectData.reset = aiRes.defect.reset;
         defectData.rods = Array.isArray(aiRes.defect.rods) ? aiRes.defect.rods : [];
@@ -533,7 +573,7 @@ export class AppComponent implements OnInit, OnDestroy {
       if (this.viewMode === 'top') {
         scoreData = this.scoring.calculateTopScore(designData, cvRes.actual_data, cvRes.has_scale);
         
-        // Intelligent Frequency Scoring to identify worst rods (capped to 3)
+        // Intelligent Frequency Scoring to identify worst rods
         const rodFrequencies = new Map<number, number>();
         
         scoreData.table.forEach(r => {
@@ -568,21 +608,17 @@ export class AppComponent implements OnInit, OnDestroy {
         const h = Math.max(...ys) - Math.min(...ys);
         const aspectRatio = Math.max(w, h) / (Math.min(w, h) || 1);
 
-        // Fallback: visual aspect ratio from perspective image
         let shape = aspectRatio > 1.15 ? 'Rect' : 'Square';
 
-        // Intelligent Override: Use AI-extracted physical spacings for flawless shape detection
         if (designData && Array.isArray(designData.spacings_mm) && designData.spacings_mm.length > 0) {
             const validSpacings = designData.spacings_mm.filter((s: any) => typeof s === 'number' && s > 0);
             if (validSpacings.length > 0) {
                 const maxSp = Math.max(...validSpacings);
                 const minSp = Math.min(...validSpacings);
-                
-                // If there's a significant variation in perimeter spacings (e.g., 150mm vs 100mm), it's a rectangle
                 if (maxSp > minSp * 1.1) {
                     shape = 'Rect'; 
                 } else {
-                    shape = 'Square'; // Uniform perimeter spacings means Square
+                    shape = 'Square'; 
                 }
             }
         }
@@ -597,7 +633,7 @@ export class AppComponent implements OnInit, OnDestroy {
         scoreData = this.scoring.calculateSideScore(designData, cvRes.actual_data, cvRes.has_scale);
       }
 
-      // --- 3. Color Re-annotation Phase (if design provided) ---
+      // --- 3. Color Re-annotation Phase ---
       if (this.designImageFile) {
         let statuses: string[] = [];
         if (this.viewMode === 'top') {
@@ -616,7 +652,6 @@ export class AppComponent implements OnInit, OnDestroy {
             }
         }
 
-        // Send a lightning-fast secondary call to dynamically color the image properly
         const formDataFinal = new FormData();
         formDataFinal.append('real_image', compressedReal);
         formDataFinal.append('rod_points', JSON.stringify(finalNormRodPoints));
@@ -625,6 +660,10 @@ export class AppComponent implements OnInit, OnDestroy {
         formDataFinal.append('statuses', JSON.stringify(statuses));
 
         const cvResFinal = await firstValueFrom(this.http.post<any>(`${environment.apiBaseUrl}${endpoint}`, formDataFinal));
+        
+        // Strict Abort Check
+        if (this.currentAnalysisId !== execId || !this.isAnalyzing) return;
+        
         if (cvResFinal?.status === 'success') {
             finalAnnotatedImage = cvResFinal.annotated_image;
         }
@@ -649,11 +688,14 @@ export class AppComponent implements OnInit, OnDestroy {
       console.error(err);
       this.errorMsg = `Analysis Error: ${err.message || 'Server timeout or network failure.'}`;
     } finally {
-      this.isAnalyzing = false;
-      this.timers.cvRunning = false;
-      this.timers.aiRunning = false;
-      clearInterval(aInterval);
-      this.cdr.markForCheck();
+      // Ensure the cleanup only happens if we haven't already moved to a new execution
+      if (this.currentAnalysisId === execId) {
+          this.isAnalyzing = false;
+          this.timers.cvRunning = false;
+          this.timers.aiRunning = false;
+          clearInterval(aInterval);
+          this.cdr.markForCheck();
+      }
     }
   }
 
