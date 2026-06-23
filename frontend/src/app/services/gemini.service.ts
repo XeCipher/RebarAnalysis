@@ -19,7 +19,7 @@ Extract the following specifications:
    - Symmetry Rule: If a distance is labeled on one side, assume the opposite side is identical unless marked otherwise.
    - Total Width Rule: If a total width is given and rods look evenly spaced, divide accordingly.
 
-PART 2: DEFECT DETECTION (From Annotated Photo)
+PART 2: DEFECT DETECTION (From the Annotated Photo)
 Look at the annotated site photograph where the rods are explicitly labeled (R1, R2, R3...).
 Identify if any specific rod is significantly misplaced, bent, or missing compared to a standard symmetrical rectangular arrangement.
 - If all rods look generally aligned and acceptable, set reset=true, rods=[].
