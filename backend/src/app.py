@@ -140,16 +140,14 @@ def send_email_report():
         img_b64 = data.get('image', '').split(',')[-1] 
 
         SENDER_EMAIL = os.environ.get("SENDER_EMAIL")
-        SENDER_PASS = os.environ.get("SENDER_PASS")
+        BREVO_API_KEY = os.environ.get("BREVO_API_KEY")
 
-        if not SENDER_EMAIL or not SENDER_PASS:
-            return jsonify({"status": "error", "message": "Server email credentials not configured"}), 500
+        if not SENDER_EMAIL or not BREVO_API_KEY:
+            return jsonify({"status": "error", "message": "Server API credentials not configured"}), 500
 
-        msg = MIMEMultipart('related')
-        msg['Subject'] = f"Rebar Inspection Alert: Column {column_number} - {quality_label} ({score}%)"
-        msg['From'] = SENDER_EMAIL
-        msg['To'] = authority_email
+        subject = f"Rebar Inspection Alert: Column {column_number} - {quality_label} ({score}%)"
 
+        # Build the HTML
         html_body = f"""
         <html>
           <body>
@@ -173,33 +171,41 @@ def send_email_report():
         html_body += """
             </table>
             <br>
-            <p style="font-family: Arial, sans-serif;">Please find the annotated site photograph attached below.</p>
-            <img src="cid:annotated_img" alt="Annotated Site" style="max-width: 100%; border: 1px solid #ccc;"/>
+            <p style="font-family: Arial, sans-serif;">Please find the annotated site photograph attached to this email.</p>
           </body>
         </html>
         """
-        
-        msg_alt = MIMEMultipart('alternative')
-        msg.attach(msg_alt)
-        msg_alt.attach(MIMEText("Please view this email in an HTML compatible client.", 'plain'))
-        msg_alt.attach(MIMEText(html_body, 'html'))
 
-        if img_b64:
-            img_data = base64.b64decode(img_b64)
-            img_attachment = MIMEImage(img_data)
-            img_attachment.add_header('Content-ID', '<annotated_img>')
-            msg.attach(img_attachment)
+        # Function to run in the background
+        def send_brevo_email(api_key, sender_email, to_email, subj, html, b64_img):
+            import requests
+            url = "https://api.brevo.com/v3/smtp/email"
+            headers = {
+                "accept": "application/json",
+                "api-key": api_key,
+                "content-type": "application/json"
+            }
+            
+            # Construct the API Payload
+            payload = {
+                "sender": {"name": "RebarAnalysis Alert", "email": sender_email},
+                "to": [{"email": to_email}],
+                "subject": subj,
+                "htmlContent": html,
+            }
+            
+            # Attach the Base64 image
+            if b64_img:
+                payload["attachment"] = [{"content": b64_img, "name": "annotated_site.jpg"}]
 
-        def send_email_async(message, email, password):
             try:
-                with smtplib.SMTP('smtp.gmail.com', 587) as server:
-                    server.starttls()
-                    server.login(email, password)
-                    server.send_message(message)
+                response = requests.post(url, json=payload, headers=headers)
+                print(f"Brevo API Response: {response.status_code} - {response.text}")
             except Exception as e:
                 print(f"Async Email Dispatch Error: {e}")
 
-        threading.Thread(target=send_email_async, args=(msg, SENDER_EMAIL, SENDER_PASS)).start()
+        # Start the background thread
+        threading.Thread(target=send_brevo_email, args=(BREVO_API_KEY, SENDER_EMAIL, authority_email, subject, html_body, img_b64)).start()
 
         return jsonify({"status": "success", "message": "Email dispatch initiated successfully"}), 200
     except Exception as e:
