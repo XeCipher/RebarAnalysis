@@ -152,7 +152,8 @@ export class GeminiService {
 
   private async askGemini(prompt: string, base64Images: string[], retries: number = 1): Promise<any> {
     try {
-      const url = `${environment.gemprismBaseUrl}/api/proxy/v1beta/models/gemini-flash-latest:generateContent?key=${environment.gemprismApiKey}`;
+      const model = (environment as any).geminiModel || 'gemini-flash-latest';
+      const url = `${environment.gemprismBaseUrl}/api/proxy/v1beta/models/${model}:generateContent?key=${environment.gemprismApiKey}`;
       
       const parts: any[] = [{ text: prompt }];
       base64Images.forEach(b64 => {

@@ -41,13 +41,18 @@ if not exist "frontend\src\environments\environment.ts" (
     echo.
     if not exist "frontend\src\environments" mkdir "frontend\src\environments"
     
-    set /p GEMPRISM_API_KEY="GemPrism Gateway Token (e.g. gp_live_...) : "
+    set /p GEMPRISM_API_KEY="GemPrism Gateway Token (e.g. gp_live_...)   : "
+    set /p GEMINI_MODEL="Gemini Model (default: gemini-flash-latest) : "
     
+    :: Apply default model if left blank
+    if "!GEMINI_MODEL!"=="" set GEMINI_MODEL=gemini-flash-latest
+
     echo export const environment = {> frontend\src\environments\environment.ts
     echo   production: false,>> frontend\src\environments\environment.ts
     echo   gemprismApiKey: '!GEMPRISM_API_KEY!',>> frontend\src\environments\environment.ts
     echo   gemprismBaseUrl: 'https://gemprism.vercel.app',>> frontend\src\environments\environment.ts
-    echo   apiBaseUrl: 'http://localhost:5000'>> frontend\src\environments\environment.ts
+    echo   apiBaseUrl: 'http://localhost:5000',>> frontend\src\environments\environment.ts
+    echo   geminiModel: '!GEMINI_MODEL!'>> frontend\src\environments\environment.ts
     echo };>> frontend\src\environments\environment.ts
     echo.
     echo [SUCCESS] frontend environment.ts created successfully!
