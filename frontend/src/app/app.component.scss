@@ -5,18 +5,6 @@
     line-height: 0; 
 }
 
-/* Dynamically scaled overlay wrapper allowing short landscape images to never clip processing loaders */
-.overlay-content-scale {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    width: 100%;
-    height: 100%;
-    transform-origin: center center;
-    transition: transform 0.2s ease-out;
-}
-
 /* Dots */
 .dot-rod { 
     position: absolute; 
@@ -66,6 +54,12 @@
     transform: translate(-50%, -50%) scale(1.15);
 }
 
+/* SVG interactive graph pattern */
+.bg-pattern {
+    background-image: radial-gradient(#e2e8f0 1px, transparent 1px);
+    background-size: 20px 20px;
+}
+
 /* Mobile Adjustments for visual clarity */
 @media (max-width: 640px) {
     .dot-rod {
@@ -87,26 +81,13 @@
 }
 
 @keyframes fadeIn { 
-    from { 
-        opacity: 0; 
-        transform: translateY(8px); 
-    } 
-    to { 
-        opacity: 1; 
-        transform: translateY(0); 
-    }
+    from { opacity: 0; transform: translateY(8px); } 
+    to { opacity: 1; transform: translateY(0); }
 }
 
 /* Elegant Scrollbars tailored for tables and panels */
 .table-scrollbar {
-  &::-webkit-scrollbar { 
-    width: 6px; 
-    height: 6px; 
-  }
-  &::-webkit-scrollbar-track { 
-    background: transparent; 
-  }
-  &::-webkit-scrollbar-thumb { 
-    @apply bg-slate-200 rounded-full hover:bg-slate-300 transition-colors; 
-  }
+  &::-webkit-scrollbar { width: 6px; height: 6px; }
+  &::-webkit-scrollbar-track { background: transparent; }
+  &::-webkit-scrollbar-thumb { @apply bg-slate-200 rounded-full hover:bg-slate-300 transition-colors; }
 }
