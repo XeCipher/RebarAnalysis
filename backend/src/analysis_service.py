@@ -128,7 +128,7 @@ def find_rod_circle(image, seed_point):
         
     return seed_point, final_radius, False
 
-def process_image(img_array, rod_points, ref_points, ref_length_mm, statuses=None):
+def process_image(img_array, rod_points, ref_points, ref_length_mm, design_data=None, statuses=None):
     """
     Main orchestrator logic. Supports coloring spacing lines based on the statuses evaluated by the AI.
     """

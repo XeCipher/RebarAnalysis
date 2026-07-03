@@ -153,7 +153,7 @@ def fit_line_standard(points):
     else:
         return 0, ys[0]
 
-def process_side_view(img_array, rod_points, ref_points=None, ref_length=0, statuses=None):
+def process_side_view(img_array, rod_points, ref_points=None, ref_length=0, design_data=None, statuses=None):
     if img_array is None: return None, {}, False
     
     annotated_img = img_array.copy()

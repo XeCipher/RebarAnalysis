@@ -3,12 +3,8 @@ import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { environment } from '../../environments/environment';
 
-// --- COMBINED PROMPTS ---
-const PROMPT_COMBINED_TOP = `You are an expert structural inspector. Analyze the two provided images:
-Image 1: Architectural Design Drawing
-Image 2: Annotated Site Photograph (with R1, R2, etc. labels)
-
-PART 1: DESIGN EXTRACTION (From Drawing)
+// --- DESIGN EXTRACTION PROMPTS ---
+const PROMPT_DESIGN_TOP = `You are an expert structural inspector. Analyze the provided Architectural Design Drawing.
 Extract the following specifications:
 1. Count: Count the main round black circles (rods).
 2. Radius: Look for labels like "12mm" or "8mm". Diameter 12mm = Radius 6mm.
@@ -19,26 +15,14 @@ Extract the following specifications:
    - Symmetry Rule: If a distance is labeled on one side, assume the opposite side is identical unless marked otherwise.
    - Total Width Rule: If a total width is given and rods look evenly spaced, divide accordingly.
 
-PART 2: DEFECT DETECTION (From the Annotated Photo)
-Look at the annotated site photograph where the rods are explicitly labeled (R1, R2, R3...).
-Identify if any specific rod is significantly misplaced, bent, or missing compared to a standard symmetrical rectangular arrangement.
-- If all rods look generally aligned and acceptable, set reset=true, rods=[].
-- If rods are clearly out of alignment, set reset=false and provide a list of their integer numbers (e.g., [3] or [2, 4]).
-
 Output Structure (Strict JSON):
 {
-  "design": {
-    "count": Integer,
-    "radius_mm": Float,
-    "spacings_mm": [List of Floats]
-  },
-  "defect": {
-    "reset": Boolean,
-    "rods": [List of Integers]
-  }
+  "count": Integer,
+  "radius_mm": Float,
+  "spacings_mm": [List of Floats]
 }`;
 
-const PROMPT_COMBINED_SIDE = `Analyze the architectural rebar drawing (Side/Elevation View).
+const PROMPT_DESIGN_SIDE = `Analyze the architectural rebar drawing (Side/Elevation View).
 Extract the **Vertical Spacing** (pitch) between the horizontal bars (stirrups/ties).
 Also extract the **Least lateral dimension** of the column (if specified) and the **diameter** of the smallest longitudinal (main vertical) bar.
 
@@ -50,15 +34,9 @@ Look for labels like:
 
 Output Structure (Strict JSON):
 {
-  "design": {
-    "spacing_mm": Float or null,
-    "least_lateral_dim_mm": Float or null,
-    "longitudinal_bar_dia_mm": Float or null
-  },
-  "defect": {
-    "reset": true,
-    "rods": []
-  }
+  "spacing_mm": Float or null,
+  "least_lateral_dim_mm": Float or null,
+  "longitudinal_bar_dia_mm": Float or null
 }`;
 
 const PROMPT_AUTO_DETECT_TOP = `You are an expert AI vision system. Analyze this Site Photograph of a concrete block.
@@ -127,21 +105,19 @@ export class GeminiService {
     });
   }
 
-  async analyzeDesignAndDefects(designB64: string, annotatedB64: string | null, viewMode: 'top' | 'side'): Promise<any> {
-    const prompt = viewMode === 'side' ? PROMPT_COMBINED_SIDE : PROMPT_COMBINED_TOP;
-    const images = (annotatedB64 && viewMode === 'top') ? [designB64, annotatedB64] : [designB64];
-    
-    const data = await this.askGemini(prompt, images);
+  // Streamlined AI call to solely process the Blueprint for the simulation layer
+  async analyzeDesignOnly(designB64: string, viewMode: 'top' | 'side'): Promise<any> {
+    const prompt = viewMode === 'side' ? PROMPT_DESIGN_SIDE : PROMPT_DESIGN_TOP;
+    const data = await this.askGemini(prompt, [designB64]);
 
     if (!data) {
-      if (viewMode === 'side') return { design: { spacing_mm: 0, least_lateral_dim_mm: 0, longitudinal_bar_dia_mm: 0 }, defect: { reset: true, rods: [] } };
-      return { design: { count: 0, radius_mm: 0, spacings_mm: [] }, defect: { reset: true, rods: [] } };
+      return viewMode === 'side' 
+        ? { spacing_mm: 0, least_lateral_dim_mm: 0, longitudinal_bar_dia_mm: 0 } 
+        : { count: 0, radius_mm: 0, spacings_mm: [] };
     }
-
-    return {
-      design: data.design || (viewMode === 'side' ? { spacing_mm: 0, least_lateral_dim_mm: 0, longitudinal_bar_dia_mm: 0 } : { count: 0, radius_mm: 0, spacings_mm: [] }),
-      defect: data.defect || { reset: true, rods: [] }
-    };
+    
+    // Safely unwrap if the AI accidentally wrapped it inside a parent "design" object
+    return data.design ? data.design : data;
   }
 
   async getAutoDetectPoints(base64: string, viewMode: 'top' | 'side'): Promise<any[]> {

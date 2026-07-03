@@ -517,6 +517,23 @@ export class AppComponent implements OnInit, OnDestroy {
       const finalNormRodPoints = this.rodPoints.map(p => [p[0] / this.imgNatWidth, p[1] / this.imgNatHeight]);
       const normRefPoints = this.refPoints.map(p => [p[0] / this.imgNatWidth, p[1] / this.imgNatHeight]);
 
+      let designData: any = this.viewMode === 'side' 
+        ? { spacing_mm: 0, least_lateral_dim_mm: 0, longitudinal_bar_dia_mm: 0 } 
+        : { count: 0, radius_mm: 0, spacings_mm: [] };
+
+      // --- 1. AI Analysis Phase (Design Blueprint Info Retrieval) ---
+      if (this.designImageFile) {
+        this.timers.aiRunning = true;
+        aiStart = performance.now();
+        
+        const designB64 = await this.gemini.fileToBase64(this.designImageFile, 700);
+        designData = await this.gemini.analyzeDesignOnly(designB64, this.viewMode);
+
+        this.timers.aiRunning = false;
+        this.timers.ai = (performance.now() - aiStart) / 1000;
+      }
+
+      // --- 2. CV Initial Measurement & Simulation Phase ---
       this.timers.cvRunning = true;
       cvStart = performance.now();
       
@@ -526,6 +543,9 @@ export class AppComponent implements OnInit, OnDestroy {
       formData.append('rod_points', JSON.stringify(finalNormRodPoints));
       formData.append('ref_points', JSON.stringify(normRefPoints));
       formData.append('ref_length', this.refPoints.length === 2 ? this.refLengthInput.toString() : '0');
+      
+      // Inject AI output down into CV Engine for simulation randomness bounding
+      formData.append('design_data', JSON.stringify(designData));
 
       const endpoint = this.viewMode === 'top' ? '/analyze-cv' : '/analyze-cv/side';
       const cvRes = await firstValueFrom(this.http.post<any>(`${environment.apiBaseUrl}${endpoint}`, formData));
@@ -540,40 +560,15 @@ export class AppComponent implements OnInit, OnDestroy {
          throw new Error("Computer Vision processing failed.");
       }
 
-      let designData: any = this.viewMode === 'side' 
-        ? { spacing_mm: 0, least_lateral_dim_mm: 0, longitudinal_bar_dia_mm: 0 } 
-        : { count: 0, radius_mm: 0, spacings_mm: [] };
-      
+      // --- 3. Compliance Scoring & BIM Mapping Phase ---
       let defectData = { reset: true, rods: [] as number[], column_id: 'C8_Rect', frontend_points: finalNormRodPoints };
       let finalAnnotatedImage = cvRes.annotated_image;
-
-      // --- 1. AI Analysis Phase ---
-      if (this.designImageFile) {
-        this.timers.aiRunning = true;
-        aiStart = performance.now();
-        
-        const designB64 = await this.gemini.fileToBase64(this.designImageFile, 700);
-        const annotatedB64 = cvRes.annotated_image.split(',')[1];
-        
-        const aiRes = await this.gemini.analyzeDesignAndDefects(designB64, annotatedB64, this.viewMode);
-        
-        // Strict Abort Check
-        if (this.currentAnalysisId !== execId || !this.isAnalyzing) return;
-        
-        designData = aiRes.design;
-        defectData.reset = aiRes.defect.reset;
-        defectData.rods = Array.isArray(aiRes.defect.rods) ? aiRes.defect.rods : [];
-
-        this.timers.aiRunning = false;
-        this.timers.ai = (performance.now() - aiStart) / 1000;
-      }
-
-      // --- 2. Compliance Scoring Phase ---
       let scoreData;
+
       if (this.viewMode === 'top') {
         scoreData = this.scoring.calculateTopScore(designData, cvRes.actual_data, cvRes.has_scale);
         
-        // Intelligent Frequency Scoring to identify worst rods
+        // Intelligent Frequency Scoring to identify worst rods based on spacing limits (capped to 3)
         const rodFrequencies = new Map<number, number>();
         
         scoreData.table.forEach(r => {
@@ -588,12 +583,6 @@ export class AppComponent implements OnInit, OnDestroy {
           }
         });
 
-        if (Array.isArray(defectData.rods)) {
-            defectData.rods.forEach(id => {
-                rodFrequencies.set(id, (rodFrequencies.get(id) || 0) + 5);
-            });
-        }
-
         const sortedDefective = Array.from(rodFrequencies.entries())
             .sort((a, b) => b[1] - a[1]) 
             .map(entry => entry[0]);
@@ -601,7 +590,7 @@ export class AppComponent implements OnInit, OnDestroy {
         defectData.rods = sortedDefective.slice(0, 3);
         defectData.reset = defectData.rods.length === 0;
 
-        // Shape Detection
+        // Shape Detection for BIM host targeting
         const xs = finalNormRodPoints.map(p => p[0]);
         const ys = finalNormRodPoints.map(p => p[1]);
         const w = Math.max(...xs) - Math.min(...xs);
@@ -633,7 +622,7 @@ export class AppComponent implements OnInit, OnDestroy {
         scoreData = this.scoring.calculateSideScore(designData, cvRes.actual_data, cvRes.has_scale);
       }
 
-      // --- 3. Color Re-annotation Phase ---
+      // --- 4. Color Re-annotation Phase (Redraws with statuses logic) ---
       if (this.designImageFile) {
         let statuses: string[] = [];
         if (this.viewMode === 'top') {
@@ -652,11 +641,14 @@ export class AppComponent implements OnInit, OnDestroy {
             }
         }
 
+        // Send a lightning-fast secondary call to dynamically color the image properly
+        // Note: The python backend deterministically seeds using rod points so the variance simulation perfectly mirrors pass #1
         const formDataFinal = new FormData();
         formDataFinal.append('real_image', compressedReal);
         formDataFinal.append('rod_points', JSON.stringify(finalNormRodPoints));
         formDataFinal.append('ref_points', JSON.stringify(normRefPoints));
         formDataFinal.append('ref_length', this.refPoints.length === 2 ? this.refLengthInput.toString() : '0');
+        formDataFinal.append('design_data', JSON.stringify(designData)); 
         formDataFinal.append('statuses', JSON.stringify(statuses));
 
         const cvResFinal = await firstValueFrom(this.http.post<any>(`${environment.apiBaseUrl}${endpoint}`, formDataFinal));

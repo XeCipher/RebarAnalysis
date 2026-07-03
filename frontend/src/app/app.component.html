@@ -212,15 +212,15 @@
                      <lucide-icon [img]="icons.Timer" class="w-6 h-6 sm:w-8 sm:h-8 opacity-70"></lucide-icon>{{ timers.total | number:'1.2-2' }}s
                    </div>
                    <div class="grid grid-cols-2 gap-2 sm:gap-3 mb-6 sm:mb-8 w-full max-w-sm px-2 sm:px-4 shrink-0 mx-auto">
-                     <div class="bg-slate-800/60 border border-slate-700 p-2 sm:p-3 rounded-lg flex flex-col items-center justify-center">
-                       <div class="text-[9px] sm:text-[10px] uppercase text-slate-400 mb-1 text-center">Vision Engine</div>
-                       <div class="font-mono font-bold text-sm sm:text-base text-center" [class.text-white]="timers.cvRunning" [class.text-green-400]="!timers.cvRunning && timers.cv > 0">{{ timers.cv | number:'1.2-2' }}s</div>
-                     </div>
                      <div class="bg-slate-800/60 border border-slate-700 p-2 sm:p-3 rounded-lg flex flex-col items-center justify-center" [class.opacity-50]="!designImageFile">
                        <div class="text-[9px] sm:text-[10px] uppercase text-slate-400 mb-1 text-center">Gemini AI</div>
                        <div class="font-mono font-bold text-sm sm:text-base text-center" [class.text-white]="timers.aiRunning" [class.text-green-400]="!timers.aiRunning && timers.ai > 0">
                          {{ designImageFile ? (timers.ai | number:'1.2-2') + 's' : 'N/A' }}
                        </div>
+                     </div>
+                     <div class="bg-slate-800/60 border border-slate-700 p-2 sm:p-3 rounded-lg flex flex-col items-center justify-center">
+                       <div class="text-[9px] sm:text-[10px] uppercase text-slate-400 mb-1 text-center">Vision Engine</div>
+                       <div class="font-mono font-bold text-sm sm:text-base text-center" [class.text-white]="timers.cvRunning" [class.text-green-400]="!timers.cvRunning && timers.cv > 0">{{ timers.cv | number:'1.2-2' }}s</div>
                      </div>
                    </div>
                    <button (click)="cancelAnalysis()" class="px-5 sm:px-6 py-1.5 sm:py-2 bg-white/10 hover:bg-white/20 border border-white/30 rounded-full text-xs sm:text-sm font-medium transition-all active:scale-95 shrink-0 mx-auto block">Cancel Execution</button>
@@ -418,15 +418,15 @@
                     </div>
                     <div class="w-px h-6 bg-slate-200"></div>
                     <div class="flex flex-col text-right">
-                        <span class="text-[9px] text-slate-400 uppercase tracking-wider">Vision Engine</span>
-                        <span class="font-mono font-medium text-slate-700">{{ timers.cv | number:'1.2-2' }}s</span>
-                    </div>
-                    <div class="w-px h-6 bg-slate-200"></div>
-                    <div class="flex flex-col text-right">
                         <span class="text-[9px] text-slate-400 uppercase tracking-wider">Gemini AI</span>
                         <span class="font-mono font-medium" [class.text-slate-700]="designImageFile" [class.text-slate-400]="!designImageFile">
                           {{ designImageFile ? (timers.ai | number:'1.2-2') + 's' : 'N/A' }}
                         </span>
+                    </div>
+                    <div class="w-px h-6 bg-slate-200"></div>
+                    <div class="flex flex-col text-right">
+                        <span class="text-[9px] text-slate-400 uppercase tracking-wider">Vision Engine</span>
+                        <span class="font-mono font-medium text-slate-700">{{ timers.cv | number:'1.2-2' }}s</span>
                     </div>
                     <div class="w-px h-6 bg-slate-200"></div>
                     <div class="flex flex-col text-right">
