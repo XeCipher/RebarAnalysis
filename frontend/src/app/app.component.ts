@@ -22,7 +22,8 @@ export interface ApiResponse {
 
 export interface BlueprintModel {
   id: string; count: number | 'custom'; shape: 'Square' | 'Rectangle' | 'Custom';
-  rods: { cx: number, cy: number, tx: number, ty: number }[];
+  viewBox?: string; maxWidth?: number;
+  rods: { cx: number, cy: number }[];
   spacings: { 
     idx: number; 
     x: number; y: number; 
@@ -67,116 +68,31 @@ export class AppComponent implements OnInit, OnDestroy {
   designImagePreview: string | null = null;
   designInputMode: 'upload' | 'manual' = 'upload';
   
-  // Mathematically Padded SVG Models to prevent overlaps
-  TOP_MODELS: BlueprintModel[] = [
-    {
-      id: 'c4_sq', count: 4, shape: 'Square',
-      rods: [ {cx: 30, cy: 30, tx: 22, ty: 22}, {cx: 70, cy: 30, tx: 78, ty: 22}, {cx: 70, cy: 70, tx: 78, ty: 78}, {cx: 30, cy: 70, tx: 22, ty: 78} ],
-      spacings: [
-        { idx: 0, x: 50, y: 15, opposite: 2, value: null }, { idx: 1, x: 85, y: 50, opposite: 3, value: null },
-        { idx: 2, x: 50, y: 85, opposite: 0, value: null }, { idx: 3, x: 15, y: 50, opposite: 1, value: null }
-      ]
-    },
-    {
-      id: 'c6_rect', count: 6, shape: 'Rectangle',
-      rods: [ {cx: 25, cy: 35, tx: 18, ty: 27}, {cx: 50, cy: 35, tx: 50, ty: 27}, {cx: 75, cy: 35, tx: 82, ty: 27}, {cx: 75, cy: 65, tx: 82, ty: 73}, {cx: 50, cy: 65, tx: 50, ty: 73}, {cx: 25, cy: 65, tx: 18, ty: 73} ],
-      spacings: [
-        { idx: 0, x: 37.5, y: 15, opposite: 4, value: null }, { idx: 1, x: 62.5, y: 15, opposite: 3, value: null },
-        { idx: 2, x: 90, y: 50, opposite: 5, value: null },
-        { idx: 3, x: 62.5, y: 85, opposite: 1, value: null }, { idx: 4, x: 37.5, y: 85, opposite: 0, value: null },
-        { idx: 5, x: 10, y: 50, opposite: 2, value: null }
-      ]
-    },
-    {
-      id: 'c8_sq', count: 8, shape: 'Square',
-      rods: [ {cx: 25, cy: 25, tx: 18, ty: 18}, {cx: 50, cy: 25, tx: 50, ty: 18}, {cx: 75, cy: 25, tx: 82, ty: 18}, {cx: 75, cy: 50, tx: 82, ty: 50}, {cx: 75, cy: 75, tx: 82, ty: 82}, {cx: 50, cy: 75, tx: 50, ty: 82}, {cx: 25, cy: 75, tx: 18, ty: 82}, {cx: 25, cy: 50, tx: 18, ty: 50} ],
-      spacings: [
-        { idx: 0, x: 37.5, y: 8, opposite: 5, value: null }, { idx: 1, x: 62.5, y: 8, opposite: 4, value: null },
-        { idx: 2, x: 92, y: 37.5, opposite: 7, value: null }, { idx: 3, x: 92, y: 62.5, opposite: 6, value: null },
-        { idx: 4, x: 62.5, y: 92, opposite: 1, value: null }, { idx: 5, x: 37.5, y: 92, opposite: 0, value: null },
-        { idx: 6, x: 8, y: 62.5, opposite: 3, value: null }, { idx: 7, x: 8, y: 37.5, opposite: 2, value: null }
-      ]
-    },
-    {
-      id: 'c8_rect', count: 8, shape: 'Rectangle',
-      rods: [ {cx: 20, cy: 35, tx: 14, ty: 27}, {cx: 40, cy: 35, tx: 40, ty: 27}, {cx: 60, cy: 35, tx: 60, ty: 27}, {cx: 80, cy: 35, tx: 86, ty: 27}, {cx: 80, cy: 65, tx: 86, ty: 73}, {cx: 60, cy: 65, tx: 60, ty: 73}, {cx: 40, cy: 65, tx: 40, ty: 73}, {cx: 20, cy: 65, tx: 14, ty: 73} ],
-      spacings: [
-        { idx: 0, x: 30, y: 12, opposite: 6, value: null }, { idx: 1, x: 50, y: 12, opposite: 5, value: null }, { idx: 2, x: 70, y: 12, opposite: 4, value: null },
-        { idx: 3, x: 95, y: 50, opposite: 7, value: null },
-        { idx: 4, x: 70, y: 88, opposite: 2, value: null }, { idx: 5, x: 50, y: 88, opposite: 1, value: null }, { idx: 6, x: 30, y: 88, opposite: 0, value: null },
-        { idx: 7, x: 5, y: 50, opposite: 3, value: null }
-      ]
-    },
-    {
-      id: 'c10_rect', count: 10, shape: 'Rectangle',
-      rods: [ {cx: 20, cy: 35, tx: 14, ty: 27}, {cx: 35, cy: 35, tx: 35, ty: 27}, {cx: 50, cy: 35, tx: 50, ty: 27}, {cx: 65, cy: 35, tx: 65, ty: 27}, {cx: 80, cy: 35, tx: 86, ty: 27}, {cx: 80, cy: 65, tx: 86, ty: 73}, {cx: 65, cy: 65, tx: 65, ty: 73}, {cx: 50, cy: 65, tx: 50, ty: 73}, {cx: 35, cy: 65, tx: 35, ty: 73}, {cx: 20, cy: 65, tx: 14, ty: 73} ],
-      spacings: [
-        { idx: 0, x: 27.5, y: 12, opposite: 8, value: null }, { idx: 1, x: 42.5, y: 12, opposite: 7, value: null }, { idx: 2, x: 57.5, y: 12, opposite: 6, value: null }, { idx: 3, x: 72.5, y: 12, opposite: 5, value: null },
-        { idx: 4, x: 95, y: 50, opposite: 9, value: null },
-        { idx: 5, x: 72.5, y: 88, opposite: 3, value: null }, { idx: 6, x: 57.5, y: 88, opposite: 2, value: null }, { idx: 7, x: 42.5, y: 88, opposite: 1, value: null }, { idx: 8, x: 27.5, y: 88, opposite: 0, value: null },
-        { idx: 9, x: 5, y: 50, opposite: 4, value: null }
-      ]
-    },
-    {
-      id: 'c12_sq', count: 12, shape: 'Square',
-      rods: [ {cx: 25, cy: 25, tx: 18, ty: 18}, {cx: 41.6, cy: 25, tx: 41.6, ty: 18}, {cx: 58.3, cy: 25, tx: 58.3, ty: 18}, {cx: 75, cy: 25, tx: 82, ty: 18}, {cx: 75, cy: 41.6, tx: 82, ty: 41.6}, {cx: 75, cy: 58.3, tx: 82, ty: 58.3}, {cx: 75, cy: 75, tx: 82, ty: 82}, {cx: 58.3, cy: 75, tx: 58.3, ty: 82}, {cx: 41.6, cy: 75, tx: 41.6, ty: 82}, {cx: 25, cy: 75, tx: 18, ty: 82}, {cx: 25, cy: 58.3, tx: 18, ty: 58.3}, {cx: 25, cy: 41.6, tx: 18, ty: 41.6} ],
-      spacings: [
-        { idx: 0, x: 33.3, y: 5, opposite: 9, value: null }, { idx: 1, x: 50, y: 5, opposite: 8, value: null }, { idx: 2, x: 66.6, y: 5, opposite: 7, value: null },
-        { idx: 3, x: 95, y: 33.3, opposite: 11, value: null }, { idx: 4, x: 95, y: 50, opposite: 10, value: null }, { idx: 5, x: 95, y: 66.6, opposite: 9, value: null },
-        { idx: 6, x: 66.6, y: 95, opposite: 2, value: null }, { idx: 7, x: 50, y: 95, opposite: 1, value: null }, { idx: 8, x: 33.3, y: 95, opposite: 0, value: null },
-        { idx: 9, x: 5, y: 66.6, opposite: 5, value: null }, { idx: 10, x: 5, y: 50, opposite: 4, value: null }, { idx: 11, x: 5, y: 33.3, opposite: 3, value: null }
-      ]
-    },
-    {
-      id: 'c12_rect', count: 12, shape: 'Rectangle',
-      rods: [ {cx: 15, cy: 35, tx: 10, ty: 27}, {cx: 29, cy: 35, tx: 29, ty: 27}, {cx: 43, cy: 35, tx: 43, ty: 27}, {cx: 57, cy: 35, tx: 57, ty: 27}, {cx: 71, cy: 35, tx: 71, ty: 27}, {cx: 85, cy: 35, tx: 90, ty: 27}, {cx: 85, cy: 65, tx: 90, ty: 73}, {cx: 71, cy: 65, tx: 71, ty: 73}, {cx: 57, cy: 65, tx: 57, ty: 73}, {cx: 43, cy: 65, tx: 43, ty: 73}, {cx: 29, cy: 65, tx: 29, ty: 73}, {cx: 15, cy: 65, tx: 10, ty: 73} ],
-      spacings: [
-        { idx: 0, x: 22, y: 12, opposite: 10, value: null }, { idx: 1, x: 36, y: 12, opposite: 9, value: null }, { idx: 2, x: 50, y: 12, opposite: 8, value: null }, { idx: 3, x: 64, y: 12, opposite: 7, value: null }, { idx: 4, x: 78, y: 12, opposite: 6, value: null },
-        { idx: 5, x: 95, y: 50, opposite: 11, value: null },
-        { idx: 6, x: 78, y: 88, opposite: 4, value: null }, { idx: 7, x: 64, y: 88, opposite: 3, value: null }, { idx: 8, x: 50, y: 88, opposite: 2, value: null }, { idx: 9, x: 36, y: 88, opposite: 1, value: null }, { idx: 10, x: 22, y: 88, opposite: 0, value: null },
-        { idx: 11, x: 5, y: 50, opposite: 5, value: null }
-      ]
-    },
-    {
-      id: 'c16_sq', count: 16, shape: 'Square',
-      rods: [ {cx: 15, cy: 25, tx: 9, ty: 18}, {cx: 29, cy: 25, tx: 29, ty: 18}, {cx: 43, cy: 25, tx: 43, ty: 18}, {cx: 57, cy: 25, tx: 57, ty: 18}, {cx: 71, cy: 25, tx: 71, ty: 18}, {cx: 85, cy: 25, tx: 91, ty: 18}, {cx: 85, cy: 41.6, tx: 92, ty: 41.6}, {cx: 85, cy: 58.3, tx: 92, ty: 58.3}, {cx: 85, cy: 75, tx: 91, ty: 82}, {cx: 71, cy: 75, tx: 71, ty: 82}, {cx: 57, cy: 75, tx: 57, ty: 82}, {cx: 43, cy: 75, tx: 43, ty: 82}, {cx: 29, cy: 75, tx: 29, ty: 82}, {cx: 15, cy: 75, tx: 9, ty: 82}, {cx: 15, cy: 58.3, tx: 8, ty: 58.3}, {cx: 15, cy: 41.6, tx: 8, ty: 41.6} ],
-      spacings: [
-        { idx: 0, x: 22, y: 5, opposite: 12, value: null }, { idx: 1, x: 36, y: 5, opposite: 11, value: null }, { idx: 2, x: 50, y: 5, opposite: 10, value: null }, { idx: 3, x: 64, y: 5, opposite: 9, value: null }, { idx: 4, x: 78, y: 5, opposite: 8, value: null },
-        { idx: 5, x: 96, y: 33.3, opposite: 15, value: null }, { idx: 6, x: 96, y: 50, opposite: 14, value: null }, { idx: 7, x: 96, y: 66.6, opposite: 13, value: null },
-        { idx: 8, x: 78, y: 95, opposite: 4, value: null }, { idx: 9, x: 64, y: 95, opposite: 3, value: null }, { idx: 10, x: 50, y: 95, opposite: 2, value: null }, { idx: 11, x: 36, y: 95, opposite: 1, value: null }, { idx: 12, x: 22, y: 95, opposite: 0, value: null },
-        { idx: 13, x: 4, y: 66.6, opposite: 7, value: null }, { idx: 14, x: 4, y: 50, opposite: 6, value: null }, { idx: 15, x: 4, y: 33.3, opposite: 5, value: null }
-      ]
-    },
-    {
-      id: 'c16_rect', count: 16, shape: 'Rectangle',
-      rods: [ {cx: 15, cy: 35, tx: 10, ty: 27}, {cx: 25, cy: 35, tx: 25, ty: 27}, {cx: 35, cy: 35, tx: 35, ty: 27}, {cx: 45, cy: 35, tx: 45, ty: 27}, {cx: 55, cy: 35, tx: 55, ty: 27}, {cx: 65, cy: 35, tx: 65, ty: 27}, {cx: 75, cy: 35, tx: 75, ty: 27}, {cx: 85, cy: 35, tx: 90, ty: 27}, {cx: 85, cy: 65, tx: 90, ty: 73}, {cx: 75, cy: 65, tx: 75, ty: 73}, {cx: 65, cy: 65, tx: 65, ty: 73}, {cx: 55, cy: 65, tx: 55, ty: 73}, {cx: 45, cy: 65, tx: 45, ty: 73}, {cx: 35, cy: 65, tx: 35, ty: 73}, {cx: 25, cy: 65, tx: 25, ty: 73}, {cx: 15, cy: 65, tx: 10, ty: 73} ],
-      spacings: [
-        { idx: 0, x: 20, y: 12, opposite: 14, value: null }, { idx: 1, x: 30, y: 12, opposite: 13, value: null }, { idx: 2, x: 40, y: 12, opposite: 12, value: null }, { idx: 3, x: 50, y: 12, opposite: 11, value: null }, { idx: 4, x: 60, y: 12, opposite: 10, value: null }, { idx: 5, x: 70, y: 12, opposite: 9, value: null }, { idx: 6, x: 80, y: 12, opposite: 8, value: null },
-        { idx: 7, x: 95, y: 50, opposite: 15, value: null },
-        { idx: 8, x: 80, y: 88, opposite: 6, value: null }, { idx: 9, x: 70, y: 88, opposite: 5, value: null }, { idx: 10, x: 60, y: 88, opposite: 4, value: null }, { idx: 11, x: 50, y: 88, opposite: 3, value: null }, { idx: 12, x: 40, y: 88, opposite: 2, value: null }, { idx: 13, x: 30, y: 88, opposite: 1, value: null }, { idx: 14, x: 20, y: 88, opposite: 0, value: null },
-        { idx: 15, x: 5, y: 50, opposite: 7, value: null }
-      ]
-    }
-  ];
+  TOP_MODELS: BlueprintModel[] = [];
 
   selectedRodCount: number | 'custom' = 8;
   selectedShape: 'Square' | 'Rectangle' | 'Custom' = 'Rectangle';
   customRodCount: number = 4;
   
-  activeModel: BlueprintModel;
+  // Separation of AI extracted vs Manual configurations
+  activeModel!: BlueprintModel;
+  extractedModel: BlueprintModel | null = null;
+  
   designRadius: number | null = 8;
+  extractedRadius: number | null = null;
   
   get availableShapes(): string[] {
     if (this.selectedRodCount === 'custom') return ['Custom'];
     return Array.from(new Set(this.TOP_MODELS.filter(m => m.count === Number(this.selectedRodCount)).map(m => m.shape)));
   }
   
-  get activeModelPolygonPoints(): string {
-    return this.activeModel?.rods?.map(r => `${r.cx},${r.cy}`).join(' ') || '';
+  getPolygonPoints(model: BlueprintModel): string {
+    return model?.rods?.map(r => `${r.cx},${r.cy}`).join(' ') || '';
   }
 
   // Side View Manual State
   sideManualState = { spacing_mm: 150, least_lateral_dim_mm: 400, longitudinal_bar_dia_mm: 20 };
+  sideExtractedState = { spacing_mm: 150, least_lateral_dim_mm: 400, longitudinal_bar_dia_mm: 20 };
 
   // Execution Processing States
   isAnalyzing = false;
@@ -227,7 +143,7 @@ export class AppComponent implements OnInit, OnDestroy {
     private gemini: GeminiService,
     private scoring: ScoringService
   ) {
-    this.activeModel = JSON.parse(JSON.stringify(this.TOP_MODELS.find(m => m.id === 'c8_rect')!));
+    this.initModels();
   }
 
   ngOnInit() {
@@ -251,6 +167,72 @@ export class AppComponent implements OnInit, OnDestroy {
 
   ngOnDestroy() {
     this.intervals.forEach(i => clearInterval(i));
+  }
+
+  initModels() {
+    const configs = [
+      { c: 4, s: 'Square' }, { c: 6, s: 'Rectangle' }, { c: 8, s: 'Square' },
+      { c: 8, s: 'Rectangle' }, { c: 10, s: 'Rectangle' }, { c: 12, s: 'Square' },
+      { c: 12, s: 'Rectangle' }, { c: 16, s: 'Square' }, { c: 16, s: 'Rectangle' }
+    ];
+    this.TOP_MODELS = configs.map(conf => this.generateModel(conf.c, conf.s as 'Square' | 'Rectangle'));
+    this.activeModel = JSON.parse(JSON.stringify(this.TOP_MODELS.find(m => m.id === 'c8_rectangle')!));
+  }
+
+  generateModel(count: number, shape: 'Square' | 'Rectangle'): BlueprintModel {
+    const rods: any[] = [];
+    const spacings: any[] = [];
+    let L = 0; let S = 0;
+    
+    if (shape === 'Square') {
+      const N = count / 4;
+      L = N; S = N;
+    } else {
+      S = 1; L = (count / 2) - 1;
+    }
+    
+    const segmentLen = 65;
+    const width = L * segmentLen; 
+    const height = S * segmentLen;
+    const padX = 45; const padY = 45;
+    const vbW = width + padX * 2;
+    const vbH = height + padY * 2;
+    
+    // Top Edge (L-R)
+    for (let i = 0; i < L; i++) rods.push({ cx: padX + (width / L) * i, cy: padY });
+    // Right Edge (T-B)
+    for (let i = 0; i < S; i++) rods.push({ cx: padX + width, cy: padY + (height / S) * i });
+    // Bottom Edge (R-L)
+    for (let i = 0; i < L; i++) rods.push({ cx: padX + width - (width / L) * i, cy: padY + height });
+    // Left Edge (B-T)
+    for (let i = 0; i < S; i++) rods.push({ cx: padX, cy: padY + height - (height / S) * i });
+
+    for (let i = 0; i < rods.length; i++) {
+        const r1 = rods[i];
+        const r2 = rods[(i + 1) % rods.length];
+        const mx = (r1.cx + r2.cx) / 2;
+        const my = (r1.cy + r2.cy) / 2;
+        
+        let offsetX = 0; let offsetY = 0;
+        if (r1.cy === padY && r2.cy === padY) offsetY = -15; // Top edge
+        else if (r1.cx === padX + width && r2.cx === padX + width) offsetX = 22; // Right edge
+        else if (r1.cy === padY + height && r2.cy === padY + height) offsetY = 15; // Bottom edge
+        else if (r1.cx === padX && r2.cx === padX) offsetX = -22; // Left edge
+
+        spacings.push({
+            idx: i,
+            x: ((mx + offsetX) / vbW) * 100,
+            y: ((my + offsetY) / vbH) * 100,
+            value: null,
+            opposite: (i + (L + S)) % ((L + S) * 2)
+        });
+    }
+
+    return {
+        id: `c${count}_${shape.toLowerCase()}`, count, shape,
+        viewBox: `0 0 ${vbW} ${vbH}`, maxWidth: Math.min(Math.max(vbW * 1.5, 300), 800),
+        rods, spacings
+    };
   }
 
   @HostListener('document:click', ['$event'])
@@ -342,6 +324,7 @@ export class AppComponent implements OnInit, OnDestroy {
   clearDesignImage() {
     this.designImageFile = null;
     this.designImagePreview = null;
+    this.extractedModel = null;
     this.cdr.markForCheck();
   }
 
@@ -381,6 +364,35 @@ export class AppComponent implements OnInit, OnDestroy {
     }
   }
 
+  alignSpacings(spacings: number[], targetL: number, targetS: number): number[] {
+    const total = (targetL + targetS) * 2;
+    if (spacings.length !== total) return spacings;
+    
+    let bestShift = 0;
+    let minVariance = Infinity;
+
+    const getVariance = (arr: number[]) => {
+        if (arr.length <= 1) return 0;
+        const mean = arr.reduce((a, b) => a + b, 0) / arr.length;
+        return arr.reduce((a, b) => a + Math.pow(b - mean, 2), 0);
+    };
+
+    for (let shift = 0; shift < total; shift++) {
+        const rotated = [...spacings.slice(shift), ...spacings.slice(0, shift)];
+        const l1 = rotated.slice(0, targetL);
+        const l2 = rotated.slice(targetL + targetS, targetL + targetS + targetL);
+        
+        const v1 = getVariance(l1);
+        const v2 = getVariance(l2);
+        
+        if ((v1 + v2) < minVariance) {
+            minVariance = v1 + v2;
+            bestShift = shift;
+        }
+    }
+    return [...spacings.slice(bestShift), ...spacings.slice(0, bestShift)];
+  }
+
   async startDesignExtraction(file: File) {
     const execId = ++this.currentDesignExtractId;
     this.timers.aiRunning = true;
@@ -411,20 +423,33 @@ export class AppComponent implements OnInit, OnDestroy {
           
           if (!targetModel) targetModel = this.TOP_MODELS[0]; 
           if (targetModel) {
-            this.selectedRodCount = targetModel.count;
-            this.selectedShape = targetModel.shape;
-            this.activeModel = JSON.parse(JSON.stringify(targetModel));
-            this.designRadius = data.radius_mm || null;
+            const modelToPopulate = JSON.parse(JSON.stringify(targetModel));
+            this.extractedRadius = data.radius_mm || null;
+            
             if (Array.isArray(data.spacings_mm)) {
-               this.activeModel.spacings.forEach((sp, i) => {
-                 sp.value = data.spacings_mm[i] !== undefined ? data.spacings_mm[i] : null;
+               let mappedSpacings = data.spacings_mm;
+               if (targetModel.shape === 'Rectangle') {
+                  const S = 1; const L = (data.count / 2) - 1;
+                  mappedSpacings = this.alignSpacings(data.spacings_mm, L, S);
+               }
+               modelToPopulate.spacings.forEach((sp: any, i: number) => {
+                 sp.value = mappedSpacings[i] !== undefined ? mappedSpacings[i] : null;
                });
             }
+            this.extractedModel = modelToPopulate;
+            
+            // Sync to manual state seamlessly without triggering UI switch 
+            this.selectedRodCount = targetModel.count;
+            this.selectedShape = targetModel.shape as 'Square' | 'Rectangle';
+            this.activeModel = JSON.parse(JSON.stringify(this.extractedModel));
+            this.designRadius = this.extractedRadius;
           }
         } else if (this.viewMode === 'side') {
-           this.sideManualState.spacing_mm = data.spacing_mm || this.sideManualState.spacing_mm;
-           this.sideManualState.least_lateral_dim_mm = data.least_lateral_dim_mm || this.sideManualState.least_lateral_dim_mm;
-           this.sideManualState.longitudinal_bar_dia_mm = data.longitudinal_bar_dia_mm || this.sideManualState.longitudinal_bar_dia_mm;
+           this.sideExtractedState.spacing_mm = data.spacing_mm || this.sideExtractedState.spacing_mm;
+           this.sideExtractedState.least_lateral_dim_mm = data.least_lateral_dim_mm || this.sideExtractedState.least_lateral_dim_mm;
+           this.sideExtractedState.longitudinal_bar_dia_mm = data.longitudinal_bar_dia_mm || this.sideExtractedState.longitudinal_bar_dia_mm;
+           
+           this.sideManualState = { ...this.sideExtractedState };
         }
       } catch (err) {
         console.error("Design Extract Error", err);
@@ -448,7 +473,7 @@ export class AppComponent implements OnInit, OnDestroy {
     const available = this.TOP_MODELS.filter(m => m.count === count);
     if (available.length > 0) {
        const shapeExists = available.find(m => m.shape === this.selectedShape);
-       if (!shapeExists) this.selectedShape = available[0].shape;
+       if (!shapeExists) this.selectedShape = available[0].shape as 'Square' | 'Rectangle';
        this.updateActiveModel();
     }
   }
@@ -485,12 +510,19 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   onSpacingChange(idx: number, newValue: number | null) {
-    const spacing = this.activeModel.spacings.find(s => s.idx === idx);
+    this.updateSpacingValue(this.activeModel, idx, newValue);
+  }
+
+  onSpacingChangeExtracted(idx: number, newValue: number | null) {
+    if (this.extractedModel) this.updateSpacingValue(this.extractedModel, idx, newValue);
+  }
+
+  private updateSpacingValue(model: BlueprintModel, idx: number, newValue: number | null) {
+    const spacing = model.spacings.find(s => s.idx === idx);
     if (spacing) {
       spacing.value = newValue;
-      // Auto-mirror symmetry if defined
       if (spacing.opposite !== undefined && newValue !== null) {
-        const opp = this.activeModel.spacings.find(s => s.idx === spacing.opposite);
+        const opp = model.spacings.find(s => s.idx === spacing.opposite);
         if (opp && (opp.value === null || opp.value === 0)) {
            opp.value = newValue;
         }
@@ -755,17 +787,21 @@ export class AppComponent implements OnInit, OnDestroy {
       if (this.currentAnalysisId !== execId) return;
 
       let designData: any = {};
+      const modelToUse = (this.designInputMode === 'upload' && this.extractedModel) ? this.extractedModel : this.activeModel;
+      const radToUse = (this.designInputMode === 'upload' && this.extractedModel) ? this.extractedRadius : this.designRadius;
+      
       if (this.viewMode === 'top') {
          designData = {
-           count: this.selectedRodCount === 'custom' ? this.customRodCount : this.activeModel.count,
-           radius_mm: this.designRadius || 0,
-           spacings_mm: this.activeModel.spacings.map(s => s.value || 0)
+           count: this.selectedRodCount === 'custom' && this.designInputMode === 'manual' ? this.customRodCount : modelToUse.count,
+           radius_mm: radToUse || 0,
+           spacings_mm: modelToUse.spacings.map(s => s.value || 0)
          };
       } else {
+         const sideStateToUse = (this.designInputMode === 'upload') ? this.sideExtractedState : this.sideManualState;
          designData = {
-           spacing_mm: this.sideManualState.spacing_mm,
-           least_lateral_dim_mm: this.sideManualState.least_lateral_dim_mm,
-           longitudinal_bar_dia_mm: this.sideManualState.longitudinal_bar_dia_mm
+           spacing_mm: sideStateToUse.spacing_mm,
+           least_lateral_dim_mm: sideStateToUse.least_lateral_dim_mm,
+           longitudinal_bar_dia_mm: sideStateToUse.longitudinal_bar_dia_mm
          };
       }
 
@@ -826,7 +862,7 @@ export class AppComponent implements OnInit, OnDestroy {
 
         defectData.rods = sortedDefective.slice(0, 3);
         defectData.reset = defectData.rods.length === 0;
-        defectData.column_id = this.selectedRodCount === 'custom' ? 'Custom' : this.activeModel.id; 
+        defectData.column_id = this.selectedRodCount === 'custom' ? 'Custom' : modelToUse.id; 
       } else {
         scoreData = this.scoring.calculateSideScore(designData, cvRes.actual_data, cvRes.has_scale);
       }

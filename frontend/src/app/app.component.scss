@@ -60,6 +60,15 @@
     background-size: 20px 20px;
 }
 
+/* Hide Scrollbar Utility */
+.no-scrollbar {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+  &::-webkit-scrollbar {
+    display: none;  /* Chrome, Safari and Opera */
+  }
+}
+
 /* Mobile Adjustments for visual clarity */
 @media (max-width: 640px) {
     .dot-rod {

@@ -47,29 +47,34 @@ export class ScoringService {
     let radiusStatus: ComparisonRow['status'] = "NA";
     let actualDisplay = "";
 
-    if (hasScale && dRad > 0) {
-      const diameter = dRad * 2;
-      
-      // IS 1786:2008 Approximations for Diametrical Tolerance based on unit weight
-      let tol_pct = 2.0;
-      if (diameter <= 10) tol_pct = 3.5;
-      else if (diameter <= 16) tol_pct = 2.5; // Covers 12mm to 16mm
-      else tol_pct = 2.0; // Over 16mm
+    if (hasScale) {
+      if (dRad > 0) {
+        const diameter = dRad * 2;
+        
+        // IS 1786:2008 Approximations for Diametrical Tolerance based on unit weight
+        let tol_pct = 2.0;
+        if (diameter <= 10) tol_pct = 3.5;
+        else if (diameter <= 16) tol_pct = 2.5; // Covers 12mm to 16mm
+        else tol_pct = 2.0; // Over 16mm
 
-      const errRad = Math.abs(dRad - aRad);
-      const percentErr = (errRad / dRad) * 100;
-      
-      if (percentErr <= tol_pct) {
-        radiusStatus = "Acceptable";
-        scoreRadius = 100;
+        const errRad = Math.abs(dRad - aRad);
+        const percentErr = (errRad / dRad) * 100;
+        
+        if (percentErr <= tol_pct) {
+          radiusStatus = "Acceptable";
+          scoreRadius = 100;
+        } else {
+          radiusStatus = "Not Acceptable";
+          scoreRadius = 0;
+        }
+        actualDisplay = `${aRad.toFixed(2)} mm`;
       } else {
         radiusStatus = "Not Acceptable";
         scoreRadius = 0;
+        actualDisplay = `${aRad.toFixed(2)} mm`;
       }
-      
-      actualDisplay = `${aRad.toFixed(2)} mm`;
     } else {
-      actualDisplay = `${aRad.toFixed(2)} ${hasScale ? 'mm' : 'px'}`;
+      actualDisplay = `${aRad.toFixed(2)} px`;
     }
 
     tableRows.push({

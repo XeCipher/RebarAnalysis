@@ -1,4 +1,4 @@
-<div class="min-h-screen lg:h-screen flex flex-col bg-slate-50 font-sans lg:overflow-hidden">
+<div class="min-h-screen lg:h-screen flex flex-col bg-slate-50 font-sans lg:overflow-hidden relative">
   
   <nav class="bg-white/80 backdrop-blur-lg border-b border-slate-200 z-50 shadow-sm shrink-0">
     <div class="max-w-[1400px] mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
@@ -51,303 +51,343 @@
     <!-- ======================================================== -->
     <!-- PRE-ANALYSIS SETUP LAYOUT (Split Left/Right) -->
     <!-- ======================================================== -->
-    <div *ngIf="!result" class="grid grid-cols-1 lg:grid-cols-2 gap-6 flex-1 lg:min-h-0 overflow-y-auto pb-4">
-      
-      <!-- ================= LEFT COLUMN: SITE IMAGE ============== -->
-      <div class="card flex flex-col gap-5 h-full relative">
-         <div class="flex items-center justify-between">
-            <h2 class="text-lg font-semibold flex items-center gap-2 text-slate-800">
-              <lucide-icon [img]="icons.ImageIcon" class="w-5 h-5 text-slate-400" /> Site Photograph
-            </h2>
-            <button *ngIf="realImagePreview" (click)="clearSiteImage()" class="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors" title="Remove Site Image">
-               <lucide-icon [img]="icons.Trash2" class="w-4 h-4"></lucide-icon>
-            </button>
-         </div>
-         
-         <!-- Standard File Upload Input + Drag Drop combo -->
-         <div *ngIf="!realImagePreview" class="flex flex-col gap-4 h-full">
-            <div>
-              <label class="block text-sm font-medium text-slate-700 mb-1">Browse Manually</label>
-              <input type="file" #fileInputReal (change)="onFileSelected($event, 'real')" accept="image/*" class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-bold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 transition-colors cursor-pointer"/>
-            </div>
-            <div class="border-2 border-dashed border-slate-300 bg-slate-50 rounded-xl flex flex-col items-center justify-center p-6 flex-1 text-slate-500 hover:bg-slate-100 hover:border-slate-400 transition-colors cursor-pointer min-h-[250px]" (click)="fileInputReal.click()" (drop)="$event.preventDefault(); onFileSelected({target: {files: $event.dataTransfer?.files}}, 'real')" (dragover)="$event.preventDefault()">
-               <lucide-icon [img]="icons.Upload" class="w-12 h-12 mb-3 opacity-50"></lucide-icon>
-               <span class="font-bold text-slate-600 mb-1">Drag & drop your site photograph here</span>
-               <span class="text-xs text-slate-400">JPEG, PNG supported</span>
-            </div>
-         </div>
-
-         <!-- Site Image Interactive Area -->
-         <div *ngIf="realImagePreview" class="relative group select-none max-w-full flex items-center justify-center bg-slate-50 rounded-xl border border-slate-200 overflow-hidden flex-1 min-h-[300px]">
-            <div class="image-wrapper relative max-w-full rounded-lg shadow-sm overflow-hidden">
-               <img #imageRef [src]="realImagePreview" (load)="onImageLoad($event)" (click)="onImageClick($event)" class="w-auto h-auto max-w-full max-h-[45vh] block touch-manipulation">
-               
-               <div *ngIf="isAutoDetecting" class="absolute inset-0 bg-slate-900/80 backdrop-blur-sm z-30 text-white animate-fade-in flex flex-col items-center justify-center">
-                   <div class="animate-spin h-10 w-10 border-4 border-purple-500 border-t-transparent rounded-full mb-3 shrink-0"></div>
-                   <div class="text-sm font-bold text-purple-300 uppercase tracking-widest mb-1 text-center">Auto-Detecting</div>
-                   <div class="font-mono text-2xl font-black text-purple-200 mb-4 flex items-center justify-center gap-2">
-                     <lucide-icon [img]="icons.Timer" class="w-5 h-5 opacity-70"></lucide-icon>{{ timers.autoDetect | number:'1.1-1' }}s
-                   </div>
-                   <button (click)="cancelAutoDetect()" class="px-4 py-1.5 bg-white/10 hover:bg-white/20 border border-white/30 rounded-full text-xs font-medium backdrop-blur transition-all active:scale-95">Cancel</button>
-               </div>
-
-               <!-- Analysis Loading Overlay -->
-               <div *ngIf="isAnalyzing" class="absolute inset-0 bg-slate-900/90 backdrop-blur-md z-40 text-white animate-fade-in flex flex-col items-center justify-center">
-                   <div class="animate-spin h-10 w-10 border-4 border-blue-500 border-t-transparent rounded-full mb-4 shrink-0"></div>
-                   <div *ngIf="!isBackendWarmedUp" class="text-sm font-bold text-orange-300 uppercase tracking-widest text-center mb-1">Backend Waking Up...</div>
-                   <div *ngIf="isBackendWarmedUp" class="text-sm font-bold text-blue-300 uppercase tracking-widest text-center mb-1">Extracting & Computing</div>
-                   <div class="font-mono text-3xl font-black text-blue-200 flex items-center justify-center gap-2">
-                     <lucide-icon [img]="icons.Timer" class="w-6 h-6 opacity-70"></lucide-icon>{{ (isBackendWarmedUp ? timers.cv : timers.backendWarmup) | number:'1.1-1' }}s
-                   </div>
-               </div>
-
-               <!-- Render Rod and Ref Points -->
-               <ng-container *ngIf="imgNatWidth > 0 && !isAnalyzing">
-                  <div *ngIf="scaleMode === 'rods' && rodPoints.length >= 2 && rodPoints[scaleRodA - 1] && rodPoints[scaleRodB - 1]">
-                     <svg class="absolute inset-0 pointer-events-none w-full h-full z-0 overflow-visible">
-                        <line 
-                          [attr.x1]="(rodPoints[scaleRodA - 1][0] / imgNatWidth) * 100 + '%'" [attr.y1]="(rodPoints[scaleRodA - 1][1] / imgNatHeight) * 100 + '%'" 
-                          [attr.x2]="(rodPoints[scaleRodB - 1][0] / imgNatWidth) * 100 + '%'" [attr.y2]="(rodPoints[scaleRodB - 1][1] / imgNatHeight) * 100 + '%'" 
-                          stroke="cyan" stroke-width="3" stroke-dasharray="6,4"></line>
-                     </svg>
-                  </div>
-                  <div *ngFor="let p of rodPoints; let i = index; trackBy: trackByIndex" 
-                       class="dot-rod" (pointerdown)="onPointerDown($event, i, 'rod')" (pointermove)="onPointerMove($event)" (pointerup)="onPointerUp($event, i, 'rod')" (pointercancel)="onPointerUp($event, i, 'rod')"
-                       [style.left.%]="(p[0] / imgNatWidth) * 100" [style.top.%]="(p[1] / imgNatHeight) * 100">{{i + 1}}</div>
-                  <ng-container *ngIf="scaleMode === 'freehand'">
-                    <div *ngFor="let p of refPoints; let i = index; trackBy: trackByIndex" 
-                         class="dot-ref" (pointerdown)="onPointerDown($event, i, 'ref')" (pointermove)="onPointerMove($event)" (pointerup)="onPointerUp($event, i, 'ref')" (pointercancel)="onPointerUp($event, i, 'ref')"
-                         [style.left.%]="(p[0] / imgNatWidth) * 100" [style.top.%]="(p[1] / imgNatHeight) * 100"></div>
-                  </ng-container>
-               </ng-container>
-            </div>
-         </div>
-
-         <!-- Site Image Tools -->
-         <div *ngIf="realImagePreview" class="flex flex-col gap-3 shrink-0 bg-slate-50 p-3 rounded-lg border border-slate-200">
-            <div class="flex border-b border-slate-200 mb-2">
-              <button (click)="setMode('rods')" class="flex-1 pb-2 px-2 text-sm font-bold transition-all" [class.text-primary]="mode === 'rods'" [class.border-b-2]="mode === 'rods'" [class.border-primary]="mode === 'rods'" [class.text-slate-500]="mode !== 'rods'">Mark {{ viewMode === 'top' ? 'Rods' : 'Bars' }}</button>
-              <button (click)="setMode('ref')" class="flex-1 pb-2 px-2 text-sm font-bold transition-all" [class.text-primary]="mode === 'ref'" [class.border-b-2]="mode === 'ref'" [class.border-primary]="mode === 'ref'" [class.text-slate-500]="mode !== 'ref'">Calibration Scale</button>
-            </div>
-
-            <!-- Rods Editor Tools -->
-            <div *ngIf="mode === 'rods'" class="animate-fade-in flex flex-col gap-3">
-              <div class="text-[11px] sm:text-xs text-slate-500 bg-white p-2.5 rounded-lg text-center border border-slate-200 flex flex-wrap items-center justify-center gap-1.5 shadow-sm">
-                 <lucide-icon [img]="icons.Info" class="w-3.5 h-3.5 text-slate-400 shrink-0"></lucide-icon>
-                 <span>Tap image to <strong>Add</strong> • Tap dot to <strong>Remove</strong> • Drag to <strong>Move</strong></span>
-              </div>
-              <div class="flex items-center gap-3">
-                <button (click)="autoDetect()" [disabled]="isAutoDetecting" class="btn bg-purple-50 text-purple-700 border border-purple-200 hover:bg-purple-100 flex-1 text-sm justify-center">
-                  <lucide-icon [img]="icons.Wand2" class="w-4 h-4 mr-1"></lucide-icon> Re-detect via AI
-                </button>
-                <button (click)="undoLast()" class="btn btn-outline text-xs"><lucide-icon [img]="icons.Undo2" class="w-4 h-4"></lucide-icon></button>
-              </div>
-            </div>
-
-            <!-- Scale Editor Tools -->
-            <div *ngIf="mode === 'ref'" class="animate-fade-in flex flex-col gap-3">
-              <div class="flex bg-slate-200 rounded-md p-1">
-                <button (click)="scaleMode = 'freehand'" [class.bg-white]="scaleMode === 'freehand'" [class.shadow-sm]="scaleMode === 'freehand'" class="flex-1 text-xs font-bold py-1.5 rounded text-slate-600 transition-all">2 Freehand Points</button>
-                <button (click)="scaleMode = 'rods'" [class.bg-white]="scaleMode === 'rods'" [class.shadow-sm]="scaleMode === 'rods'" class="flex-1 text-xs font-bold py-1.5 rounded text-slate-600 transition-all">Target Rods</button>
-              </div>
-
-              <!-- Freehand input block -->
-              <div *ngIf="scaleMode === 'freehand'" class="flex items-center gap-3">
-                 <div class="flex-1 flex flex-col">
-                    <label class="text-[10px] font-bold text-slate-500 uppercase mb-1">Physical Length</label>
-                    <div class="relative">
-                       <input type="number" [(ngModel)]="refLengthInput" class="w-full pl-3 pr-10 py-1.5 text-sm border border-slate-300 rounded focus:ring-1 focus:ring-blue-500 outline-none font-mono">
-                       <span class="absolute right-3 top-1.5 text-xs text-slate-400 font-bold">mm</span>
-                    </div>
-                 </div>
-                 <button (click)="undoLast()" class="btn btn-outline text-xs mt-5"><lucide-icon [img]="icons.Undo2" class="w-4 h-4"></lucide-icon></button>
-              </div>
-
-              <!-- Rod target block -->
-              <div *ngIf="scaleMode === 'rods'" class="flex items-end gap-2">
-                 <div class="flex flex-col flex-1">
-                    <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">From Rod</label>
-                    <select [(ngModel)]="scaleRodA" class="w-full px-2 py-1.5 text-sm border border-slate-300 rounded bg-white outline-none cursor-pointer">
-                      <option *ngFor="let i of getRodNumbersArray()" [value]="i">R{{i}}</option>
-                    </select>
-                 </div>
-                 <lucide-icon [img]="icons.ArrowRight" class="w-4 h-4 text-slate-400 mb-2 shrink-0"></lucide-icon>
-                 <div class="flex flex-col flex-1">
-                    <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">To Rod</label>
-                    <select [(ngModel)]="scaleRodB" class="w-full px-2 py-1.5 text-sm border border-slate-300 rounded bg-white outline-none cursor-pointer">
-                      <option *ngFor="let i of getRodNumbersArray()" [value]="i">R{{i}}</option>
-                    </select>
-                 </div>
-                 <div class="flex flex-col flex-1">
-                    <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Distance</label>
-                    <div class="relative">
-                       <input type="number" [(ngModel)]="scaleRodDistance" class="w-full pl-2 pr-8 py-1.5 text-sm border border-slate-300 rounded outline-none font-mono">
-                       <span class="absolute right-2 top-1.5 text-xs text-slate-400 font-bold">mm</span>
-                    </div>
-                 </div>
-              </div>
-            </div>
-         </div>
-      </div>
-
-      <!-- ================= RIGHT COLUMN: DESIGN BLUEPRINT ============== -->
-      <div class="card flex flex-col gap-5 h-full relative overflow-hidden">
-         <div class="flex items-center justify-between shrink-0">
-            <h2 class="text-lg font-semibold flex items-center gap-2 text-slate-800">
-              <lucide-icon [img]="icons.PenTool" class="w-5 h-5 text-slate-400" /> Design Blueprint
-            </h2>
-            <div class="flex bg-slate-100 rounded p-1">
-              <button (click)="designInputMode = 'upload'" [class.bg-white]="designInputMode === 'upload'" [class.shadow-sm]="designInputMode === 'upload'" class="px-3 text-xs font-bold py-1 rounded text-slate-600 transition-all">Upload</button>
-              <button (click)="designInputMode = 'manual'" [class.bg-white]="designInputMode === 'manual'" [class.shadow-sm]="designInputMode === 'manual'" class="px-3 text-xs font-bold py-1 rounded text-slate-600 transition-all">Manual / Data</button>
-            </div>
-         </div>
-         
-         <!-- Upload / Auto-Extract State -->
-         <div *ngIf="designInputMode === 'upload'" class="flex flex-col flex-1 h-full min-h-[300px]">
-            
-            <div *ngIf="!designImagePreview" class="flex flex-col gap-4 h-full">
-               <div>
-                 <label class="block text-sm font-medium text-slate-700 mb-1">Browse Manually</label>
-                 <input type="file" #fileInputDesign (change)="onDesignFileSelected($event)" accept="image/*" class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-bold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200 transition-colors cursor-pointer"/>
-               </div>
-               <div class="border-2 border-dashed border-slate-300 bg-slate-50 rounded-xl flex flex-col items-center justify-center p-6 flex-1 text-slate-500 hover:bg-slate-100 hover:border-slate-400 transition-colors cursor-pointer min-h-[250px]" (click)="fileInputDesign.click()" (drop)="$event.preventDefault(); onDesignFileSelected({target: {files: $event.dataTransfer?.files}})" (dragover)="$event.preventDefault()">
-                  <lucide-icon [img]="icons.Upload" class="w-12 h-12 mb-3 opacity-50"></lucide-icon>
-                  <span class="font-bold text-slate-600 mb-1">Drag & drop architectural blueprint</span>
-                  <span class="text-xs text-slate-400">JPEG, PNG supported</span>
-               </div>
-            </div>
-
-            <!-- Analyzing / Display State -->
-            <div *ngIf="designImagePreview" class="relative group select-none flex flex-col bg-slate-900 rounded-xl border border-slate-200 overflow-hidden flex-1">
-               <img [src]="designImagePreview" class="w-auto h-auto max-w-full max-h-[40vh] m-auto block object-contain" [class.opacity-40]="timers.aiRunning">
-               
-               <div *ngIf="timers.aiRunning" class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm z-30 flex flex-col items-center justify-center">
-                  <div class="animate-spin h-10 w-10 border-4 border-green-500 border-t-transparent rounded-full mb-3 shrink-0"></div>
-                  <div class="text-sm font-bold text-green-300 uppercase tracking-widest mb-1 text-center">AI Analyzing Blueprint</div>
-                  <div class="font-mono text-2xl font-black text-green-200 flex items-center justify-center gap-2">
-                     <lucide-icon [img]="icons.Timer" class="w-5 h-5 opacity-70"></lucide-icon>{{ timers.ai | number:'1.1-1' }}s
-                  </div>
-               </div>
-               
-               <!-- Success overlay staying on upload mode -->
-               <div *ngIf="!timers.aiRunning && designImageFile" class="absolute inset-0 flex flex-col items-center justify-center bg-green-900/80 backdrop-blur-sm z-30">
-                  <lucide-icon [img]="icons.CheckCircle2" class="w-12 h-12 text-green-400 mb-2"></lucide-icon>
-                  <div class="text-white font-bold text-sm tracking-wide">Data Extracted Successfully</div>
-                  <button (click)="designInputMode = 'manual'" class="mt-4 px-4 py-2 bg-green-500 hover:bg-green-600 rounded-lg text-sm text-white font-bold shadow-md transition-colors">Review Data Configuration</button>
-               </div>
-
-               <button *ngIf="!timers.aiRunning" (click)="clearDesignImage()" class="absolute top-3 right-3 p-1.5 bg-white border border-slate-200 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors shadow-sm z-40" title="Remove Blueprint">
+    <div *ngIf="!result" class="flex flex-col flex-1 min-h-0 relative">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 flex-1 min-h-0 overflow-y-auto no-scrollbar pb-6">
+        
+        <!-- ================= LEFT COLUMN: SITE IMAGE ============== -->
+        <div class="card flex flex-col gap-4 h-full relative">
+           <div class="flex items-center justify-between shrink-0">
+              <h2 class="text-lg font-semibold flex items-center gap-2 text-slate-800">
+                <lucide-icon [img]="icons.ImageIcon" class="w-5 h-5 text-slate-400" /> Site Photograph
+              </h2>
+              <button *ngIf="realImagePreview" (click)="clearSiteImage()" class="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors" title="Remove Site Image">
                  <lucide-icon [img]="icons.Trash2" class="w-4 h-4"></lucide-icon>
-               </button>
+              </button>
+           </div>
+           
+           <div *ngIf="!realImagePreview" class="flex flex-col gap-4 flex-1">
+              <div>
+                <input type="file" #fileInputReal (change)="onFileSelected($event, 'real')" accept="image/*" class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-bold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 transition-colors cursor-pointer"/>
+              </div>
+              <div class="border-2 border-dashed border-slate-300 bg-slate-50 rounded-xl flex flex-col items-center justify-center p-6 flex-1 text-slate-500 hover:bg-slate-100 hover:border-slate-400 transition-colors cursor-pointer min-h-[280px]" (click)="fileInputReal.click()" (drop)="$event.preventDefault(); onFileSelected({target: {files: $event.dataTransfer?.files}}, 'real')" (dragover)="$event.preventDefault()">
+                 <lucide-icon [img]="icons.Upload" class="w-12 h-12 mb-3 opacity-50"></lucide-icon>
+                 <span class="font-bold text-slate-600 mb-1">Drag & drop your site photograph here</span>
+                 <span class="text-xs text-slate-400">JPEG, PNG supported</span>
+              </div>
+           </div>
 
-               <!-- Re-Extract Toolbar -->
-               <div *ngIf="!timers.aiRunning" class="absolute bottom-0 left-0 right-0 bg-white/95 backdrop-blur border-t border-slate-200 p-3 flex justify-between items-center z-40">
-                  <div class="flex flex-col">
-                     <span class="text-xs font-bold text-slate-800">Design Processing Complete</span>
-                  </div>
-                  <button (click)="triggerReExtract()" class="btn bg-purple-50 text-purple-700 border border-purple-200 hover:bg-purple-100 text-xs px-3 py-1.5">
-                     <lucide-icon [img]="icons.Wand2" class="w-3.5 h-3.5 mr-1"></lucide-icon> Re-extract via AI
-                  </button>
-               </div>
-            </div>
-         </div>
-
-         <!-- Interactive Manual View -->
-         <div *ngIf="designInputMode === 'manual'" class="flex flex-col flex-1 min-h-0 bg-white border border-slate-200 rounded-lg shadow-inner">
-            
-            <div *ngIf="viewMode === 'top'" class="flex flex-col h-full">
-               <div class="flex gap-3 p-3 border-b border-slate-200 shrink-0 bg-slate-50 items-center">
-                  <div class="flex flex-col flex-1">
-                     <label class="text-[10px] font-bold text-slate-500 uppercase mb-1 tracking-wider">Rod Count</label>
-                     <select [(ngModel)]="selectedRodCount" (change)="onRodCountChange()" class="w-full px-2 py-1.5 text-sm border border-slate-300 rounded bg-white font-bold text-slate-700 outline-none cursor-pointer">
-                        <option [value]="4">4 Rods</option>
-                        <option [value]="6">6 Rods</option>
-                        <option [value]="8">8 Rods</option>
-                        <option [value]="10">10 Rods</option>
-                        <option [value]="12">12 Rods</option>
-                        <option [value]="16">16 Rods</option>
-                        <option value="custom">Custom...</option>
-                     </select>
-                  </div>
-                  
-                  <div class="flex flex-col flex-1" *ngIf="selectedRodCount === 'custom'">
-                     <label class="text-[10px] font-bold text-slate-500 uppercase mb-1 tracking-wider">Exact Count</label>
-                     <input type="number" [(ngModel)]="customRodCount" (change)="generateCustomModel()" min="4" class="w-full px-2 py-1.5 text-sm border border-slate-300 rounded bg-white font-bold outline-none">
-                  </div>
-                  
-                  <div class="flex flex-col" *ngIf="availableShapes.length > 1 && selectedRodCount !== 'custom'">
-                     <label class="text-[10px] font-bold text-slate-500 uppercase mb-1 tracking-wider">Shape</label>
-                     <div class="flex bg-slate-200 rounded p-1">
-                        <button *ngFor="let s of availableShapes" (click)="setShape(s)" class="px-2 py-0.5 text-xs font-bold rounded transition-all" [class.bg-white]="selectedShape === s" [class.shadow-sm]="selectedShape === s" [class.text-slate-700]="selectedShape === s" [class.text-slate-500]="selectedShape !== s">
-                          {{s}}
-                        </button>
+           <!-- Site Image Interactive Area -->
+           <div *ngIf="realImagePreview" class="relative group select-none max-w-full flex items-center justify-center bg-slate-50 rounded-xl border border-slate-200 overflow-hidden flex-1 min-h-[300px]">
+              <div class="image-wrapper relative max-w-full rounded-lg shadow-sm overflow-hidden">
+                 <img #imageRef [src]="realImagePreview" (load)="onImageLoad($event)" (click)="onImageClick($event)" class="w-auto h-auto max-w-full max-h-[45vh] block touch-manipulation">
+                 
+                 <div *ngIf="isAutoDetecting" class="absolute inset-0 bg-slate-900/80 backdrop-blur-sm z-30 text-white animate-fade-in flex flex-col items-center justify-center">
+                     <div class="animate-spin h-10 w-10 border-4 border-purple-500 border-t-transparent rounded-full mb-3 shrink-0"></div>
+                     <div class="text-sm font-bold text-purple-300 uppercase tracking-widest mb-1 text-center">Auto-Detecting</div>
+                     <div class="font-mono text-2xl font-black text-purple-200 mb-4 flex items-center justify-center gap-2">
+                       <lucide-icon [img]="icons.Timer" class="w-5 h-5 opacity-70"></lucide-icon>{{ timers.autoDetect | number:'1.1-1' }}s
                      </div>
-                  </div>
-               </div>
-               
-               <!-- Standard Models SVG View -->
-               <div *ngIf="selectedRodCount !== 'custom'" class="flex-1 flex items-center justify-center p-4 bg-pattern min-h-[250px] overflow-hidden">
-                  <div class="relative w-full max-w-[320px] aspect-square">
-                     <svg viewBox="0 0 100 100" class="absolute inset-0 w-full h-full z-0 overflow-visible">
-                        <polygon [attr.points]="activeModelPolygonPoints" fill="transparent" stroke="#94a3b8" stroke-width="1.2" stroke-dasharray="2 2" />
-                        <circle *ngFor="let r of activeModel.rods" [attr.cx]="r.cx" [attr.cy]="r.cy" r="3.5" fill="#334155" />
-                        <text *ngFor="let r of activeModel.rods; let i = index" [attr.x]="r.tx" [attr.y]="r.ty" font-size="4.5" fill="#64748b" font-family="monospace" text-anchor="middle" dominant-baseline="middle" font-weight="bold">R{{i+1}}</text>
-                     </svg>
-                     
-                     <div *ngFor="let sp of activeModel.spacings" class="absolute w-12 text-center" [style.left.%]="sp.x" [style.top.%]="sp.y" style="transform: translate(-50%, -50%); z-index: 10;">
-                        <input type="number" [ngModel]="sp.value" (ngModelChange)="onSpacingChange(sp.idx, $event)" class="w-full text-center px-0.5 py-0.5 text-[10px] font-bold text-blue-700 bg-white border border-blue-200 rounded shadow-sm focus:ring-1 focus:ring-blue-500 outline-none placeholder:font-normal placeholder:text-slate-300">
-                     </div>
-                  </div>
-               </div>
-
-               <!-- Custom Infinite Scroll View -->
-               <div *ngIf="selectedRodCount === 'custom'" class="flex-1 overflow-y-auto bg-white p-4 space-y-2 table-scrollbar border-b border-slate-100">
-                   <div *ngFor="let sp of activeModel.spacings" class="flex items-center justify-between bg-slate-50 p-2.5 border border-slate-200 rounded-lg">
-                       <span class="text-xs font-bold text-slate-600">Distance R{{sp.idx + 1}} to R{{(sp.idx + 1) % customRodCount + 1}}</span>
-                       <div class="relative w-28">
-                          <input type="number" [(ngModel)]="sp.value" class="w-full pl-3 pr-8 py-1.5 text-sm font-bold border border-slate-300 rounded focus:ring-1 focus:ring-blue-500 outline-none">
-                          <span class="absolute right-2 top-2 text-[10px] font-bold text-slate-400">mm</span>
-                       </div>
-                   </div>
-               </div>
-
-               <!-- Global Radius -->
-               <div class="p-3 border-t border-slate-200 bg-slate-50 flex items-center justify-between shrink-0">
-                 <span class="text-xs font-bold text-slate-600 uppercase tracking-widest">Radius</span>
-                 <div class="flex items-center gap-2">
-                    <input type="number" [(ngModel)]="designRadius" class="w-16 px-2 py-1.5 text-sm font-bold text-center border border-slate-300 rounded shadow-sm focus:border-blue-500 outline-none text-slate-800 bg-white">
-                    <span class="text-xs text-slate-500 font-bold">mm</span>
+                     <button (click)="cancelAutoDetect()" class="px-4 py-1.5 bg-white/10 hover:bg-white/20 border border-white/30 rounded-full text-xs font-medium backdrop-blur transition-all active:scale-95">Cancel</button>
                  </div>
-               </div>
-            </div>
 
-            <!-- Side View Data Configuration -->
-            <div *ngIf="viewMode === 'side'" class="flex flex-col p-6 gap-6 h-full items-center justify-center bg-slate-50">
-               <div class="w-full max-w-sm space-y-4">
-                  <div class="flex flex-col gap-1">
-                     <label class="text-xs font-bold text-slate-600 uppercase tracking-widest">Vertical Stirrup Spacing</label>
-                     <div class="relative"><input type="number" [(ngModel)]="sideManualState.spacing_mm" class="w-full pl-3 pr-10 py-2.5 border border-slate-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 outline-none"><span class="absolute right-3 top-3 text-xs font-bold text-slate-400">mm</span></div>
-                  </div>
-                  <div class="flex flex-col gap-1">
-                     <label class="text-xs font-bold text-slate-600 uppercase tracking-widest">Least Lateral Dimension</label>
-                     <div class="relative"><input type="number" [(ngModel)]="sideManualState.least_lateral_dim_mm" class="w-full pl-3 pr-10 py-2.5 border border-slate-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 outline-none"><span class="absolute right-3 top-3 text-xs font-bold text-slate-400">mm</span></div>
-                  </div>
-                  <div class="flex flex-col gap-1">
-                     <label class="text-xs font-bold text-slate-600 uppercase tracking-widest">Main Longitudinal Bar Dia.</label>
-                     <div class="relative"><input type="number" [(ngModel)]="sideManualState.longitudinal_bar_dia_mm" class="w-full pl-3 pr-10 py-2.5 border border-slate-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 outline-none"><span class="absolute right-3 top-3 text-xs font-bold text-slate-400">mm</span></div>
-                  </div>
-               </div>
-            </div>
-         </div>
+                 <!-- Render Rod and Ref Points -->
+                 <ng-container *ngIf="imgNatWidth > 0 && !isAnalyzing">
+                    <div *ngIf="scaleMode === 'rods' && rodPoints.length >= 2 && rodPoints[scaleRodA - 1] && rodPoints[scaleRodB - 1]">
+                       <svg class="absolute inset-0 pointer-events-none w-full h-full z-0 overflow-visible">
+                          <line 
+                            [attr.x1]="(rodPoints[scaleRodA - 1][0] / imgNatWidth) * 100 + '%'" [attr.y1]="(rodPoints[scaleRodA - 1][1] / imgNatHeight) * 100 + '%'" 
+                            [attr.x2]="(rodPoints[scaleRodB - 1][0] / imgNatWidth) * 100 + '%'" [attr.y2]="(rodPoints[scaleRodB - 1][1] / imgNatHeight) * 100 + '%'" 
+                            stroke="cyan" stroke-width="3" stroke-dasharray="6,4"></line>
+                       </svg>
+                    </div>
+                    <div *ngFor="let p of rodPoints; let i = index; trackBy: trackByIndex" 
+                         class="dot-rod" (pointerdown)="onPointerDown($event, i, 'rod')" (pointermove)="onPointerMove($event)" (pointerup)="onPointerUp($event, i, 'rod')" (pointercancel)="onPointerUp($event, i, 'rod')"
+                         [style.left.%]="(p[0] / imgNatWidth) * 100" [style.top.%]="(p[1] / imgNatHeight) * 100">{{i + 1}}</div>
+                    <ng-container *ngIf="scaleMode === 'freehand'">
+                      <div *ngFor="let p of refPoints; let i = index; trackBy: trackByIndex" 
+                           class="dot-ref" (pointerdown)="onPointerDown($event, i, 'ref')" (pointermove)="onPointerMove($event)" (pointerup)="onPointerUp($event, i, 'ref')" (pointercancel)="onPointerUp($event, i, 'ref')"
+                           [style.left.%]="(p[0] / imgNatWidth) * 100" [style.top.%]="(p[1] / imgNatHeight) * 100"></div>
+                    </ng-container>
+                 </ng-container>
+              </div>
+           </div>
+
+           <!-- Site Image Tools -->
+           <div *ngIf="realImagePreview" class="flex flex-col gap-3 shrink-0 bg-slate-50 p-3 rounded-lg border border-slate-200">
+              <div class="flex border-b border-slate-200 mb-2">
+                <button (click)="setMode('rods')" class="flex-1 pb-2 px-2 text-sm font-bold transition-all" [class.text-primary]="mode === 'rods'" [class.border-b-2]="mode === 'rods'" [class.border-primary]="mode === 'rods'" [class.text-slate-500]="mode !== 'rods'">Mark {{ viewMode === 'top' ? 'Rods' : 'Bars' }}</button>
+                <button (click)="setMode('ref')" class="flex-1 pb-2 px-2 text-sm font-bold transition-all" [class.text-primary]="mode === 'ref'" [class.border-b-2]="mode === 'ref'" [class.border-primary]="mode === 'ref'" [class.text-slate-500]="mode !== 'ref'">Calibration Scale</button>
+              </div>
+
+              <div *ngIf="mode === 'rods'" class="animate-fade-in flex flex-col gap-3">
+                <div class="text-[11px] sm:text-xs text-slate-500 bg-white p-2.5 rounded-lg text-center border border-slate-200 flex flex-wrap items-center justify-center gap-1.5 shadow-sm">
+                   <lucide-icon [img]="icons.Info" class="w-3.5 h-3.5 text-slate-400 shrink-0"></lucide-icon>
+                   <span>Tap image to <strong>Add</strong> • Tap dot to <strong>Remove</strong> • Drag to <strong>Move</strong></span>
+                </div>
+                <div class="flex items-center gap-3">
+                  <button (click)="autoDetect()" [disabled]="isAutoDetecting" class="btn bg-purple-50 text-purple-700 border border-purple-200 hover:bg-purple-100 flex-1 text-sm justify-center">
+                    <lucide-icon [img]="icons.Wand2" class="w-4 h-4 mr-1"></lucide-icon> Re-detect via AI
+                  </button>
+                  <button (click)="undoLast()" class="btn btn-outline text-xs"><lucide-icon [img]="icons.Undo2" class="w-4 h-4"></lucide-icon></button>
+                </div>
+              </div>
+
+              <div *ngIf="mode === 'ref'" class="animate-fade-in flex flex-col gap-3">
+                <div class="flex bg-slate-200 rounded-md p-1">
+                  <button (click)="scaleMode = 'freehand'" [class.bg-white]="scaleMode === 'freehand'" [class.shadow-sm]="scaleMode === 'freehand'" class="flex-1 text-xs font-bold py-1.5 rounded text-slate-600 transition-all">2 Freehand Points</button>
+                  <button (click)="scaleMode = 'rods'" [class.bg-white]="scaleMode === 'rods'" [class.shadow-sm]="scaleMode === 'rods'" class="flex-1 text-xs font-bold py-1.5 rounded text-slate-600 transition-all">Target Rods</button>
+                </div>
+                <div *ngIf="scaleMode === 'freehand'" class="flex items-center gap-3">
+                   <div class="flex-1 flex flex-col">
+                      <label class="text-[10px] font-bold text-slate-500 uppercase mb-1">Physical Length</label>
+                      <div class="relative">
+                         <input type="number" [(ngModel)]="refLengthInput" class="w-full pl-3 pr-10 py-1.5 text-sm border border-slate-300 rounded focus:ring-1 focus:ring-blue-500 outline-none font-mono">
+                         <span class="absolute right-3 top-1.5 text-xs text-slate-400 font-bold">mm</span>
+                      </div>
+                   </div>
+                   <button (click)="undoLast()" class="btn btn-outline text-xs mt-5"><lucide-icon [img]="icons.Undo2" class="w-4 h-4"></lucide-icon></button>
+                </div>
+                <div *ngIf="scaleMode === 'rods'" class="flex items-end gap-2">
+                   <div class="flex flex-col flex-1">
+                      <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">From Rod</label>
+                      <select [(ngModel)]="scaleRodA" class="w-full px-2 py-1.5 text-sm border border-slate-300 rounded bg-white outline-none cursor-pointer">
+                        <option *ngFor="let i of getRodNumbersArray()" [value]="i">R{{i}}</option>
+                      </select>
+                   </div>
+                   <lucide-icon [img]="icons.ArrowRight" class="w-4 h-4 text-slate-400 mb-2 shrink-0"></lucide-icon>
+                   <div class="flex flex-col flex-1">
+                      <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">To Rod</label>
+                      <select [(ngModel)]="scaleRodB" class="w-full px-2 py-1.5 text-sm border border-slate-300 rounded bg-white outline-none cursor-pointer">
+                        <option *ngFor="let i of getRodNumbersArray()" [value]="i">R{{i}}</option>
+                      </select>
+                   </div>
+                   <div class="flex flex-col flex-1">
+                      <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Distance</label>
+                      <div class="relative">
+                         <input type="number" [(ngModel)]="scaleRodDistance" class="w-full pl-2 pr-8 py-1.5 text-sm border border-slate-300 rounded outline-none font-mono">
+                         <span class="absolute right-2 top-1.5 text-xs text-slate-400 font-bold">mm</span>
+                      </div>
+                   </div>
+                </div>
+              </div>
+           </div>
+        </div>
+
+        <!-- ================= RIGHT COLUMN: DESIGN BLUEPRINT ============== -->
+        <div class="card flex flex-col gap-4 h-full relative overflow-hidden">
+           <div class="flex items-center justify-between shrink-0">
+              <h2 class="text-lg font-semibold flex items-center gap-2 text-slate-800">
+                <lucide-icon [img]="icons.PenTool" class="w-5 h-5 text-slate-400" /> Design Blueprint
+              </h2>
+              <div class="flex bg-slate-100 rounded p-1">
+                <button (click)="designInputMode = 'upload'" [class.bg-white]="designInputMode === 'upload'" [class.shadow-sm]="designInputMode === 'upload'" class="px-3 text-xs font-bold py-1 rounded text-slate-600 transition-all">Upload</button>
+                <button (click)="designInputMode = 'manual'" [class.bg-white]="designInputMode === 'manual'" [class.shadow-sm]="designInputMode === 'manual'" class="px-3 text-xs font-bold py-1 rounded text-slate-600 transition-all">Manual</button>
+              </div>
+           </div>
+           
+           <!-- Upload / Auto-Extract State -->
+           <div *ngIf="designInputMode === 'upload'" class="flex flex-col flex-1 h-full min-h-[300px]">
+              
+              <div *ngIf="!designImagePreview" class="flex flex-col gap-4 flex-1">
+                 <div>
+                   <input type="file" #fileInputDesign (change)="onDesignFileSelected($event)" accept="image/*" class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-bold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200 transition-colors cursor-pointer"/>
+                 </div>
+                 <div class="border-2 border-dashed border-slate-300 bg-slate-50 rounded-xl flex flex-col items-center justify-center p-6 flex-1 text-slate-500 hover:bg-slate-100 hover:border-slate-400 transition-colors cursor-pointer min-h-[280px]" (click)="fileInputDesign.click()" (drop)="$event.preventDefault(); onDesignFileSelected({target: {files: $event.dataTransfer?.files}})" (dragover)="$event.preventDefault()">
+                    <lucide-icon [img]="icons.Upload" class="w-12 h-12 mb-3 opacity-50"></lucide-icon>
+                    <span class="font-bold text-slate-600 mb-1">Drag & drop architectural blueprint</span>
+                    <span class="text-xs text-slate-400">JPEG, PNG supported</span>
+                 </div>
+              </div>
+
+              <!-- Analyzing / Display State -->
+              <div *ngIf="designImagePreview" class="relative group select-none flex flex-col bg-slate-900 rounded-xl border border-slate-200 overflow-hidden flex-1">
+                 
+                 <!-- Image Section (Visible ONLY while analyzing or if extraction hasn't populated model yet) -->
+                 <div *ngIf="timers.aiRunning || !extractedModel" class="relative flex-1 min-h-[200px] flex items-center justify-center p-2">
+                   <img [src]="designImagePreview" class="w-auto h-auto max-w-full max-h-[35vh] m-auto block object-contain opacity-40">
+                   
+                   <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm z-30 flex flex-col items-center justify-center">
+                      <div class="animate-spin h-10 w-10 border-4 border-green-500 border-t-transparent rounded-full mb-3 shrink-0"></div>
+                      <div class="text-sm font-bold text-green-300 uppercase tracking-widest mb-1 text-center">AI Analyzing Blueprint</div>
+                      <div class="font-mono text-2xl font-black text-green-200 flex items-center justify-center gap-2">
+                         <lucide-icon [img]="icons.Timer" class="w-5 h-5 opacity-70"></lucide-icon>{{ timers.ai | number:'1.1-1' }}s
+                      </div>
+                   </div>
+
+                   <button (click)="clearDesignImage()" class="absolute top-3 right-3 p-1.5 bg-white border border-slate-200 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors shadow-sm z-40" title="Remove Blueprint">
+                     <lucide-icon [img]="icons.Trash2" class="w-4 h-4"></lucide-icon>
+                   </button>
+                 </div>
+
+                 <!-- Extracted Data SVG Section -->
+                 <div *ngIf="!timers.aiRunning && extractedModel" class="flex-1 bg-white flex flex-col h-full min-h-0 relative">
+                    <div class="absolute top-2 right-2 z-40">
+                       <button (click)="clearDesignImage()" class="p-1.5 bg-white border border-slate-200 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors shadow-sm" title="Remove Blueprint">
+                          <lucide-icon [img]="icons.Trash2" class="w-4 h-4"></lucide-icon>
+                       </button>
+                    </div>
+
+                    <div *ngIf="viewMode === 'top'" class="flex-1 flex flex-col min-h-0 relative bg-pattern overflow-hidden">
+                       <div class="absolute top-2 left-3 z-10 flex items-center gap-2">
+                          <span class="text-xs font-bold text-slate-600 bg-white/80 px-2 py-1 rounded shadow-sm border border-slate-100">Extracted AI Data</span>
+                       </div>
+                       <div class="flex-1 flex items-center justify-center p-4 min-h-0 overflow-y-auto">
+                          <div class="relative w-full" [style.max-width.px]="extractedModel.maxWidth">
+                             <svg [attr.viewBox]="extractedModel.viewBox" class="w-full h-auto overflow-visible">
+                                <polygon [attr.points]="getPolygonPoints(extractedModel)" fill="transparent" stroke="#94a3b8" stroke-width="1.2" stroke-dasharray="2 2" />
+                                <circle *ngFor="let r of extractedModel.rods" [attr.cx]="r.cx" [attr.cy]="r.cy" r="3.5" fill="#334155" />
+                             </svg>
+                             
+                             <div *ngFor="let sp of extractedModel.spacings" class="absolute w-12 text-center" [style.left.%]="sp.x" [style.top.%]="sp.y" style="transform: translate(-50%, -50%); z-index: 10;">
+                                <input type="number" [ngModel]="sp.value" (ngModelChange)="onSpacingChangeExtracted(sp.idx, $event)" placeholder="mm" class="w-full text-center px-0.5 py-0.5 text-[10px] font-bold text-blue-700 bg-white border border-blue-200 rounded shadow-sm focus:ring-1 focus:ring-blue-500 outline-none placeholder:font-normal placeholder:text-slate-300">
+                             </div>
+                          </div>
+                       </div>
+                    </div>
+
+                    <div *ngIf="viewMode === 'side'" class="flex-1 flex flex-col p-4 gap-3 bg-slate-50 items-center justify-center overflow-y-auto relative min-h-0">
+                       <div class="absolute top-2 left-3 z-10 flex items-center gap-2">
+                          <span class="text-xs font-bold text-slate-600 bg-white/80 px-2 py-1 rounded shadow-sm border border-slate-100">Extracted AI Data</span>
+                       </div>
+                       <div class="w-full max-w-sm space-y-3 mt-6">
+                          <div class="flex items-center justify-between bg-white p-2.5 rounded-lg border border-slate-200 shadow-sm">
+                             <label class="text-[11px] font-bold text-slate-600 uppercase tracking-wide">Vertical Stirrup Spacing</label>
+                             <div class="relative w-24"><input type="number" [(ngModel)]="sideExtractedState.spacing_mm" placeholder="mm" class="w-full pl-2 pr-6 py-1.5 text-sm font-bold border border-slate-300 rounded focus:ring-1 focus:ring-blue-500 outline-none"><span class="absolute right-2 top-2 text-[9px] font-bold text-slate-400">mm</span></div>
+                          </div>
+                          <div class="flex items-center justify-between bg-white p-2.5 rounded-lg border border-slate-200 shadow-sm">
+                             <label class="text-[11px] font-bold text-slate-600 uppercase tracking-wide">Least Lateral Dim</label>
+                             <div class="relative w-24"><input type="number" [(ngModel)]="sideExtractedState.least_lateral_dim_mm" placeholder="mm" class="w-full pl-2 pr-6 py-1.5 text-sm font-bold border border-slate-300 rounded focus:ring-1 focus:ring-blue-500 outline-none"><span class="absolute right-2 top-2 text-[9px] font-bold text-slate-400">mm</span></div>
+                          </div>
+                          <div class="flex items-center justify-between bg-white p-2.5 rounded-lg border border-slate-200 shadow-sm">
+                             <label class="text-[11px] font-bold text-slate-600 uppercase tracking-wide">Main Bar Dia.</label>
+                             <div class="relative w-24"><input type="number" [(ngModel)]="sideExtractedState.longitudinal_bar_dia_mm" placeholder="mm" class="w-full pl-2 pr-6 py-1.5 text-sm font-bold border border-slate-300 rounded focus:ring-1 focus:ring-blue-500 outline-none"><span class="absolute right-2 top-2 text-[9px] font-bold text-slate-400">mm</span></div>
+                          </div>
+                       </div>
+                    </div>
+
+                    <!-- Toolbar -->
+                    <div class="bg-slate-100 border-t border-slate-200 p-2 flex justify-between items-center z-40 shrink-0">
+                       <div class="flex items-center gap-2 px-2" *ngIf="viewMode === 'top'">
+                          <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Radius</span>
+                          <div class="relative w-16">
+                             <input type="number" [(ngModel)]="extractedRadius" placeholder="mm" class="w-full pl-1.5 pr-6 py-1 text-xs font-bold text-center border border-slate-300 rounded bg-white outline-none focus:ring-1 focus:ring-blue-500">
+                             <span class="absolute right-1.5 top-1.5 text-[8px] font-bold text-slate-400">mm</span>
+                          </div>
+                       </div>
+                       <div class="flex items-center gap-2 px-2" *ngIf="viewMode !== 'top'"></div>
+
+                       <button (click)="triggerReExtract()" class="btn bg-purple-50 text-purple-700 border border-purple-200 hover:bg-purple-100 text-[11px] px-3 py-1.5 shadow-sm">
+                          <lucide-icon [img]="icons.Wand2" class="w-3.5 h-3.5 mr-1"></lucide-icon> Re-extract via AI
+                       </button>
+                    </div>
+
+                 </div>
+              </div>
+           </div>
+
+           <!-- Interactive Manual View -->
+           <div *ngIf="designInputMode === 'manual'" class="flex flex-col flex-1 min-h-0 bg-white border border-slate-200 rounded-lg shadow-inner">
+              
+              <div *ngIf="viewMode === 'top'" class="flex flex-col h-full">
+                 <div class="flex gap-3 p-3 border-b border-slate-200 shrink-0 bg-slate-50 items-center">
+                    <div class="flex flex-col flex-1">
+                       <label class="text-[10px] font-bold text-slate-500 uppercase mb-1 tracking-wider">Rod Count</label>
+                       <select [(ngModel)]="selectedRodCount" (change)="onRodCountChange()" class="w-full px-2 py-1.5 text-sm border border-slate-300 rounded bg-white font-bold text-slate-700 outline-none cursor-pointer">
+                          <option [value]="4">4 Rods</option>
+                          <option [value]="6">6 Rods</option>
+                          <option [value]="8">8 Rods</option>
+                          <option [value]="10">10 Rods</option>
+                          <option [value]="12">12 Rods</option>
+                          <option [value]="16">16 Rods</option>
+                          <option value="custom">Custom...</option>
+                       </select>
+                    </div>
+                    
+                    <div class="flex flex-col flex-1" *ngIf="selectedRodCount === 'custom'">
+                       <label class="text-[10px] font-bold text-slate-500 uppercase mb-1 tracking-wider">Exact Count</label>
+                       <input type="number" [(ngModel)]="customRodCount" (change)="generateCustomModel()" min="4" class="w-full px-2 py-1.5 text-sm border border-slate-300 rounded bg-white font-bold outline-none">
+                    </div>
+                    
+                    <div class="flex flex-col" *ngIf="availableShapes.length > 1 && selectedRodCount !== 'custom'">
+                       <label class="text-[10px] font-bold text-slate-500 uppercase mb-1 tracking-wider">Shape</label>
+                       <div class="flex bg-slate-200 rounded p-1">
+                          <button *ngFor="let s of availableShapes" (click)="setShape(s)" class="px-2 py-0.5 text-xs font-bold rounded transition-all" [class.bg-white]="selectedShape === s" [class.shadow-sm]="selectedShape === s" [class.text-slate-700]="selectedShape === s" [class.text-slate-500]="selectedShape !== s">
+                            {{s}}
+                          </button>
+                       </div>
+                    </div>
+                 </div>
+                 
+                 <!-- Standard Models SVG View -->
+                 <div *ngIf="selectedRodCount !== 'custom' && activeModel" class="flex-1 flex items-center justify-center p-4 bg-pattern min-h-[250px] overflow-y-auto">
+                    <div class="relative w-full" [style.max-width.px]="activeModel.maxWidth">
+                       <svg [attr.viewBox]="activeModel.viewBox" class="w-full h-auto overflow-visible">
+                          <polygon [attr.points]="getPolygonPoints(activeModel)" fill="transparent" stroke="#94a3b8" stroke-width="1.2" stroke-dasharray="2 2" />
+                          <circle *ngFor="let r of activeModel.rods" [attr.cx]="r.cx" [attr.cy]="r.cy" r="3.5" fill="#334155" />
+                       </svg>
+                       
+                       <div *ngFor="let sp of activeModel.spacings" class="absolute w-12 text-center" [style.left.%]="sp.x" [style.top.%]="sp.y" style="transform: translate(-50%, -50%); z-index: 10;">
+                          <input type="number" [ngModel]="sp.value" (ngModelChange)="onSpacingChange(sp.idx, $event)" placeholder="mm" class="w-full text-center px-0.5 py-0.5 text-[10px] font-bold text-blue-700 bg-white border border-blue-200 rounded shadow-sm focus:ring-1 focus:ring-blue-500 outline-none placeholder:font-normal placeholder:text-slate-300">
+                       </div>
+                    </div>
+                 </div>
+
+                 <!-- Custom Infinite Scroll View -->
+                 <div *ngIf="selectedRodCount === 'custom'" class="flex-1 overflow-y-auto bg-white p-4 space-y-2 table-scrollbar border-b border-slate-100">
+                     <div *ngFor="let sp of activeModel.spacings" class="flex items-center justify-between bg-slate-50 p-2.5 border border-slate-200 rounded-lg">
+                         <span class="text-xs font-bold text-slate-600">Distance R{{sp.idx + 1}} to R{{(sp.idx + 1) % customRodCount + 1}}</span>
+                         <div class="relative w-28">
+                            <input type="number" [(ngModel)]="sp.value" placeholder="mm" class="w-full pl-3 pr-8 py-1.5 text-sm font-bold border border-slate-300 rounded focus:ring-1 focus:ring-blue-500 outline-none">
+                            <span class="absolute right-2 top-2 text-[10px] font-bold text-slate-400">mm</span>
+                         </div>
+                     </div>
+                 </div>
+
+                 <!-- Global Radius -->
+                 <div class="p-3 border-t border-slate-200 bg-slate-50 flex items-center justify-between shrink-0">
+                   <span class="text-xs font-bold text-slate-600 uppercase tracking-widest">Radius</span>
+                   <div class="flex items-center gap-2">
+                      <input type="number" [(ngModel)]="designRadius" placeholder="mm" class="w-16 px-2 py-1.5 text-sm font-bold text-center border border-slate-300 rounded shadow-sm focus:border-blue-500 outline-none text-slate-800 bg-white">
+                      <span class="text-xs text-slate-500 font-bold">mm</span>
+                   </div>
+                 </div>
+              </div>
+
+              <!-- Side View Data Configuration -->
+              <div *ngIf="viewMode === 'side'" class="flex flex-col p-6 gap-6 h-full items-center justify-center bg-slate-50">
+                 <div class="w-full max-w-sm space-y-4">
+                    <div class="flex flex-col gap-1">
+                       <label class="text-xs font-bold text-slate-600 uppercase tracking-widest">Vertical Stirrup Spacing</label>
+                       <div class="relative"><input type="number" [(ngModel)]="sideManualState.spacing_mm" placeholder="mm" class="w-full pl-3 pr-10 py-2.5 border border-slate-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 outline-none"><span class="absolute right-3 top-3 text-xs font-bold text-slate-400">mm</span></div>
+                    </div>
+                    <div class="flex flex-col gap-1">
+                       <label class="text-xs font-bold text-slate-600 uppercase tracking-widest">Least Lateral Dimension</label>
+                       <div class="relative"><input type="number" [(ngModel)]="sideManualState.least_lateral_dim_mm" placeholder="mm" class="w-full pl-3 pr-10 py-2.5 border border-slate-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 outline-none"><span class="absolute right-3 top-3 text-xs font-bold text-slate-400">mm</span></div>
+                    </div>
+                    <div class="flex flex-col gap-1">
+                       <label class="text-xs font-bold text-slate-600 uppercase tracking-widest">Main Longitudinal Bar Dia.</label>
+                       <div class="relative"><input type="number" [(ngModel)]="sideManualState.longitudinal_bar_dia_mm" placeholder="mm" class="w-full pl-3 pr-10 py-2.5 border border-slate-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 outline-none"><span class="absolute right-3 top-3 text-xs font-bold text-slate-400">mm</span></div>
+                    </div>
+                 </div>
+              </div>
+           </div>
+        </div>
+
       </div>
 
-      <!-- Execution Trigger Block -->
-      <div class="lg:col-span-2 mt-2">
-         <button (click)="analyze()" [disabled]="isAnalyzing || isAutoDetecting || rodPoints.length < 2" class="w-full btn btn-primary justify-center text-sm py-4 shadow-xl shadow-blue-900/10 hover:-translate-y-0.5 transition-all rounded-xl">
-            <span *ngIf="!isAnalyzing" class="flex items-center gap-2 text-base font-bold tracking-wide"><lucide-icon [img]="icons.ScanLine" class="w-5 h-5"></lucide-icon> Run Analysis Engine</span>
-            <span *ngIf="isAnalyzing" class="flex items-center gap-2 text-base font-bold tracking-wide">
-              <div class="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full"></div> Processing Data...
-            </span>
+      <!-- Floating Execution Trigger Block -->
+      <div class="sticky bottom-0 z-40 bg-white/95 backdrop-blur-md rounded-xl shadow-xl border border-slate-200 p-4 flex flex-col sm:flex-row items-center justify-between gap-4 shrink-0 mt-3">
+         <div class="flex items-center gap-3">
+             <div class="p-2 bg-blue-50 text-blue-600 rounded-lg shrink-0">
+                 <lucide-icon [img]="icons.Info" class="w-6 h-6"></lucide-icon>
+             </div>
+             <div>
+                 <h4 class="text-sm font-bold text-slate-800">Ready for Analysis</h4>
+                 <p class="text-xs text-slate-500 mt-0.5 max-w-2xl">Ensure rods are marked and scaled correctly. The engine will evaluate measurements against your {{ designInputMode === 'upload' ? 'uploaded' : 'manual' }} blueprint data.</p>
+             </div>
+         </div>
+         <button (click)="analyze()" [disabled]="isAnalyzing || isAutoDetecting || rodPoints.length < 2" class="w-full sm:w-auto btn btn-primary justify-center text-sm py-3 px-8 shadow-xl shadow-blue-900/10 hover:-translate-y-0.5 transition-all rounded-xl shrink-0">
+            <span class="flex items-center gap-2 text-base font-bold tracking-wide"><lucide-icon [img]="icons.ScanLine" class="w-5 h-5"></lucide-icon> Run Analysis Engine</span>
          </button>
       </div>
 
@@ -501,23 +541,18 @@
                 </div>
                 <div class="flex items-center gap-4 sm:gap-6 shrink-0 pr-2">
                     <div class="flex flex-col text-right">
-                        <span class="text-[9px] text-slate-400 uppercase tracking-wider">Detection</span>
+                        <span class="text-[9px] text-slate-400 uppercase tracking-wider">Design Extract</span>
+                        <span class="font-mono font-medium text-slate-700">{{ timers.ai | number:'1.1-1' }}s</span>
+                    </div>
+                    <div class="w-px h-6 bg-slate-200"></div>
+                    <div class="flex flex-col text-right">
+                        <span class="text-[9px] text-slate-400 uppercase tracking-wider">Auto-Detection</span>
                         <span class="font-mono font-medium text-slate-700">{{ timers.autoDetect | number:'1.1-1' }}s</span>
                     </div>
                     <div class="w-px h-6 bg-slate-200"></div>
-                    <div class="flex flex-col text-right" *ngIf="timers.backendWarmup > 0">
-                        <span class="text-[9px] text-orange-400 uppercase tracking-wider">Cloud Wake</span>
-                        <span class="font-mono font-medium text-slate-700">{{ timers.backendWarmup | number:'1.1-1' }}s</span>
-                    </div>
-                    <div class="w-px h-6 bg-slate-200" *ngIf="timers.backendWarmup > 0"></div>
                     <div class="flex flex-col text-right">
                         <span class="text-[9px] text-slate-400 uppercase tracking-wider">Vision Engine</span>
                         <span class="font-mono font-medium text-slate-700">{{ timers.cv | number:'1.1-1' }}s</span>
-                    </div>
-                    <div class="w-px h-6 bg-slate-200"></div>
-                    <div class="flex flex-col text-right">
-                        <span class="text-[9px] text-primary uppercase font-bold tracking-wider">Total Pipeline</span>
-                        <span class="font-mono font-black text-primary">{{ (timers.total) | number:'1.1-1' }}s</span>
                     </div>
                 </div>
             </div>
@@ -525,6 +560,17 @@
       </div>
     </div>
   </main>
+</div>
+
+<!-- Full screen Analysis Loading Overlay -->
+<div *ngIf="isAnalyzing" class="fixed inset-0 bg-slate-900/90 backdrop-blur-md z-[200] text-white animate-fade-in flex flex-col items-center justify-center">
+    <div class="animate-spin h-12 w-12 border-4 border-blue-500 border-t-transparent rounded-full mb-6 shrink-0"></div>
+    <div *ngIf="!isBackendWarmedUp" class="text-sm font-bold text-orange-300 uppercase tracking-widest text-center mb-2">Backend Waking Up...</div>
+    <div *ngIf="isBackendWarmedUp" class="text-sm font-bold text-blue-300 uppercase tracking-widest text-center mb-2">Extracting & Computing</div>
+    <div class="font-mono text-4xl font-black text-blue-200 flex items-center justify-center gap-3">
+        <lucide-icon [img]="icons.Timer" class="w-8 h-8 opacity-70"></lucide-icon>
+        {{ (isBackendWarmedUp ? timers.cv : timers.backendWarmup) | number:'1.1-1' }}s
+    </div>
 </div>
 
 <!-- Evaluation Methodology Modal -->
