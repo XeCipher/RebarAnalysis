@@ -942,23 +942,6 @@ export class AppComponent implements OnInit, OnDestroy {
       const finalNormRodPoints = this.rodPoints.map(p => [p[0] / this.imgNatWidth, p[1] / this.imgNatHeight]);
       const normRefPoints = payloadRefPoints.map(p => [p[0] / this.imgNatWidth, p[1] / this.imgNatHeight]);
 
-      let designData: any = this.viewMode === 'side' 
-        ? { spacing_mm: 0, least_lateral_dim_mm: 0, longitudinal_bar_dia_mm: 0 } 
-        : { count: 0, radius_mm: 0, spacings_mm: [] };
-
-      // --- 1. AI Analysis Phase (Design Blueprint Info Retrieval) ---
-      if (this.designImageFile) {
-        this.timers.aiRunning = true;
-        aiStart = performance.now();
-        
-        const designB64 = await this.gemini.fileToBase64(this.designImageFile, 700);
-        designData = await this.gemini.analyzeDesignOnly(designB64, this.viewMode);
-
-        this.timers.aiRunning = false;
-        this.timers.ai = (performance.now() - aiStart) / 1000;
-      }
-
-      // --- 2. CV Initial Measurement & Simulation Phase ---
       this.timers.cvRunning = true;
       const compressedReal = await this.compressFile(this.realImageFile!, 1600, 0.9);
       
