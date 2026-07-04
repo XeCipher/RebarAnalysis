@@ -23,7 +23,7 @@ export interface ApiResponse {
 export interface BlueprintModel {
   id: string; count: number | 'custom'; shape: 'Square' | 'Rectangle' | 'Custom';
   viewBox?: string; maxWidth?: number;
-  hasBeenEdited?: boolean;
+  firstEditedIdx?: number | null; // Tracks the "master field" to allow continuous multi-digit typing broadcasts
   rods: { cx: number, cy: number }[];
   spacings: { 
     idx: number; 
@@ -94,9 +94,9 @@ export class AppComponent implements OnInit, OnDestroy {
 
   // Side View Manual States
   sideExtractedState = { spacing_mm: 150 };
-  sideManualState: { stirrupCount: number, hasBeenEdited: boolean, spacings_mm: any[] } = { 
+  sideManualState: { stirrupCount: number, firstEditedIdx: number | null, spacings_mm: any[] } = { 
     stirrupCount: 5, 
-    hasBeenEdited: false,
+    firstEditedIdx: null,
     spacings_mm: [
       {idx: 0, value: null, userEdited: false}, 
       {idx: 1, value: null, userEdited: false}, 
@@ -250,7 +250,7 @@ export class AppComponent implements OnInit, OnDestroy {
     return {
         id: `c${count}_${shape.toLowerCase()}`, count, shape,
         viewBox: `0 0 ${vbW} ${vbH}`, maxWidth: calculatedMaxWidth,
-        hasBeenEdited: false,
+        firstEditedIdx: null,
         rods, spacings
     };
   }
@@ -457,7 +457,7 @@ export class AppComponent implements OnInit, OnDestroy {
                  sp.value = mappedSpacings[i] !== undefined ? mappedSpacings[i] : null;
                  sp.userEdited = true; // Mark AI extracted as explicitly touched
                });
-               modelToPopulate.hasBeenEdited = true;
+               modelToPopulate.firstEditedIdx = -1; // Disables the auto-population override for AI extracted models
             }
             this.extractedModel = modelToPopulate;
           }
@@ -496,18 +496,19 @@ export class AppComponent implements OnInit, OnDestroy {
     const spacing = this.sideManualState.spacings_mm[idx];
     if (!spacing) return;
     
-    const isFirstEntry = !this.sideManualState.hasBeenEdited;
     spacing.value = newValue;
     spacing.userEdited = true;
     
-    if (isFirstEntry && newValue !== null) {
+    if (this.sideManualState.firstEditedIdx === null) {
+        this.sideManualState.firstEditedIdx = idx;
+    }
+    
+    if (this.sideManualState.firstEditedIdx === idx) {
         this.sideManualState.spacings_mm.forEach((s, i) => {
-            if (i !== idx) {
+            if (i !== idx && !s.userEdited) {
                 s.value = newValue;
-                s.userEdited = false;
             }
         });
-        this.sideManualState.hasBeenEdited = true;
     }
     this.cdr.markForCheck();
   }
@@ -553,7 +554,7 @@ export class AppComponent implements OnInit, OnDestroy {
     }
     this.activeModel = {
         id: 'custom', count: 'custom', shape: 'Custom',
-        rods: [], spacings: customSpacings, hasBeenEdited: false
+        rods: [], spacings: customSpacings, firstEditedIdx: null
     };
     this.cdr.markForCheck();
   }
@@ -572,17 +573,21 @@ export class AppComponent implements OnInit, OnDestroy {
       spacing.value = newValue;
       spacing.userEdited = true;
       
-      if (!model.hasBeenEdited && newValue !== null) {
-        // First entry universally applies to all edges
+      if (model.firstEditedIdx === undefined) model.firstEditedIdx = null;
+      
+      if (model.firstEditedIdx === null) {
+        model.firstEditedIdx = idx;
+      }
+      
+      if (model.firstEditedIdx === idx) {
+        // Master field seamlessly broadcasts multiple typing keystrokes to all untouched fields
         model.spacings.forEach(s => {
-          if (s.idx !== idx) {
+          if (s.idx !== idx && !s.userEdited) {
             s.value = newValue;
-            s.userEdited = false;
           }
         });
-        model.hasBeenEdited = true;
-      } else if (spacing.opposite !== undefined && newValue !== null) {
-        // Apply mirroring to the geometric opposite edge unless explicitly modified already
+      } else if (spacing.opposite !== undefined) {
+        // Apply secondary mirroring to the geometric opposite edge unless explicitly modified
         const opp = model.spacings.find(s => s.idx === spacing.opposite);
         if (opp && !opp.userEdited) {
            opp.value = newValue;
