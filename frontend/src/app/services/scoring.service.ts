@@ -184,15 +184,7 @@ export class ScoringService {
     const singleDSpacing = this.safeFloat(designData.spacing_mm, -1);
     const dSpacings = Array.isArray(designData.spacings_mm) ? designData.spacings_mm.map((x: any) => this.safeFloat(x, 0)) : [];
     
-    const leastDim = this.safeFloat(designData.least_lateral_dim_mm, 0);
-    const longBarDia = this.safeFloat(designData.longitudinal_bar_dia_mm, 0);
     const aSpacings: number[] = Array.isArray(actualData.spacings) ? actualData.spacings : [];
-    
-    // IS 456:2000 Clause 26.5.3.2 Max Spacing Limit
-    let maxSpacingLimit = 300;
-    if (leastDim > 0) maxSpacingLimit = Math.min(maxSpacingLimit, leastDim);
-    if (longBarDia > 0) maxSpacingLimit = Math.min(maxSpacingLimit, 16 * longBarDia);
-    
     const tableRows: ComparisonRow[] = [];
     
     if (aSpacings.length === 0) {
@@ -215,11 +207,7 @@ export class ScoringService {
       let actualStr = "";
       
       if (hasScale) {
-        if (aSpacing > maxSpacingLimit) {
-          status = "Not Acceptable";
-          score = 0;
-          actualStr = `${aSpacing.toFixed(2)} mm (Exceeds IS Max: ${maxSpacingLimit}mm)`;
-        } else if (dSpacing > 0) {
+        if (dSpacing > 0) {
           // IS 456:2000 Tolerance limit checks
           const tol_mm = dSpacing <= 200 ? 10 : 15;
           const err_mm = Math.abs(dSpacing - aSpacing);

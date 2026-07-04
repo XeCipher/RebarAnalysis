@@ -91,12 +91,10 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   // Side View Manual States
-  sideExtractedState = { spacing_mm: 150, least_lateral_dim_mm: 400, longitudinal_bar_dia_mm: 20 };
+  sideExtractedState = { spacing_mm: 150 };
   sideManualState = { 
     stirrupCount: 5, 
-    spacings_mm: [{idx: 0, value: 150}, {idx: 1, value: 150}, {idx: 2, value: 150}, {idx: 3, value: 150}], 
-    least_lateral_dim_mm: 400, 
-    longitudinal_bar_dia_mm: 20 
+    spacings_mm: [{idx: 0, value: 150}, {idx: 1, value: 150}, {idx: 2, value: 150}, {idx: 3, value: 150}] 
   };
 
   // Execution Processing States
@@ -219,10 +217,15 @@ export class AppComponent implements OnInit, OnDestroy {
         const my = (r1.cy + r2.cy) / 2;
         
         let offsetX = 0; let offsetY = 0;
-        if (r1.cy === padY && r2.cy === padY) offsetY = -15; // Top edge
-        else if (r1.cx === padX + width && r2.cx === padX + width) offsetX = 22; // Right edge
-        else if (r1.cy === padY + height && r2.cy === padY + height) offsetY = 15; // Bottom edge
-        else if (r1.cx === padX && r2.cx === padX) offsetX = -22; // Left edge
+        
+        // Dynamic scaling of offsets ensuring the inputs maintain identical screen distances independently of rod count scaling
+        const dynOffsetX = vbW * 0.11;
+        const dynOffsetY = vbH * 0.09;
+        
+        if (r1.cy === padY && r2.cy === padY) offsetY = -dynOffsetY; 
+        else if (r1.cx === padX + width && r2.cx === padX + width) offsetX = dynOffsetX; 
+        else if (r1.cy === padY + height && r2.cy === padY + height) offsetY = dynOffsetY; 
+        else if (r1.cx === padX && r2.cx === padX) offsetX = -dynOffsetX; 
 
         spacings.push({
             idx: i,
@@ -447,8 +450,6 @@ export class AppComponent implements OnInit, OnDestroy {
           }
         } else if (this.viewMode === 'side') {
            this.sideExtractedState.spacing_mm = data.spacing_mm || this.sideExtractedState.spacing_mm;
-           this.sideExtractedState.least_lateral_dim_mm = data.least_lateral_dim_mm || this.sideExtractedState.least_lateral_dim_mm;
-           this.sideExtractedState.longitudinal_bar_dia_mm = data.longitudinal_bar_dia_mm || this.sideExtractedState.longitudinal_bar_dia_mm;
         }
       } catch (err) {
         console.error("Design Extract Error", err);
@@ -813,15 +814,11 @@ export class AppComponent implements OnInit, OnDestroy {
       } else {
          if (this.designInputMode === 'upload') {
             designData = {
-              spacing_mm: this.sideExtractedState.spacing_mm,
-              least_lateral_dim_mm: this.sideExtractedState.least_lateral_dim_mm,
-              longitudinal_bar_dia_mm: this.sideExtractedState.longitudinal_bar_dia_mm
+              spacing_mm: this.sideExtractedState.spacing_mm
             };
          } else {
             designData = {
-              spacings_mm: this.sideManualState.spacings_mm.map(s => s.value || 0),
-              least_lateral_dim_mm: this.sideManualState.least_lateral_dim_mm,
-              longitudinal_bar_dia_mm: this.sideManualState.longitudinal_bar_dia_mm
+              spacings_mm: this.sideManualState.spacings_mm.map(s => s.value || 0)
             };
          }
       }

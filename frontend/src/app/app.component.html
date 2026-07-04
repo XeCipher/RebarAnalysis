@@ -254,14 +254,6 @@
                              <label class="text-[11px] font-bold text-slate-600 uppercase tracking-wide">Vertical Stirrup Spacing</label>
                              <div class="relative w-24"><input type="number" [(ngModel)]="sideExtractedState.spacing_mm" placeholder="mm" class="w-full pl-2 pr-6 py-1.5 text-sm font-bold border border-slate-300 rounded focus:ring-1 focus:ring-blue-500 outline-none"><span class="absolute right-2 top-2 text-[9px] font-bold text-slate-400">mm</span></div>
                           </div>
-                          <div class="flex items-center justify-between bg-white p-2.5 rounded-lg border border-slate-200 shadow-sm">
-                             <label class="text-[11px] font-bold text-slate-600 uppercase tracking-wide">Least Lateral Dim</label>
-                             <div class="relative w-24"><input type="number" [(ngModel)]="sideExtractedState.least_lateral_dim_mm" placeholder="mm" class="w-full pl-2 pr-6 py-1.5 text-sm font-bold border border-slate-300 rounded focus:ring-1 focus:ring-blue-500 outline-none"><span class="absolute right-2 top-2 text-[9px] font-bold text-slate-400">mm</span></div>
-                          </div>
-                          <div class="flex items-center justify-between bg-white p-2.5 rounded-lg border border-slate-200 shadow-sm">
-                             <label class="text-[11px] font-bold text-slate-600 uppercase tracking-wide">Main Bar Dia.</label>
-                             <div class="relative w-24"><input type="number" [(ngModel)]="sideExtractedState.longitudinal_bar_dia_mm" placeholder="mm" class="w-full pl-2 pr-6 py-1.5 text-sm font-bold border border-slate-300 rounded focus:ring-1 focus:ring-blue-500 outline-none"><span class="absolute right-2 top-2 text-[9px] font-bold text-slate-400">mm</span></div>
-                          </div>
                        </div>
                     </div>
 
@@ -269,7 +261,7 @@
                     <div class="bg-slate-100 border-t border-slate-200 p-2 flex justify-between items-center z-40 shrink-0">
                        <div class="flex items-center gap-2 px-2" *ngIf="viewMode === 'top'">
                           <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Radius</span>
-                          <div class="relative w-16">
+                          <div class="relative w-24">
                              <input type="number" [(ngModel)]="extractedRadius" class="w-full pl-1.5 pr-6 py-1 text-xs font-bold text-center border border-slate-300 rounded bg-white outline-none focus:ring-1 focus:ring-blue-500">
                              <span class="absolute right-1.5 top-1.5 text-[8px] font-bold text-slate-400">mm</span>
                           </div>
@@ -347,7 +339,7 @@
                  <div class="p-3 border-t border-slate-200 bg-slate-50 flex items-center justify-between shrink-0">
                    <span class="text-xs font-bold text-slate-600 uppercase tracking-widest">Radius</span>
                    <div class="flex items-center gap-2">
-                      <input type="number" [(ngModel)]="designRadius" class="w-16 px-2 py-1.5 text-sm font-bold text-center border border-slate-300 rounded shadow-sm focus:border-blue-500 outline-none text-slate-800 bg-white">
+                      <input type="number" [(ngModel)]="designRadius" class="w-24 px-2 py-1.5 text-sm font-bold text-center border border-slate-300 rounded shadow-sm focus:border-blue-500 outline-none text-slate-800 bg-white">
                       <span class="text-xs text-slate-500 font-bold">mm</span>
                    </div>
                  </div>
@@ -370,17 +362,6 @@
                             <input type="number" [(ngModel)]="sp.value" placeholder="mm" class="w-full pl-3 pr-8 py-1.5 text-sm font-bold border border-slate-300 rounded focus:ring-1 focus:ring-blue-500 outline-none">
                             <span class="absolute right-2 top-2 text-[10px] font-bold text-slate-400">mm</span>
                          </div>
-                     </div>
-                 </div>
-
-                 <div class="p-3 border-t border-slate-200 bg-slate-50 space-y-2 shrink-0">
-                     <div class="flex items-center justify-between">
-                         <label class="text-[10px] font-bold text-slate-600 uppercase tracking-widest">Least Lateral Dim</label>
-                         <div class="relative w-20"><input type="number" [(ngModel)]="sideManualState.least_lateral_dim_mm" class="w-full pl-2 pr-6 py-1 text-xs font-bold border border-slate-300 rounded focus:ring-1 focus:ring-blue-500 outline-none"><span class="absolute right-1.5 top-1.5 text-[9px] font-bold text-slate-400">mm</span></div>
-                     </div>
-                     <div class="flex items-center justify-between">
-                         <label class="text-[10px] font-bold text-slate-600 uppercase tracking-widest">Main Bar Dia.</label>
-                         <div class="relative w-20"><input type="number" [(ngModel)]="sideManualState.longitudinal_bar_dia_mm" class="w-full pl-2 pr-6 py-1 text-xs font-bold border border-slate-300 rounded focus:ring-1 focus:ring-blue-500 outline-none"><span class="absolute right-1.5 top-1.5 text-[9px] font-bold text-slate-400">mm</span></div>
                      </div>
                  </div>
               </div>
@@ -675,13 +656,11 @@
               </tr>
               <tr>
                 <td class="p-3 font-medium text-slate-800 align-top">Lateral Tie Spacing (Side View)</td>
-                <td class="p-3 text-slate-600 align-top">IS 456:2000 Clause 26.5.3.2</td>
+                <td class="p-3 text-slate-600 align-top">IS 456:2000<br><span class="text-xs text-slate-400">(Vertical pitch tolerance)</span></td>
                 <td class="p-3 text-slate-600 align-top">
-                  Maximum spacing shall not exceed the least of:
-                  <ul class="list-disc list-inside space-y-1 mt-1">
-                    <li>Least lateral dim. of the column</li>
-                    <li>16 × dia of smallest longitudinal bar</li>
-                    <li>300 mm</li>
+                  <ul class="list-disc list-inside space-y-1">
+                    <li>Spacing <span class="font-mono bg-slate-50 px-1 rounded border border-slate-100">≤ 200 mm</span>: ± 10 mm</li>
+                    <li>Spacing <span class="font-mono bg-slate-50 px-1 rounded border border-slate-100">> 200 mm</span>: ± 15 mm</li>
                   </ul>
                 </td>
               </tr>
@@ -693,7 +672,7 @@
         <h4 class="font-bold text-slate-900 border-b border-slate-200 pb-2 mb-4 text-lg">3. Processing Methodology</h4>
         <div class="space-y-4">
           <div><strong class="text-slate-800">Top View Evaluation:</strong><p class="mt-1">Extracts the main perimeter rods, verifies the exact count (Rc), calculates the median localized pixel radius (Rr) mapped to mm, and assesses the sequential perimeter gaps (Rs) between consecutive rods in a clockwise arrangement.</p></div>
-          <div><strong class="text-slate-800">Side View Evaluation:</strong><p class="mt-1">Isolates the foreground horizontal ties (stirrups). The evaluation focuses on the vertical pitch spacing (Rs) between consecutive bars. Checks are made against the IS 456 limit (least of column dim, 16× dia, or 300mm) and designed spacing (±10mm/±15mm). If any interval exceeds limits, it drops to 0%, affecting the whole average.</p></div>
+          <div><strong class="text-slate-800">Side View Evaluation:</strong><p class="mt-1">Isolates the foreground horizontal ties (stirrups). The evaluation focuses on the vertical pitch spacing (Rs) between consecutive bars. Checks are made against the designed spacing (±10mm/±15mm). If any interval exceeds the tolerance limit, it drops to 0%, affecting the overall average.</p></div>
         </div>
       </section>
       <section>
