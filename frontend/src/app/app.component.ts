@@ -335,6 +335,7 @@ export class AppComponent implements OnInit, OnDestroy {
     this.designImageFile = null;
     this.designImagePreview = null;
     this.extractedModel = null;
+    this.extractedRadius = null; 
     this.cdr.markForCheck();
   }
 
@@ -553,6 +554,8 @@ export class AppComponent implements OnInit, OnDestroy {
     const file = event.target.files[0];
     if (file) {
       this.realImageFile = file;
+      this.imgNatWidth = 0; 
+      this.imgNatHeight = 0;
       const reader = new FileReader();
       reader.onload = (e: any) => {
         this.realImagePreview = e.target.result;
