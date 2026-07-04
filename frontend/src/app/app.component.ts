@@ -196,8 +196,14 @@ export class AppComponent implements OnInit, OnDestroy {
     let L = 0; let S = 0;
     
     if (shape === 'Square') {
-      const N = count / 4;
-      L = N; S = N;
+      if (count === 16) {
+        // Special case: 16-Rod "Square" configuration translates to a 6x4 layout (L=5, S=3)
+        L = 5; 
+        S = 3;
+      } else {
+        const N = count / 4;
+        L = N; S = N;
+      }
     } else {
       S = 1; L = (count / 2) - 1;
     }
@@ -205,7 +211,7 @@ export class AppComponent implements OnInit, OnDestroy {
     const segmentLen = 65;
     const width = L * segmentLen; 
     const height = S * segmentLen;
-    const padX = 60; const padY = 60; // Increased padding to prevent overflow
+    const padX = 60; const padY = 60; // Base margin to prevent edge cropping
     const vbW = width + padX * 2;
     const vbH = height + padY * 2;
     
@@ -218,6 +224,9 @@ export class AppComponent implements OnInit, OnDestroy {
     // Left Edge (B-T)
     for (let i = 0; i < S; i++) rods.push({ cx: padX, cy: padY + height - (height / S) * i });
 
+    // Calculate input box positions with a uniform physical offset across all aspect ratios
+    const offsetPx = 34; // Uniform SVG pixel offset distance from the rebar boundary line
+
     for (let i = 0; i < rods.length; i++) {
         const r1 = rods[i];
         const r2 = rods[(i + 1) % rods.length];
@@ -226,14 +235,11 @@ export class AppComponent implements OnInit, OnDestroy {
         
         let offsetX = 0; let offsetY = 0;
         
-        // Dynamic scaling of offsets ensuring the inputs maintain identical screen distances independently of rod count scaling
-        const dynOffsetX = vbW * 0.11;
-        const dynOffsetY = vbH * 0.09;
-        
-        if (r1.cy === padY && r2.cy === padY) offsetY = -dynOffsetY; 
-        else if (r1.cx === padX + width && r2.cx === padX + width) offsetX = dynOffsetX; 
-        else if (r1.cy === padY + height && r2.cy === padY + height) offsetY = dynOffsetY; 
-        else if (r1.cx === padX && r2.cx === padX) offsetX = -dynOffsetX; 
+        // Match edge orientation with threshold tolerance for precision
+        if (Math.abs(r1.cy - padY) < 1 && Math.abs(r2.cy - padY) < 1) offsetY = -offsetPx; 
+        else if (Math.abs(r1.cx - (padX + width)) < 1 && Math.abs(r2.cx - (padX + width)) < 1) offsetX = offsetPx; 
+        else if (Math.abs(r1.cy - (padY + height)) < 1 && Math.abs(r2.cy - (padY + height)) < 1) offsetY = offsetPx; 
+        else if (Math.abs(r1.cx - padX) < 1 && Math.abs(r2.cx - padX) < 1) offsetX = -offsetPx; 
 
         spacings.push({
             idx: i,
@@ -245,7 +251,12 @@ export class AppComponent implements OnInit, OnDestroy {
         });
     }
 
-    const calculatedMaxWidth = shape === 'Square' ? Math.min(vbW * 1.2, 350) : Math.min(Math.max(vbW * 1.5, 300), 500);
+    let calculatedMaxWidth = shape === 'Square' ? Math.min(vbW * 1.2, 350) : Math.min(Math.max(vbW * 1.5, 300), 500);
+    
+    // Override max width specifically for 16-rod models so they render cleanly on both desktop and mobile
+    if (count === 16) {
+        calculatedMaxWidth = Math.min(Math.max(vbW * 1.5, 300), 500);
+    }
 
     return {
         id: `c${count}_${shape.toLowerCase()}`, count, shape,
@@ -437,7 +448,8 @@ export class AppComponent implements OnInit, OnDestroy {
 
         if (this.viewMode === 'top' && data?.count > 0) {
           let targetModel = this.TOP_MODELS.find(m => m.count === data.count);
-          if ([8, 10, 12, 16].includes(data.count)) {
+          
+          if ([8, 10, 12].includes(data.count)) {
             const rectMatch = this.TOP_MODELS.find(m => m.count === data.count && m.shape === 'Rectangle');
             if (rectMatch) targetModel = rectMatch;
           }
@@ -449,10 +461,19 @@ export class AppComponent implements OnInit, OnDestroy {
             
             if (Array.isArray(data.spacings_mm)) {
                let mappedSpacings = data.spacings_mm;
-               if (targetModel.shape === 'Rectangle') {
-                  const S = 1; const L = (data.count / 2) - 1;
-                  mappedSpacings = this.alignSpacings(data.spacings_mm, L, S);
+               
+               if (targetModel.shape === 'Rectangle' || (targetModel.count === 16 && targetModel.shape === 'Square')) {
+                  let S_align = 1; 
+                  let L_align = (data.count / 2) - 1;
+                  
+                  if (targetModel.count === 16 && targetModel.shape === 'Square') {
+                      L_align = 5;
+                      S_align = 3;
+                  }
+                  
+                  mappedSpacings = this.alignSpacings(data.spacings_mm, L_align, S_align);
                }
+               
                modelToPopulate.spacings.forEach((sp: any, i: number) => {
                  sp.value = mappedSpacings[i] !== undefined ? mappedSpacings[i] : null;
                  sp.userEdited = true; // Mark AI extracted as explicitly touched
@@ -917,6 +938,7 @@ export class AppComponent implements OnInit, OnDestroy {
       if (this.viewMode === 'top') {
         scoreData = this.scoring.calculateTopScore(designData, cvRes.actual_data, cvRes.has_scale);
         
+        // Root Cause Analysis: Identify defective rod(s) by tracking frequency of defective spacing pairs
         const rodFrequencies = new Map<number, number>();
         scoreData.table.forEach(r => {
           if (r.status === 'Not Acceptable' && r.parameter.includes('Distance R')) {
