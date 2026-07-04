@@ -130,7 +130,7 @@ export class AppComponent implements OnInit, OnDestroy {
 
   // Performance Timers
   timers = {
-    autoDetect: 0, autoDetectRunning: false,
+    autoDetect: 0, autoDetectRunning: false, autoDetectCancelled: false, autoDetectRun: false,
     total: 0, backendWarmup: 0,
     cv: 0, cvRunning: false, ai: 0, aiRunning: false
   };
@@ -180,6 +180,14 @@ export class AppComponent implements OnInit, OnDestroy {
     this.intervals.forEach(i => clearInterval(i));
   }
 
+  getRevitColumnId(count: number, shape: 'Square' | 'Rectangle'): string {
+    if (count === 4) return 'C4';
+    if (count === 10) return 'C10';
+    if (shape === 'Square') return `C${count}_Square`;
+    if (shape === 'Rectangle') return `C${count}_Rect`;
+    return `C${count}`;
+  }
+
   initModels() {
     const configs = [
       { c: 4, s: 'Square' }, { c: 6, s: 'Rectangle' }, { c: 8, s: 'Square' },
@@ -187,7 +195,7 @@ export class AppComponent implements OnInit, OnDestroy {
       { c: 12, s: 'Rectangle' }, { c: 16, s: 'Square' }, { c: 16, s: 'Rectangle' }
     ];
     this.TOP_MODELS = configs.map(conf => this.generateModel(conf.c, conf.s as 'Square' | 'Rectangle'));
-    this.activeModel = JSON.parse(JSON.stringify(this.TOP_MODELS.find(m => m.id === 'c8_rectangle')!));
+    this.activeModel = JSON.parse(JSON.stringify(this.TOP_MODELS.find(m => m.id === 'C8_Rect')!));
   }
 
   generateModel(count: number, shape: 'Square' | 'Rectangle'): BlueprintModel {
@@ -259,7 +267,7 @@ export class AppComponent implements OnInit, OnDestroy {
     }
 
     return {
-        id: `c${count}_${shape.toLowerCase()}`, count, shape,
+        id: this.getRevitColumnId(count, shape), count, shape,
         viewBox: `0 0 ${vbW} ${vbH}`, maxWidth: calculatedMaxWidth,
         firstEditedIdx: null,
         rods, spacings
@@ -342,6 +350,8 @@ export class AppComponent implements OnInit, OnDestroy {
     this.realImagePreview = null;
     this.designImagePreview = null;
     this.timers.autoDetect = 0;
+    this.timers.autoDetectRun = false;
+    this.timers.autoDetectCancelled = false;
     this.designInputMode = 'upload';
     this.resetMarkings();
   }
@@ -349,6 +359,9 @@ export class AppComponent implements OnInit, OnDestroy {
   clearSiteImage() {
     this.realImageFile = null;
     this.realImagePreview = null;
+    this.timers.autoDetect = 0;
+    this.timers.autoDetectRun = false;
+    this.timers.autoDetectCancelled = false;
     this.resetMarkings();
   }
 
@@ -774,6 +787,8 @@ export class AppComponent implements OnInit, OnDestroy {
     this.isAutoDetecting = true;
     const execId = ++this.currentAutoDetectId;
     this.timers.autoDetectRunning = true;
+    this.timers.autoDetectCancelled = false;
+    this.timers.autoDetectRun = true;
     this.timers.autoDetect = 0;
     
     const adStart = performance.now();
@@ -824,6 +839,7 @@ export class AppComponent implements OnInit, OnDestroy {
     this.currentAutoDetectId++;
     this.timers.autoDetectRunning = false;
     this.isAutoDetecting = false;
+    this.timers.autoDetectCancelled = true;
     this.cdr.markForCheck();
   }
 
