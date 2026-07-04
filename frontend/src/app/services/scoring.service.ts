@@ -47,29 +47,34 @@ export class ScoringService {
     let radiusStatus: ComparisonRow['status'] = "NA";
     let actualDisplay = "";
 
-    if (hasScale && dRad > 0) {
-      const diameter = dRad * 2;
-      
-      // IS 1786:2008 Approximations for Diametrical Tolerance based on unit weight
-      let tol_pct = 2.0;
-      if (diameter <= 10) tol_pct = 3.5;
-      else if (diameter <= 16) tol_pct = 2.5; // Covers 12mm to 16mm
-      else tol_pct = 2.0; // Over 16mm
+    if (hasScale) {
+      if (dRad > 0) {
+        const diameter = dRad * 2;
+        
+        // IS 1786:2008 Approximations for Diametrical Tolerance based on unit weight
+        let tol_pct = 2.0;
+        if (diameter <= 10) tol_pct = 3.5;
+        else if (diameter <= 16) tol_pct = 2.5; // Covers 12mm to 16mm
+        else tol_pct = 2.0; // Over 16mm
 
-      const errRad = Math.abs(dRad - aRad);
-      const percentErr = (errRad / dRad) * 100;
-      
-      if (percentErr <= tol_pct) {
-        radiusStatus = "Acceptable";
-        scoreRadius = 100;
+        const errRad = Math.abs(dRad - aRad);
+        const percentErr = (errRad / dRad) * 100;
+        
+        if (percentErr <= tol_pct) {
+          radiusStatus = "Acceptable";
+          scoreRadius = 100;
+        } else {
+          radiusStatus = "Not Acceptable";
+          scoreRadius = 0;
+        }
+        actualDisplay = `${aRad.toFixed(2)} mm`;
       } else {
         radiusStatus = "Not Acceptable";
         scoreRadius = 0;
+        actualDisplay = `${aRad.toFixed(2)} mm`;
       }
-      
-      actualDisplay = `${aRad.toFixed(2)} mm`;
     } else {
-      actualDisplay = `${aRad.toFixed(2)} ${hasScale ? 'mm' : 'px'}`;
+      actualDisplay = `${aRad.toFixed(2)} px`;
     }
 
     tableRows.push({
@@ -176,16 +181,10 @@ export class ScoringService {
   }
 
   calculateSideScore(designData: any, actualData: any, hasScale: boolean): { score: number, score_count: number | null, score_radius: number | null, score_spacing: number | null, table: ComparisonRow[] } {
-    const dSpacing = this.safeFloat(designData.spacing_mm);
-    const leastDim = this.safeFloat(designData.least_lateral_dim_mm, 0);
-    const longBarDia = this.safeFloat(designData.longitudinal_bar_dia_mm, 0);
+    const singleDSpacing = this.safeFloat(designData.spacing_mm, -1);
+    const dSpacings = Array.isArray(designData.spacings_mm) ? designData.spacings_mm.map((x: any) => this.safeFloat(x, 0)) : [];
+    
     const aSpacings: number[] = Array.isArray(actualData.spacings) ? actualData.spacings : [];
-    
-    // IS 456:2000 Clause 26.5.3.2 Max Spacing Limit
-    let maxSpacingLimit = 300;
-    if (leastDim > 0) maxSpacingLimit = Math.min(maxSpacingLimit, leastDim);
-    if (longBarDia > 0) maxSpacingLimit = Math.min(maxSpacingLimit, 16 * longBarDia);
-    
     const tableRows: ComparisonRow[] = [];
     
     if (aSpacings.length === 0) {
@@ -194,23 +193,21 @@ export class ScoringService {
         score_count: null,
         score_radius: null,
         score_spacing: 0,
-        table: [{ parameter: "Vertical Spacing", design: dSpacing > 0 ? `${dSpacing} mm` : "Not Specified", actual: "None detected", status: "Not Acceptable" }] 
+        table: [{ parameter: "Vertical Spacing", design: singleDSpacing > 0 ? `${singleDSpacing} mm` : "Not Specified", actual: "None detected", status: "Not Acceptable" }] 
       };
     }
 
     let totalScore = 0;
 
     aSpacings.forEach((aSpacing, i) => {
+      // Pick current target spacing from array (if provided), otherwise fallback to single spacing or 0
+      const dSpacing = singleDSpacing !== -1 ? singleDSpacing : (i < dSpacings.length ? dSpacings[i] : (dSpacings.length > 0 ? dSpacings[dSpacings.length - 1] : 0));
       let score = 0;
       let status: ComparisonRow['status'] = "NA";
       let actualStr = "";
       
       if (hasScale) {
-        if (aSpacing > maxSpacingLimit) {
-          status = "Not Acceptable";
-          score = 0;
-          actualStr = `${aSpacing.toFixed(2)} mm (Exceeds IS Max: ${maxSpacingLimit}mm)`;
-        } else if (dSpacing > 0) {
+        if (dSpacing > 0) {
           // IS 456:2000 Tolerance limit checks
           const tol_mm = dSpacing <= 200 ? 10 : 15;
           const err_mm = Math.abs(dSpacing - aSpacing);
@@ -222,7 +219,7 @@ export class ScoringService {
           } else {
             status = "Not Acceptable";
             score = 0;
-            actualStr = `${aSpacing.toFixed(2)} mm (Deviates from design ${dSpacing}mm)`;
+            actualStr = `${aSpacing.toFixed(2)} mm`;
           }
         } else {
           status = "Acceptable";

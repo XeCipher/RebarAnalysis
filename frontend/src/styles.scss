@@ -20,8 +20,11 @@ body {
 }
 
 .btn {
-  @apply px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center gap-2 outline-none;
-  &:disabled { @apply opacity-60 cursor-not-allowed transform-none; }
+  @apply px-4 py-2 rounded-lg font-medium transition-all duration-300 flex items-center gap-2 outline-none;
+  &:disabled { 
+    @apply opacity-40 cursor-not-allowed transform-none shadow-none; 
+    filter: grayscale(100%);
+  }
 }
 
 .btn-primary { @apply bg-blue-600 text-white hover:bg-blue-700 hover:shadow-lg shadow-blue-500/30; }

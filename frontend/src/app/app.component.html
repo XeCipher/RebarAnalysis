@@ -1,274 +1,413 @@
-<div class="min-h-screen lg:h-screen flex flex-col bg-slate-50 font-sans lg:overflow-hidden">
+<div class="min-h-screen lg:h-screen flex flex-col bg-slate-50 font-sans lg:overflow-hidden relative">
   
-  <!-- Top Navigation (Fixed / Shrink-0) -->
-  <nav class="bg-white/80 backdrop-blur-lg border-b border-slate-200 z-50 shadow-sm shrink-0">
+  <nav class="bg-white/80 backdrop-blur-lg border-b border-slate-200 z-50 shadow-sm shrink-0 transition-all duration-300">
     <div class="max-w-[1400px] mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
       <div class="flex items-center gap-2">
-        <div class="bg-primary/10 p-2 rounded-lg">
-          <lucide-icon [img]="icons.ScanLine" class="text-primary w-5 h-5 sm:w-6 sm:h-6" />
-        </div>
+        <div class="bg-primary/10 p-2 rounded-lg hover:bg-primary/20 transition-colors"><lucide-icon [img]="icons.ScanLine" class="text-primary w-5 h-5 sm:w-6 sm:h-6"></lucide-icon></div>
         <span class="font-bold text-lg sm:text-xl tracking-tight text-slate-800">Rebar<span class="text-primary">Analysis</span></span>
       </div>
       
-      <!-- Right Side Actions (View Mode & BIM Downloads) -->
       <div class="flex items-center gap-4 sm:gap-6">
-        
-        <!-- Stealth Mode Toggle -->
-        <div 
-          class="flex items-center text-xs sm:text-sm font-medium text-slate-400 select-none cursor-pointer transition-colors hover:text-slate-800" 
-          (click)="toggleViewMode()">
-          <lucide-icon [img]="viewMode === 'top' ? icons.Layers : icons.ArrowUpDown" class="w-4 h-4 mr-1.5 hidden sm:block" />
+        <div class="flex items-center text-xs sm:text-sm font-medium text-slate-400 select-none cursor-pointer transition-colors hover:text-slate-800" (click)="toggleViewMode()">
+          <lucide-icon [img]="viewMode === 'top' ? icons.Layers : icons.ArrowUpDown" class="w-4 h-4 mr-1.5 hidden sm:block"></lucide-icon>
           {{ viewMode === 'top' ? 'Top View' : 'Side View' }}
         </div>
 
-        <!-- Downloads & BIM Assets Dropdown -->
         <div class="relative" #downloadsMenuRef>
           <button (click)="toggleDownloadsMenu()" class="bg-primary/10 text-primary hover:bg-primary/20 p-2 rounded-lg transition-colors focus:outline-none" title="BIM Assets & Scripts">
-            <lucide-icon [img]="icons.DownloadCloud" class="w-5 h-5" />
+            <lucide-icon [img]="icons.DownloadCloud" class="w-5 h-5"></lucide-icon>
           </button>
-
-          <!-- Dropdown Menu -->
           <div *ngIf="showDownloadsMenu" class="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-2xl border border-slate-100 z-50 overflow-hidden animate-fade-in flex flex-col">
             <div class="px-4 py-3 bg-slate-50 border-b border-slate-100 flex items-center gap-2">
-              <lucide-icon [img]="icons.Box" class="w-4 h-4 text-slate-500" />
+              <lucide-icon [img]="icons.Box" class="w-4 h-4 text-slate-500"></lucide-icon>
               <span class="text-xs font-bold uppercase tracking-widest text-slate-600">BIM Integration</span>
             </div>
-            
             <a href="assets/downloads/models.rvt" download="models.rvt" class="px-4 py-3 hover:bg-slate-50 transition-colors flex items-center justify-between group border-b border-slate-50">
               <div class="flex items-center gap-3 text-sm font-medium text-slate-700">
-                <div class="p-1.5 bg-blue-100 text-blue-600 rounded-md group-hover:scale-110 transition-transform">
-                  <lucide-icon [img]="icons.DownloadCloud" class="w-4 h-4" />
-                </div>
+                <div class="p-1.5 bg-blue-100 text-blue-600 rounded-md group-hover:scale-110 transition-transform"><lucide-icon [img]="icons.DownloadCloud" class="w-4 h-4"></lucide-icon></div>
                 Revit Model (.rvt)
               </div>
-              <!-- Added the download icon representation right below! -->
-              <lucide-icon [img]="icons.DownloadCloud" class="w-4 h-4 text-slate-400 group-hover:text-blue-500 transition-colors" />
             </a>
-
             <button (click)="copyScript('rodhighlight.py')" class="w-full text-left px-4 py-3 hover:bg-slate-50 transition-colors flex items-center justify-between group border-b border-slate-50">
               <div class="flex items-center gap-3 text-sm font-medium text-slate-700">
-                <div class="p-1.5 bg-purple-100 text-purple-600 rounded-md group-hover:scale-110 transition-transform">
-                  <lucide-icon [img]="icons.FileCode" class="w-4 h-4" />
-                </div>
+                <div class="p-1.5 bg-purple-100 text-purple-600 rounded-md group-hover:scale-110 transition-transform"><lucide-icon [img]="icons.FileCode" class="w-4 h-4"></lucide-icon></div>
                 rodhighlight.py
               </div>
-              <lucide-icon [img]="copiedStates['rodhighlight.py'] ? icons.CheckCircle2 : icons.Copy" [class.text-green-500]="copiedStates['rodhighlight.py']" [class.text-slate-400]="!copiedStates['rodhighlight.py']" [class.group-hover:text-purple-500]="!copiedStates['rodhighlight.py']" class="w-4 h-4 transition-colors" />
             </button>
-
             <button (click)="copyScript('rodlines.py')" class="w-full text-left px-4 py-3 hover:bg-slate-50 transition-colors flex items-center justify-between group">
               <div class="flex items-center gap-3 text-sm font-medium text-slate-700">
-                <div class="p-1.5 bg-orange-100 text-orange-600 rounded-md group-hover:scale-110 transition-transform">
-                  <lucide-icon [img]="icons.FileCode" class="w-4 h-4" />
-                </div>
+                <div class="p-1.5 bg-orange-100 text-orange-600 rounded-md group-hover:scale-110 transition-transform"><lucide-icon [img]="icons.FileCode" class="w-4 h-4"></lucide-icon></div>
                 rodlines.py
               </div>
-              <lucide-icon [img]="copiedStates['rodlines.py'] ? icons.CheckCircle2 : icons.Copy" [class.text-green-500]="copiedStates['rodlines.py']" [class.text-slate-400]="!copiedStates['rodlines.py']" [class.group-hover:text-orange-500]="!copiedStates['rodlines.py']" class="w-4 h-4 transition-colors" />
             </button>
           </div>
         </div>
-
       </div>
     </div>
   </nav>
 
-  <!-- Main Content Area -->
   <main class="w-full max-w-[1400px] mx-auto p-4 sm:p-6 flex-1 flex flex-col min-h-0">
     
-    <!-- ========================================== -->
-    <!-- STATE 1: INITIAL UPLOAD & MARKING ENGINE   -->
-    <!-- ========================================== -->
-    <div *ngIf="!result" class="flex flex-col lg:flex-row gap-6 lg:gap-8 flex-1 lg:min-h-0 h-full">
-      
-      <!-- Left Column: Inputs & Controls -->
-      <div class="w-full lg:w-[340px] xl:w-[380px] shrink-0 flex flex-col gap-6 lg:overflow-y-auto pr-1 pb-4">
+    <div *ngIf="!result" class="flex flex-col flex-1 min-h-0 relative">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 flex-1 min-h-0 overflow-y-auto no-scrollbar pb-6">
         
-        <div class="card shadow-sm hover:shadow-md transition-shadow">
-          <div class="flex items-center justify-between mb-4">
-            <h2 class="text-lg font-semibold flex items-center gap-2 text-slate-800">
-              <lucide-icon [img]="icons.Upload" class="w-5 h-5 text-slate-400" /> Upload
-            </h2>
-          </div>
-          <div class="space-y-4">
-            <div>
-              <label class="block text-sm font-medium text-slate-700 mb-1">Site Photograph</label>
-              <input type="file" (change)="onFileSelected($event, 'real')" accept="image/*" 
-                class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-bold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 transition-colors cursor-pointer"/>
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-slate-700 mb-1">Structural Design</label>
-              <input type="file" (change)="onFileSelected($event, 'design')" accept="image/*"
-                class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-bold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200 transition-colors cursor-pointer"/>
-            </div>
-          </div>
-        </div>
-
-        <div class="card shadow-sm hover:shadow-md transition-shadow flex flex-col" *ngIf="realImagePreview">
-          <div class="flex border-b border-slate-200 mb-4 shrink-0">
-            <button (click)="setMode('rods')" 
-                    class="flex-1 pb-2 px-2 text-sm font-bold transition-all"
-                    [class.text-primary]="mode === 'rods'"
-                    [class.border-b-2]="mode === 'rods'"
-                    [class.border-primary]="mode === 'rods'"
-                    [class.text-slate-500]="mode !== 'rods'">
-              Mark {{ viewMode === 'top' ? 'Rods' : 'Bars' }}
-            </button>
-            <button (click)="setMode('ref')" 
-                    class="flex-1 pb-2 px-2 text-sm font-bold transition-all"
-                    [class.text-primary]="mode === 'ref'"
-                    [class.border-b-2]="mode === 'ref'"
-                    [class.border-primary]="mode === 'ref'"
-                    [class.text-slate-500]="mode !== 'ref'">
-              Set Scale
-            </button>
-          </div>
-
-          <div *ngIf="mode === 'rods'" class="animate-fade-in space-y-4">
-            <button (click)="autoDetect()" [disabled]="isAutoDetecting" class="w-full btn bg-purple-50 text-purple-700 border border-purple-200 hover:bg-purple-100 justify-center active:scale-[0.98]">
-              <lucide-icon [img]="icons.Wand2" class="w-4 h-4 mr-2" />
-              {{ isAutoDetecting ? 'Detecting...' : 'Re-run Auto-Detect' }}
-            </button>
-
-            <!-- Instructional Tooltip Box -->
-            <div class="text-[11px] sm:text-xs text-slate-500 bg-slate-50 p-2.5 rounded-lg text-center border border-slate-200 flex flex-col xl:flex-row items-center justify-center gap-1 xl:gap-1.5 shadow-inner">
-              <div class="flex items-center gap-1.5">
-                <lucide-icon [img]="icons.Info" class="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                <span>Tap dot to <strong class="text-slate-700">Remove</strong>.</span>
+        <!-- ================= LEFT COLUMN: SITE IMAGE ============== -->
+        <div class="card flex flex-col gap-4 h-full relative group">
+           <div class="flex items-center justify-between shrink-0">
+              <h2 class="text-lg font-semibold flex items-center gap-2 text-slate-800">
+                <lucide-icon [img]="icons.ImageIcon" class="w-5 h-5 text-slate-400 group-hover:text-primary transition-colors" /> Site Photograph
+              </h2>
+              <div class="flex items-center gap-2">
+                <button *ngIf="realImagePreview" (click)="clearSiteImage()" class="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="Remove Site Image">
+                   <lucide-icon [img]="icons.Trash2" class="w-4 h-4"></lucide-icon>
+                </button>
               </div>
-              <span class="hidden xl:inline-block text-slate-300">•</span>
-              <span>Drag to <strong class="text-slate-700">Move</strong>.</span>
-              <span class="hidden xl:inline-block text-slate-300">•</span>
-              <span>Tap img to <strong class="text-slate-700">Add</strong>.</span>
-            </div>
-          </div>
+           </div>
+           
+           <div *ngIf="!realImagePreview" class="flex flex-col gap-4 flex-1 animate-fade-in">
+              <div>
+                <input type="file" #fileInputReal (change)="onFileSelected($event, 'real')" accept="image/*" class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-bold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 transition-colors cursor-pointer"/>
+              </div>
+              <div class="border-2 border-dashed border-slate-300 bg-slate-50 rounded-xl flex flex-col items-center justify-center p-6 flex-1 text-slate-500 hover:bg-slate-100 hover:border-slate-400 transition-colors duration-300 cursor-pointer min-h-[280px]" (click)="fileInputReal.click()" (drop)="$event.preventDefault(); onFileSelected({target: {files: $event.dataTransfer?.files}}, 'real')" (dragover)="$event.preventDefault()">
+                 <lucide-icon [img]="icons.Upload" class="w-12 h-12 mb-3 opacity-50"></lucide-icon>
+                 <span class="font-bold text-slate-600 mb-1">Drag & drop your site photograph here</span>
+                 <span class="text-xs text-slate-400">JPEG, PNG supported</span>
+              </div>
+           </div>
 
-          <div *ngIf="mode === 'ref'" class="animate-fade-in space-y-4">
-            <!-- Instructional Tooltip Box -->
-            <div class="text-[11px] sm:text-xs text-slate-500 bg-slate-50 p-2.5 rounded-lg text-center border border-slate-200 flex items-center justify-center gap-1.5 shadow-inner mb-3">
-              <lucide-icon [img]="icons.Info" class="w-3.5 h-3.5 text-slate-400 shrink-0" />
-              <span>Click on the image to place exactly 2 scale points.</span>
-            </div>
-            
-            <label class="block text-xs font-bold text-blue-700 uppercase mb-1">Reference Length (mm)</label>
-            <input type="number" [(ngModel)]="refLengthInput" class="w-full px-3 py-2 text-sm border border-blue-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow">
-          </div>
+           <!-- Site Image Interactive Area -->
+           <div *ngIf="realImagePreview" class="relative select-none max-w-full flex items-center justify-center bg-slate-50 rounded-xl border border-slate-200 overflow-hidden flex-1 min-h-[300px] animate-fade-in">
+              <div class="image-wrapper relative max-w-full rounded-lg shadow-sm overflow-hidden">
+                 <img #imageRef [src]="realImagePreview" (load)="onImageLoad($event)" (click)="onImageClick($event)" class="w-auto h-auto max-w-full max-h-[45vh] block touch-manipulation">
+                 
+                 <div *ngIf="isAutoDetecting" class="absolute inset-0 bg-slate-900/80 backdrop-blur-sm z-30 text-white animate-fade-in flex flex-col items-center justify-center rounded-lg">
+                     <div class="animate-spin h-10 w-10 border-4 border-purple-50 border-t-transparent rounded-full mb-3 shrink-0"></div>
+                     <div class="text-sm font-bold text-purple-300 uppercase tracking-widest mb-1 text-center">Auto-Detecting</div>
+                     <div class="font-mono text-2xl font-black text-purple-200 mb-4 flex items-center justify-center gap-2">
+                       <lucide-icon [img]="icons.Timer" class="w-5 h-5 opacity-70"></lucide-icon>{{ timers.autoDetect | number:'1.1-1' }}s
+                     </div>
+                     <button (click)="cancelAutoDetect()" class="px-4 py-1.5 bg-white/10 hover:bg-white/20 border border-white/30 rounded-full text-xs font-medium backdrop-blur transition-all active:scale-95">Cancel</button>
+                 </div>
 
-          <div class="flex justify-between items-center border-t border-slate-100 pt-4 mt-4 shrink-0">
-            <button (click)="undoLast()" class="btn btn-outline text-xs py-1.5 px-3">
-              <lucide-icon [img]="icons.Undo2" class="w-3.5 h-3.5" /> Undo
-            </button>
-            <div class="text-[11px] font-mono text-slate-400 bg-slate-50 px-2 py-1 rounded border border-slate-100">
-              Pts: <span class="text-slate-700 font-bold">{{rodPoints.length}}</span> | Sc: <span class="text-slate-700 font-bold">{{refPoints.length}}/2</span>
-            </div>
-          </div>
-        </div>
+                 <!-- Render Rod and Ref Points -->
+                 <ng-container *ngIf="imgNatWidth > 0 && !isAnalyzing">
+                    <div *ngIf="scaleMode === 'rods' && rodPoints.length >= 2 && rodPoints[scaleRodA - 1] && rodPoints[scaleRodB - 1]">
+                       <svg class="absolute inset-0 pointer-events-none w-full h-full z-0 overflow-visible">
+                          <line 
+                            [attr.x1]="(rodPoints[scaleRodA - 1][0] / imgNatWidth) * 100 + '%'" [attr.y1]="(rodPoints[scaleRodA - 1][1] / imgNatHeight) * 100 + '%'" 
+                            [attr.x2]="(rodPoints[scaleRodB - 1][0] / imgNatWidth) * 100 + '%'" [attr.y2]="(rodPoints[scaleRodB - 1][1] / imgNatHeight) * 100 + '%'" 
+                            stroke="cyan" stroke-width="3" stroke-dasharray="6,4"></line>
+                       </svg>
+                    </div>
+                    <div *ngFor="let p of rodPoints; let i = index; trackBy: trackByIndex" 
+                         class="dot-rod" (pointerdown)="onPointerDown($event, i, 'rod')" (pointermove)="onPointerMove($event)" (pointerup)="onPointerUp($event, i, 'rod')" (pointercancel)="onPointerUp($event, i, 'rod')"
+                         [style.left.%]="(p[0] / imgNatWidth) * 100" [style.top.%]="(p[1] / imgNatHeight) * 100">{{i + 1}}</div>
+                    <ng-container *ngIf="scaleMode === 'freehand'">
+                      <div *ngFor="let p of refPoints; let i = index; trackBy: trackByIndex" 
+                           class="dot-ref" (pointerdown)="onPointerDown($event, i, 'ref')" (pointermove)="onPointerMove($event)" (pointerup)="onPointerUp($event, i, 'ref')" (pointercancel)="onPointerUp($event, i, 'ref')"
+                           [style.left.%]="(p[0] / imgNatWidth) * 100" [style.top.%]="(p[1] / imgNatHeight) * 100"></div>
+                    </ng-container>
+                 </ng-container>
+              </div>
+           </div>
 
-        <button *ngIf="realImagePreview" 
-          (click)="analyze()" 
-          [disabled]="isAnalyzing || rodPoints.length < 2 || isAutoDetecting"
-          class="w-full btn btn-primary justify-center text-sm py-3 sm:py-4 shadow-xl shadow-blue-900/10 hover:-translate-y-0.5 transition-all mt-auto shrink-0">
-          <span *ngIf="!isAnalyzing" class="flex items-center gap-2"><lucide-icon [img]="icons.ScanLine" class="w-4 h-4" /> Run Analysis Engine</span>
-          <span *ngIf="isAnalyzing" class="flex items-center gap-2">
-            <div class="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div> Processing...
-          </span>
-        </button>
+           <!-- Site Image Tools -->
+           <div *ngIf="realImagePreview" class="flex flex-col gap-3 shrink-0 bg-slate-50 p-3 rounded-xl border border-slate-200 animate-fade-in">
+              <div class="flex border-b border-slate-200 mb-2 transition-all duration-300">
+                <button (click)="setMode('rods')" class="flex-1 pb-2 px-2 text-sm font-bold transition-all duration-300" [class.text-primary]="mode === 'rods'" [class.border-b-2]="mode === 'rods'" [class.border-primary]="mode === 'rods'" [class.text-slate-500]="mode !== 'rods'">Mark {{ viewMode === 'top' ? 'Rods' : 'Bars' }}</button>
+                <button (click)="setMode('ref')" class="flex-1 pb-2 px-2 text-sm font-bold transition-all duration-300" [class.text-primary]="mode === 'ref'" [class.border-b-2]="mode === 'ref'" [class.border-primary]="mode === 'ref'" [class.text-slate-500]="mode !== 'ref'">Calibration Scale</button>
+              </div>
 
-        <div *ngIf="errorMsg" class="bg-red-50 text-red-700 p-3 rounded-lg border border-red-200 flex items-start gap-2 text-sm">
-          <lucide-icon [img]="icons.AlertCircle" class="w-4 h-4 mt-0.5 shrink-0" />
-          <span>{{ errorMsg }}</span>
-        </div>
-      </div>
+              <div *ngIf="mode === 'rods'" class="animate-fade-in flex flex-col gap-3">
+                <div class="text-[11px] sm:text-xs text-slate-500 bg-white p-2.5 rounded-lg text-center border border-slate-200 flex flex-wrap items-center justify-center gap-1.5 shadow-sm transition-all duration-300">
+                   <lucide-icon [img]="icons.Info" class="w-3.5 h-3.5 text-slate-400 shrink-0"></lucide-icon>
+                   <span>Tap image to <strong>Add</strong> • Tap dot to <strong>Remove</strong> • Drag to <strong>Move</strong></span>
+                </div>
+                <div class="flex items-center gap-3">
+                  <button (click)="autoDetect()" [disabled]="isAutoDetecting" class="btn bg-purple-50 text-purple-700 border border-purple-200 hover:bg-purple-100 flex-1 text-sm justify-center shadow-sm transition-all duration-300 font-semibold">
+                    <lucide-icon [img]="icons.Wand2" class="w-4 h-4 mr-1"></lucide-icon> Re-detect via AI
+                  </button>
+                  <button (click)="undoLast()" class="btn btn-outline text-xs px-3 shadow-sm transition-all duration-300"><lucide-icon [img]="icons.Undo2" class="w-4 h-4"></lucide-icon></button>
+                </div>
+              </div>
 
-      <!-- Right Column: Interactive Canvas -->
-      <div class="flex-1 flex flex-col min-w-0 lg:min-h-0 h-full pb-4 lg:pb-0 items-center justify-center">
-        
-        <div *ngIf="!realImagePreview" class="w-full flex-1 min-h-[300px] border-2 border-dashed border-slate-300 rounded-xl flex flex-col items-center justify-center text-slate-400 bg-slate-50/50">
-          <lucide-icon [img]="icons.Upload" class="w-10 h-10 mb-3 opacity-50" />
-          <p class="font-medium text-sm">Upload Photo To Begin Analysis</p>
-        </div>
-
-        <div *ngIf="realImagePreview" class="relative group select-none max-w-full flex items-center justify-center flex-1 lg:min-h-0 p-2 sm:p-4 w-full">
-          
-          <!-- Inner Tight Wrapper (Bounds strictly to the image shape) -->
-          <div class="image-wrapper relative max-w-full bg-white rounded-xl shadow-xl border border-slate-200 overflow-hidden">
-            <img #imageRef [src]="realImagePreview" (load)="onImageLoad($event)" (click)="onImageClick($event)" class="w-auto h-auto max-w-full max-h-[60vh] lg:max-h-[80vh] block touch-manipulation rounded-xl">
-            
-            <!-- Dynamically Scaled Loader Overlays -->
-            <div *ngIf="isAutoDetecting" class="absolute inset-0 bg-slate-900/80 backdrop-blur-sm z-30 text-white animate-fade-in rounded-xl">
-               <div class="overlay-content-scale p-4 leading-normal" [style.transform]="getOverlayScale()">
-                   <div class="animate-spin h-8 w-8 sm:h-10 sm:w-10 border-4 border-purple-500 border-t-transparent rounded-full mb-3 sm:mb-4 shrink-0 mx-auto"></div>
-                   <div class="text-xs sm:text-sm font-bold text-purple-300 uppercase tracking-widest mb-1 text-center shrink-0">Auto-Detecting Rods</div>
-                   <div class="font-mono text-2xl sm:text-3xl font-black text-purple-200 mb-4 sm:mb-6 flex items-center justify-center gap-2 shrink-0">
-                     <lucide-icon [img]="icons.Timer" class="w-5 h-5 sm:w-6 sm:h-6 opacity-70"></lucide-icon>{{ timers.autoDetect | number:'1.2-2' }}s
+              <div *ngIf="mode === 'ref'" class="animate-fade-in flex flex-col gap-3">
+                <div class="flex bg-slate-200 rounded-lg p-1 transition-all duration-300">
+                  <button (click)="scaleMode = 'freehand'" [class.bg-white]="scaleMode === 'freehand'" [class.shadow-sm]="scaleMode === 'freehand'" class="flex-1 text-xs font-bold py-1.5 rounded-md text-slate-600 transition-all duration-300">2 Freehand Points</button>
+                  <button (click)="scaleMode = 'rods'" [class.bg-white]="scaleMode === 'rods'" [class.shadow-sm]="scaleMode === 'rods'" class="flex-1 text-xs font-bold py-1.5 rounded-md text-slate-600 transition-all duration-300">Target Rods</button>
+                </div>
+                <div *ngIf="scaleMode === 'freehand'" class="flex items-center gap-3 animate-fade-in">
+                   <div class="flex-1 flex flex-col">
+                      <label class="text-[10px] font-bold text-slate-500 uppercase mb-1 transition-colors">Physical Length</label>
+                      <div class="relative">
+                         <input type="number" [(ngModel)]="refLengthInput" class="w-full pl-3 pr-10 py-1.5 text-sm border border-slate-300 rounded-md focus:ring-1 focus:ring-blue-500 outline-none font-mono transition-shadow">
+                         <span class="absolute right-3 top-1.5 text-xs text-slate-400 font-bold">mm</span>
+                      </div>
                    </div>
-                   <button (click)="cancelAutoDetect()" class="px-4 sm:px-5 py-1.5 sm:py-2 bg-white/10 hover:bg-white/20 border border-white/30 rounded-full text-xs sm:text-sm font-medium backdrop-blur transition-all active:scale-95 shrink-0 mx-auto block">Cancel</button>
-               </div>
-            </div>
-
-            <div *ngIf="isAnalyzing" class="absolute inset-0 bg-slate-900/80 backdrop-blur-md z-20 text-white animate-fade-in rounded-xl">
-               <div class="overlay-content-scale p-4 leading-normal" [style.transform]="getOverlayScale()">
-                   <div class="animate-spin h-8 w-8 sm:h-10 sm:w-10 border-4 border-blue-500 border-t-transparent rounded-full mb-3 sm:mb-4 shrink-0 mx-auto"></div>
-                   <div class="text-xs sm:text-sm font-bold text-blue-300 uppercase tracking-widest mb-1 text-center shrink-0">Running Analysis Engine</div>
-                   <div class="font-mono text-3xl sm:text-4xl font-black text-blue-300 mb-4 sm:mb-6 flex items-center justify-center gap-2 shrink-0">
-                     <lucide-icon [img]="icons.Timer" class="w-6 h-6 sm:w-8 sm:h-8 opacity-70"></lucide-icon>{{ timers.total | number:'1.2-2' }}s
+                   <button (click)="undoLast()" class="btn btn-outline text-xs mt-5 px-3 shadow-sm transition-all duration-300"><lucide-icon [img]="icons.Undo2" class="w-4 h-4"></lucide-icon></button>
+                </div>
+                <div *ngIf="scaleMode === 'rods'" class="flex items-end gap-2 animate-fade-in">
+                   <div class="flex flex-col flex-1">
+                      <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">From Rod</label>
+                      <select [(ngModel)]="scaleRodA" (ngModelChange)="onScaleRodAChange()" class="w-full px-2 py-1.5 text-sm border border-slate-300 rounded-md bg-white outline-none cursor-pointer transition-shadow">
+                        <option *ngFor="let i of getRodNumbersArray()" [value]="i">R{{i}}</option>
+                      </select>
                    </div>
-                   <div class="grid grid-cols-2 gap-2 sm:gap-3 mb-6 sm:mb-8 w-full max-w-sm px-2 sm:px-4 shrink-0 mx-auto">
-                     <div class="bg-slate-800/60 border border-slate-700 p-2 sm:p-3 rounded-lg flex flex-col items-center justify-center" [class.opacity-50]="!designImageFile">
-                       <div class="text-[9px] sm:text-[10px] uppercase text-slate-400 mb-1 text-center">Gemini AI</div>
-                       <div class="font-mono font-bold text-sm sm:text-base text-center" [class.text-white]="timers.aiRunning" [class.text-green-400]="!timers.aiRunning && timers.ai > 0">
-                         {{ designImageFile ? (timers.ai | number:'1.2-2') + 's' : 'N/A' }}
+                   <lucide-icon [img]="icons.ArrowRight" class="w-4 h-4 text-slate-400 mb-2 shrink-0"></lucide-icon>
+                   <div class="flex flex-col flex-1">
+                      <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">To Rod</label>
+                      <select [(ngModel)]="scaleRodB" class="w-full px-2 py-1.5 text-sm border border-slate-300 rounded-md bg-white outline-none cursor-pointer transition-shadow">
+                        <option *ngFor="let i of getToRodNumbersArray()" [value]="i">R{{i}}</option>
+                      </select>
+                   </div>
+                   <div class="flex flex-col flex-1">
+                      <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Distance</label>
+                      <div class="relative">
+                         <input type="number" [(ngModel)]="scaleRodDistance" class="w-full pl-2 pr-8 py-1.5 text-sm border border-slate-300 rounded-md outline-none font-mono transition-shadow">
+                         <span class="absolute right-2 top-1.5 text-xs text-slate-400 font-bold">mm</span>
+                      </div>
+                   </div>
+                </div>
+              </div>
+           </div>
+        </div>
+
+        <!-- ================= RIGHT COLUMN: DESIGN BLUEPRINT ============== -->
+        <div class="card flex flex-col gap-4 h-full relative group transition-all duration-300">
+           <div class="flex items-center justify-between shrink-0">
+              <h2 class="text-lg font-semibold flex items-center gap-2 text-slate-800">
+                <lucide-icon [img]="icons.PenTool" class="w-5 h-5 text-slate-400 group-hover:text-primary transition-colors" /> Design Blueprint
+              </h2>
+              <div class="flex items-center gap-2">
+                <div class="flex bg-slate-100 rounded-lg p-1 transition-all duration-300">
+                  <button (click)="designInputMode = 'upload'" [class.bg-white]="designInputMode === 'upload'" [class.shadow-sm]="designInputMode === 'upload'" class="px-3 text-xs font-bold py-1 rounded-md text-slate-600 transition-all duration-300">Upload</button>
+                  <button (click)="designInputMode = 'manual'" [class.bg-white]="designInputMode === 'manual'" [class.shadow-sm]="designInputMode === 'manual'" class="px-3 text-xs font-bold py-1 rounded-md text-slate-600 transition-all duration-300">Manual</button>
+                </div>
+                <button *ngIf="designImagePreview" (click)="clearDesignImage()" class="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="Remove Blueprint">
+                   <lucide-icon [img]="icons.Trash2" class="w-4 h-4"></lucide-icon>
+                </button>
+              </div>
+           </div>
+           
+           <!-- Upload / Auto-Extract State -->
+           <div *ngIf="designInputMode === 'upload'" class="flex flex-col flex-1 h-full min-h-[300px] animate-fade-in">
+              
+              <div *ngIf="!designImagePreview" class="flex flex-col gap-4 flex-1">
+                 <div>
+                   <input type="file" #fileInputDesign (change)="onDesignFileSelected($event)" accept="image/*" class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-bold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200 transition-colors cursor-pointer"/>
+                 </div>
+                 <div class="border-2 border-dashed border-slate-300 bg-slate-50 rounded-xl flex flex-col items-center justify-center p-6 flex-1 text-slate-500 hover:bg-slate-100 hover:border-slate-400 transition-colors duration-300 cursor-pointer min-h-[280px]" (click)="fileInputDesign.click()" (drop)="$event.preventDefault(); onDesignFileSelected({target: {files: $event.dataTransfer?.files}})" (dragover)="$event.preventDefault()">
+                    <lucide-icon [img]="icons.Upload" class="w-12 h-12 mb-3 opacity-50"></lucide-icon>
+                    <span class="font-bold text-slate-600 mb-1">Drag & drop architectural blueprint</span>
+                    <span class="text-xs text-slate-400">JPEG, PNG supported</span>
+                 </div>
+              </div>
+
+              <!-- Analyzing / Display State -->
+              <div *ngIf="designImagePreview" class="relative select-none flex flex-col bg-slate-900 rounded-xl border border-slate-200 overflow-hidden flex-1 animate-fade-in transition-all duration-300">
+                 
+                 <!-- Image Section (Visible ONLY while analyzing or if extraction hasn't populated model yet) -->
+                 <div *ngIf="timers.aiRunning || !extractedModel" class="relative flex-1 min-h-[200px] flex items-center justify-center p-2 animate-fade-in">
+                   <img [src]="designImagePreview" class="w-auto h-auto max-w-full max-h-[35vh] m-auto block object-contain opacity-40">
+                   
+                   <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm z-30 flex flex-col items-center justify-center rounded-xl transition-opacity duration-300">
+                      <div class="animate-spin h-10 w-10 border-4 border-green-50 border-t-transparent rounded-full mb-3 shrink-0"></div>
+                      <div class="text-sm font-bold text-green-300 uppercase tracking-widest mb-1 text-center">AI Analyzing Blueprint</div>
+                      <div class="font-mono text-2xl font-black text-green-200 flex items-center justify-center gap-2">
+                         <lucide-icon [img]="icons.Timer" class="w-5 h-5 opacity-70"></lucide-icon>{{ timers.ai | number:'1.1-1' }}s
+                      </div>
+                   </div>
+                 </div>
+
+                 <!-- Extracted Data SVG Section -->
+                 <div *ngIf="!timers.aiRunning && extractedModel" class="flex-1 bg-white flex flex-col h-full min-h-0 relative animate-fade-in">
+
+                    <div *ngIf="viewMode === 'top'" class="flex-1 flex flex-col min-h-0 relative bg-pattern overflow-hidden">
+                       <div class="absolute top-2 left-3 z-10 flex items-center gap-2">
+                          <span class="text-xs font-bold text-slate-600 bg-white/80 px-2 py-1 rounded-md shadow-sm border border-slate-100">Extracted AI Data</span>
                        </div>
-                     </div>
-                     <div class="bg-slate-800/60 border border-slate-700 p-2 sm:p-3 rounded-lg flex flex-col items-center justify-center">
-                       <div class="text-[9px] sm:text-[10px] uppercase text-slate-400 mb-1 text-center">Vision Engine</div>
-                       <div class="font-mono font-bold text-sm sm:text-base text-center" [class.text-white]="timers.cvRunning" [class.text-green-400]="!timers.cvRunning && timers.cv > 0">{{ timers.cv | number:'1.2-2' }}s</div>
-                     </div>
-                   </div>
-                   <button (click)="cancelAnalysis()" class="px-5 sm:px-6 py-1.5 sm:py-2 bg-white/10 hover:bg-white/20 border border-white/30 rounded-full text-xs sm:text-sm font-medium transition-all active:scale-95 shrink-0 mx-auto block">Cancel Execution</button>
-               </div>
-            </div>
+                       <div class="flex-1 flex items-center justify-center p-4 min-h-0 overflow-y-auto">
+                          <div class="relative w-full transition-transform duration-300" [style.max-width.px]="extractedModel.maxWidth">
+                             <svg [attr.viewBox]="extractedModel.viewBox" class="w-full h-auto overflow-visible">
+                                <polygon [attr.points]="getPolygonPoints(extractedModel)" fill="transparent" stroke="#94a3b8" stroke-width="1.2" stroke-dasharray="2 2" />
+                                <circle *ngFor="let r of extractedModel.rods" [attr.cx]="r.cx" [attr.cy]="r.cy" r="3.5" fill="#334155" />
+                             </svg>
+                             
+                             <div *ngFor="let sp of extractedModel.spacings" class="absolute w-12 text-center" [style.left.%]="sp.x" [style.top.%]="sp.y" style="transform: translate(-50%, -50%); z-index: 10;">
+                                <input type="number" [ngModel]="sp.value" (ngModelChange)="onSpacingChangeExtracted(sp.idx, $event)" placeholder="mm" class="w-full text-center px-0.5 py-0.5 text-[10px] font-bold text-blue-700 bg-white border border-blue-200 rounded shadow-sm focus:ring-1 focus:ring-blue-500 outline-none placeholder:font-normal placeholder:text-slate-300 transition-shadow">
+                             </div>
+                          </div>
+                       </div>
+                    </div>
 
-            <ng-container *ngIf="imgNatWidth > 0 && !isAnalyzing">
-              <div *ngFor="let p of rodPoints; let i = index; trackBy: trackByIndex" 
-                   class="dot-rod" (pointerdown)="onPointerDown($event, i, 'rod')" (pointermove)="onPointerMove($event)" (pointerup)="onPointerUp($event, i, 'rod')" (pointercancel)="onPointerUp($event, i, 'rod')"
-                   [style.left.%]="(p[0] / imgNatWidth) * 100" [style.top.%]="(p[1] / imgNatHeight) * 100">{{i + 1}}</div>
-              <div *ngFor="let p of refPoints; let i = index; trackBy: trackByIndex" 
-                   class="dot-ref" (pointerdown)="onPointerDown($event, i, 'ref')" (pointermove)="onPointerMove($event)" (pointerup)="onPointerUp($event, i, 'ref')" (pointercancel)="onPointerUp($event, i, 'ref')"
-                   [style.left.%]="(p[0] / imgNatWidth) * 100" [style.top.%]="(p[1] / imgNatHeight) * 100"></div>
-            </ng-container>
-          </div>
+                    <div *ngIf="viewMode === 'side'" class="flex-1 flex flex-col p-4 gap-3 bg-slate-50 items-center justify-center overflow-y-auto relative min-h-0">
+                       <div class="absolute top-2 left-3 z-10 flex items-center gap-2">
+                          <span class="text-xs font-bold text-slate-600 bg-white/80 px-2 py-1 rounded-md shadow-sm border border-slate-100">Extracted AI Data</span>
+                       </div>
+                       <div class="w-full max-w-sm space-y-3 mt-6">
+                          <div class="flex items-center justify-between bg-white p-2.5 rounded-lg border border-slate-200 shadow-sm transition-all duration-300 hover:shadow-md">
+                             <label class="text-[11px] font-bold text-slate-600 uppercase tracking-wide">Vertical Stirrup Spacing</label>
+                             <div class="relative w-24"><input type="number" [(ngModel)]="sideExtractedState.spacing_mm" class="w-full pl-2 pr-6 py-1.5 text-sm font-bold border border-slate-300 rounded-md focus:ring-1 focus:ring-blue-500 outline-none transition-shadow"><span class="absolute right-2 top-2 text-[9px] font-bold text-slate-400">mm</span></div>
+                          </div>
+                       </div>
+                    </div>
+
+                    <!-- Toolbar -->
+                    <div class="bg-slate-100 border-t border-slate-200 p-3 flex justify-between items-center z-40 shrink-0 gap-3">
+                       <div class="flex items-center gap-2 px-1" *ngIf="viewMode === 'top'">
+                          <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Radius</span>
+                          <div class="relative w-24">
+                             <input type="number" [(ngModel)]="extractedRadius" class="w-full pl-2 pr-6 py-1.5 text-xs font-bold text-center border border-slate-300 rounded-md bg-white outline-none focus:ring-1 focus:ring-blue-500 transition-shadow">
+                             <span class="absolute right-1.5 top-1.5 text-[8px] font-bold text-slate-400 mt-0.5">mm</span>
+                          </div>
+                       </div>
+                       <div class="flex items-center gap-2 px-2" *ngIf="viewMode !== 'top'"></div>
+
+                       <button (click)="triggerReExtract()" class="btn bg-purple-50 text-purple-700 border border-purple-200 hover:bg-purple-100 text-sm px-4 py-2 shadow-sm transition-all duration-300 font-semibold">
+                          <lucide-icon [img]="icons.Wand2" class="w-4 h-4 mr-1"></lucide-icon> Re-extract via AI
+                       </button>
+                    </div>
+
+                 </div>
+              </div>
+           </div>
+
+           <!-- Interactive Manual View -->
+           <div *ngIf="designInputMode === 'manual'" class="flex flex-col flex-1 min-h-0 bg-white border border-slate-200 rounded-xl shadow-inner overflow-hidden animate-fade-in transition-all duration-300">
+              
+              <div *ngIf="viewMode === 'top'" class="flex flex-col h-full">
+                 <div class="flex gap-3 p-3 border-b border-slate-200 shrink-0 bg-slate-50 items-center transition-all duration-300">
+                    <div class="flex flex-col flex-1">
+                       <label class="text-[10px] font-bold text-slate-500 uppercase mb-1 tracking-wider">Rod Count</label>
+                       <select [(ngModel)]="selectedRodCount" (change)="onRodCountChange()" class="w-full px-2 py-1.5 text-sm border border-slate-300 rounded-md bg-white font-bold text-slate-700 outline-none cursor-pointer transition-shadow">
+                          <option [value]="4">4 Rods</option>
+                          <option [value]="6">6 Rods</option>
+                          <option [value]="8">8 Rods</option>
+                          <option [value]="10">10 Rods</option>
+                          <option [value]="12">12 Rods</option>
+                          <option [value]="16">16 Rods</option>
+                          <option value="custom">Custom...</option>
+                       </select>
+                    </div>
+                    
+                    <div class="flex flex-col flex-1 animate-fade-in" *ngIf="selectedRodCount === 'custom'">
+                       <label class="text-[10px] font-bold text-slate-500 uppercase mb-1 tracking-wider">Exact Count</label>
+                       <input type="number" [(ngModel)]="customRodCount" (change)="generateCustomModel()" min="4" class="w-full px-2 py-1.5 text-sm border border-slate-300 rounded-md bg-white font-bold outline-none transition-shadow">
+                    </div>
+                    
+                    <div class="flex flex-col animate-fade-in" *ngIf="availableShapes.length > 1 && selectedRodCount !== 'custom'">
+                       <label class="text-[10px] font-bold text-slate-500 uppercase mb-1 tracking-wider">Shape</label>
+                       <div class="flex bg-slate-200 rounded-md p-1 transition-all duration-300">
+                          <button *ngFor="let s of availableShapes" (click)="setShape(s)" class="px-2 py-0.5 text-xs font-bold rounded transition-all duration-300" [class.bg-white]="selectedShape === s" [class.shadow-sm]="selectedShape === s" [class.text-slate-700]="selectedShape === s" [class.text-slate-500]="selectedShape !== s">
+                            {{s}}
+                          </button>
+                       </div>
+                    </div>
+                 </div>
+                 
+                 <!-- Standard Models SVG View -->
+                 <div *ngIf="selectedRodCount !== 'custom' && activeModel" class="flex-1 flex items-center justify-center p-4 bg-pattern min-h-0 overflow-y-auto animate-fade-in">
+                    <div class="relative w-full transition-transform duration-300" [style.max-width.px]="activeModel.maxWidth">
+                       <svg [attr.viewBox]="activeModel.viewBox" class="w-full h-auto overflow-visible transition-all duration-500">
+                          <polygon [attr.points]="getPolygonPoints(activeModel)" fill="transparent" stroke="#94a3b8" stroke-width="1.2" stroke-dasharray="2 2" />
+                          <circle *ngFor="let r of activeModel.rods" [attr.cx]="r.cx" [attr.cy]="r.cy" r="3.5" fill="#334155" />
+                       </svg>
+                       
+                       <div *ngFor="let sp of activeModel.spacings" class="absolute w-12 text-center" [style.left.%]="sp.x" [style.top.%]="sp.y" style="transform: translate(-50%, -50%); z-index: 10;">
+                          <input type="number" [ngModel]="sp.value" (ngModelChange)="onSpacingChange(sp.idx, $event)" placeholder="mm" class="w-full text-center px-0.5 py-0.5 text-[10px] font-bold text-blue-700 bg-white border border-blue-200 rounded shadow-sm focus:ring-1 focus:ring-blue-500 outline-none placeholder:font-normal placeholder:text-slate-300 transition-shadow">
+                       </div>
+                    </div>
+                 </div>
+
+                 <!-- Custom Infinite Scroll View -->
+                 <div *ngIf="selectedRodCount === 'custom'" class="flex-1 overflow-y-auto bg-white p-4 space-y-2 table-scrollbar border-b border-slate-100 animate-fade-in">
+                     <div *ngFor="let sp of activeModel.spacings" class="flex items-center justify-between bg-slate-50 p-2.5 border border-slate-200 rounded-lg hover:shadow-sm transition-all duration-300 group">
+                         <span class="text-xs font-bold text-slate-600 group-hover:text-blue-700 transition-colors">Distance R{{sp.idx + 1}} to R{{(sp.idx + 1) % customRodCount + 1}}</span>
+                         <div class="relative w-28">
+                            <input type="number" [ngModel]="sp.value" (ngModelChange)="onSpacingChange(sp.idx, $event)" class="w-full pl-3 pr-8 py-1.5 text-sm font-bold border border-slate-300 rounded-md focus:ring-1 focus:ring-blue-500 outline-none transition-shadow">
+                            <span class="absolute right-2 top-2 text-[10px] font-bold text-slate-400">mm</span>
+                         </div>
+                     </div>
+                 </div>
+
+                 <!-- Global Radius -->
+                 <div class="p-3 border-t border-slate-200 bg-slate-50 flex items-center justify-between shrink-0 transition-all duration-300">
+                   <span class="text-xs font-bold text-slate-600 uppercase tracking-widest">Radius</span>
+                   <div class="flex items-center gap-2">
+                      <input type="number" [(ngModel)]="designRadius" class="w-24 px-2 py-1.5 text-sm font-bold text-center border border-slate-300 rounded-md shadow-sm focus:border-blue-500 outline-none text-slate-800 bg-white transition-shadow">
+                      <span class="text-xs text-slate-500 font-bold">mm</span>
+                   </div>
+                 </div>
+              </div>
+
+              <!-- Side View Data Configuration -->
+              <div *ngIf="viewMode === 'side'" class="flex flex-col flex-1 min-h-0 bg-white border border-slate-200 rounded-xl shadow-inner animate-fade-in">
+                 <div class="flex gap-3 p-3 border-b border-slate-200 shrink-0 bg-slate-50 items-center">
+                    <div class="flex flex-col flex-1">
+                       <label class="text-[10px] font-bold text-slate-500 uppercase mb-1 tracking-wider">Number of Stirrups</label>
+                       <input type="number" [(ngModel)]="sideManualState.stirrupCount" (change)="onSideStirrupCountChange()" min="2" class="w-full px-2 py-1.5 text-sm border border-slate-300 rounded-md bg-white font-bold outline-none transition-shadow">
+                    </div>
+                 </div>
+                 
+                 <!-- Stirrups Spacings Custom View -->
+                 <div class="flex-1 overflow-y-auto bg-white p-4 space-y-2 table-scrollbar border-b border-slate-100">
+                     <div *ngFor="let sp of sideManualState.spacings_mm; let i = index" class="flex items-center justify-between bg-slate-50 p-2.5 border border-slate-200 rounded-lg hover:shadow-sm transition-all duration-300 group">
+                         <span class="text-xs font-bold text-slate-600 group-hover:text-blue-700 transition-colors">Spacing S{{i + 1}} to S{{i + 2}}</span>
+                         <div class="relative w-28">
+                            <input type="number" [ngModel]="sp.value" (ngModelChange)="onSideSpacingChange(i, $event)" class="w-full pl-3 pr-8 py-1.5 text-sm font-bold border border-slate-300 rounded-md focus:ring-1 focus:ring-blue-500 outline-none transition-shadow">
+                            <span class="absolute right-2 top-2 text-[10px] font-bold text-slate-400">mm</span>
+                         </div>
+                     </div>
+                 </div>
+              </div>
+           </div>
         </div>
 
       </div>
+
+      <!-- Floating Execution Trigger Block -->
+      <div class="sticky bottom-0 z-40 bg-white/95 backdrop-blur-md rounded-xl shadow-xl border border-slate-200 p-4 flex flex-col sm:flex-row items-center justify-between gap-4 shrink-0 mt-3 transition-all duration-500">
+         <div class="flex items-center gap-3">
+             <div class="p-2 bg-blue-50 text-blue-600 rounded-lg shrink-0 transition-transform duration-300 hover:scale-105">
+                 <lucide-icon [img]="icons.Info" class="w-6 h-6"></lucide-icon>
+             </div>
+             <div>
+                 <h4 class="text-sm font-bold text-slate-800">Ready for Analysis</h4>
+                 <p class="text-xs text-slate-500 mt-0.5 max-w-2xl">Ensure rods are marked and scaled correctly. The engine will evaluate measurements against your {{ designInputMode === 'upload' ? 'uploaded' : 'manual' }} blueprint data.</p>
+             </div>
+         </div>
+         <button (click)="analyze()" [disabled]="isAnalyzing || isAutoDetecting || rodPoints.length < 2" class="w-full sm:w-auto btn btn-primary justify-center text-sm py-3 px-8 shadow-xl shadow-blue-900/10 hover:-translate-y-0.5 transition-all duration-300 rounded-xl shrink-0">
+            <span class="flex items-center gap-2 text-base font-bold tracking-wide"><lucide-icon [img]="icons.ScanLine" class="w-5 h-5"></lucide-icon> Run Analysis Engine</span>
+         </button>
+      </div>
+
     </div>
 
     <!-- ========================================== -->
     <!-- STATE 2: DASHBOARD RESULT VIEW (FULL VIEW) -->
     <!-- ========================================== -->
-    <div *ngIf="result" class="flex flex-col gap-4 flex-1 lg:min-h-0 animate-fade-in">
-      
-      <!-- Top Row: Alert Banner & Global Actions -->
+    <div *ngIf="result" class="flex flex-col gap-4 flex-1 lg:min-h-0 animate-fade-in transition-all duration-500">
       <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 shrink-0">
         
-        <!-- Quality Tier Alert Banner -->
         <div *ngIf="result.quality_tier as tier" 
-             class="flex-1 w-full lg:max-w-xl px-4 py-2.5 rounded-lg border shadow-sm flex items-center gap-3 transition-all"
+             class="flex-1 w-full lg:max-w-xl px-4 py-2.5 rounded-lg border shadow-sm flex items-center gap-3 transition-all duration-500 hover:shadow-md"
              [class.bg-green-50]="tier.color === 'green'" [class.border-green-200]="tier.color === 'green'"
              [class.bg-yellow-50]="tier.color === 'yellow'" [class.border-yellow-200]="tier.color === 'yellow'"
              [class.bg-red-50]="tier.color === 'red'" [class.border-red-200]="tier.color === 'red'">
-             <div class="p-1.5 rounded-full shrink-0"
+             <div class="p-1.5 rounded-full shrink-0 transition-transform duration-300 hover:scale-110"
                   [class.bg-green-100]="tier.color === 'green'" [class.text-green-600]="tier.color === 'green'"
                   [class.bg-yellow-100]="tier.color === 'yellow'" [class.text-yellow-600]="tier.color === 'yellow'"
                   [class.bg-red-100]="tier.color === 'red'" [class.text-red-600]="tier.color === 'red'">
                  <lucide-icon [img]="tier.color === 'green' ? icons.CheckCircle2 : icons.AlertCircle" class="w-5 h-5" />
              </div>
              <div>
-                 <h3 class="font-bold text-sm sm:text-base leading-tight"
+                 <h3 class="font-bold text-sm sm:text-base leading-tight transition-colors duration-300"
                      [class.text-green-800]="tier.color === 'green'"
                      [class.text-yellow-800]="tier.color === 'yellow'"
                      [class.text-red-800]="tier.color === 'red'">
                      {{ tier.color === 'green' ? 'Work is acceptable.' : (tier.color === 'yellow' ? 'Review Recommended.' : 'Improvement needed.') }} ({{ tier.label }})
                  </h3>
-                 <p class="text-[11px] sm:text-xs mt-0.5"
+                 <p class="text-[11px] sm:text-xs mt-0.5 transition-colors duration-300"
                     [class.text-green-700]="tier.color === 'green'"
                     [class.text-yellow-700]="tier.color === 'yellow'"
                     [class.text-red-700]="tier.color === 'red'">
@@ -277,38 +416,32 @@
              </div>
         </div>
 
-        <!-- Dashboard Actions -->
-        <div class="flex flex-wrap lg:flex-nowrap items-center gap-2 w-full lg:w-auto shrink-0">
-          <button *ngIf="viewMode === 'top' && revitData" (click)="downloadRevitJson()" class="btn bg-orange-100 text-orange-700 hover:bg-orange-200 border border-orange-200 text-xs py-2 px-3 shadow-sm flex-1 lg:flex-none">
+        <div class="flex flex-wrap lg:flex-nowrap items-center gap-2 w-full lg:w-auto shrink-0 animate-fade-in">
+          <button *ngIf="viewMode === 'top' && revitData" (click)="downloadRevitJson()" class="btn bg-orange-100 text-orange-700 hover:bg-orange-200 border border-orange-200 text-xs py-2 px-3 shadow-sm flex-1 lg:flex-none transition-all duration-300 hover:-translate-y-0.5">
              <lucide-icon [img]="icons.FileJson" class="w-3.5 h-3.5" /> Rod Highlight
           </button>
-          <button *ngIf="viewMode === 'top'" (click)="downloadRodLinesJson()" class="btn bg-green-100 text-green-700 hover:bg-green-200 border border-green-200 text-xs py-2 px-3 shadow-sm flex-1 lg:flex-none">
+          <button *ngIf="viewMode === 'top'" (click)="downloadRodLinesJson()" class="btn bg-green-100 text-green-700 hover:bg-green-200 border border-green-200 text-xs py-2 px-3 shadow-sm flex-1 lg:flex-none transition-all duration-300 hover:-translate-y-0.5">
              <lucide-icon [img]="icons.FileJson" class="w-3.5 h-3.5" /> Rod Lines
           </button>
-          <button (click)="downloadCSV()" class="btn bg-blue-100 text-blue-700 hover:bg-blue-200 border border-blue-200 text-xs py-2 px-3 shadow-sm flex-1 lg:flex-none">
+          <button (click)="downloadCSV()" class="btn bg-blue-100 text-blue-700 hover:bg-blue-200 border border-blue-200 text-xs py-2 px-3 shadow-sm flex-1 lg:flex-none transition-all duration-300 hover:-translate-y-0.5">
              <lucide-icon [img]="icons.FileJson" class="w-3.5 h-3.5" /> CSV
           </button>
-          <button (click)="result = null" class="btn btn-outline bg-white text-xs py-2 px-3 shadow-sm hover:bg-slate-100 flex items-center justify-center flex-1 lg:flex-none">
+          <button (click)="result = null" class="btn btn-outline bg-white text-xs py-2 px-3 shadow-sm hover:bg-slate-100 flex items-center justify-center flex-1 lg:flex-none transition-all duration-300">
              <lucide-icon [img]="icons.Undo2" class="w-3.5 h-3.5" /> New Analysis
           </button>
         </div>
       </div>
 
-      <!-- Main Results Panel Split -->
-      <div class="flex flex-col lg:flex-row gap-4 flex-1 lg:min-h-0">
-        
-        <!-- =================== LEFT PANEL (Compact Image & Score) =================== -->
+      <div class="flex flex-col lg:flex-row gap-4 flex-1 lg:min-h-0 animate-fade-in">
         <div class="w-full lg:w-1/3 flex flex-col gap-4 shrink-0">
-            
-            <!-- Compact Score Card -->
-            <div class="card p-4 flex flex-col shadow-sm border-slate-200 shrink-0 relative bg-white w-full">
-                <button (click)="toggleScoreModal()" class="absolute top-3 right-3 p-1.5 rounded hover:bg-slate-100 text-slate-400 transition-colors focus:outline-none" title="View Evaluation Methodology">
-                    <lucide-icon [img]="icons.Calculator" class="w-4 h-4" />
+            <div class="card p-4 flex flex-col shadow-sm border-slate-200 shrink-0 relative bg-white w-full transition-shadow duration-300 hover:shadow-md">
+                <button (click)="toggleScoreModal()" class="absolute top-3 right-3 p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 transition-colors focus:outline-none" title="View Evaluation Methodology">
+                    <lucide-icon [img]="icons.Calculator" class="w-4 h-4 transition-transform duration-300 hover:rotate-12" />
                 </button>
                 <span class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Similarity Score</span>
                 
                 <div class="flex items-baseline gap-2 mb-2">
-                    <div class="text-5xl font-black tracking-tight" 
+                    <div class="text-5xl font-black tracking-tight transition-colors duration-500" 
                          [class.text-green-600]="result.quality_tier?.color === 'green'"
                          [class.text-yellow-500]="result.quality_tier?.color === 'yellow'"
                          [class.text-red-600]="result.quality_tier?.color === 'red'">
@@ -316,72 +449,58 @@
                     </div>
                 </div>
 
-                <!-- Sub-metrics Grid -->
-                <div class="grid grid-cols-3 gap-2 pt-3 border-t border-slate-100 mt-1">
-                    <div *ngIf="result.score_count !== null" class="bg-slate-50 border border-slate-200 rounded p-1.5 flex flex-col items-center">
+                <div class="grid grid-cols-3 gap-2 pt-3 border-t border-slate-100 mt-1 animate-fade-in">
+                    <div *ngIf="result.score_count !== null" class="bg-slate-50 border border-slate-200 rounded-lg p-1.5 flex flex-col items-center hover:bg-slate-100 transition-colors duration-300">
                         <span class="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Count</span>
                         <span class="text-sm font-bold text-slate-700">{{ result.score_count }}%</span>
                     </div>
-                    <div *ngIf="result.score_radius !== null" class="bg-slate-50 border border-slate-200 rounded p-1.5 flex flex-col items-center">
+                    <div *ngIf="result.score_radius !== null" class="bg-slate-50 border border-slate-200 rounded-lg p-1.5 flex flex-col items-center hover:bg-slate-100 transition-colors duration-300">
                         <span class="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Radius</span>
                         <span class="text-sm font-bold text-slate-700">{{ result.score_radius }}%</span>
                     </div>
-                    <div *ngIf="result.score_spacing !== null" class="bg-slate-50 border border-slate-200 rounded p-1.5 flex flex-col items-center">
+                    <div *ngIf="result.score_spacing !== null" class="bg-slate-50 border border-slate-200 rounded-lg p-1.5 flex flex-col items-center hover:bg-slate-100 transition-colors duration-300">
                         <span class="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Spacing</span>
                         <span class="text-sm font-bold text-slate-700">{{ result.score_spacing }}%</span>
                     </div>
                 </div>
 
-                <!-- Integrated Red Alert Email Form -->
-                <div *ngIf="result.quality_tier?.color === 'red'" class="mt-3 pt-3 border-t border-red-100 flex flex-col gap-2 bg-red-50 p-3 rounded-lg border border-red-200">
+                <div *ngIf="result.quality_tier?.color === 'red'" class="mt-3 pt-3 border-t border-red-100 flex flex-col gap-2 bg-red-50 p-3 rounded-xl border border-red-200 animate-fade-in transition-all duration-300">
                     <div class="flex items-center gap-1.5 mb-1 text-red-700">
                         <lucide-icon [img]="icons.AlertCircle" class="w-4 h-4"></lucide-icon>
                         <span class="text-[10px] font-bold uppercase tracking-widest">Notify Authority</span>
                     </div>
-                    <div *ngIf="!emailSent" class="flex flex-col gap-2">
+                    <div *ngIf="!emailSent" class="flex flex-col gap-2 animate-fade-in">
                         <div class="flex gap-2">
-                            <input type="text" [(ngModel)]="columnNumber" placeholder="Col No." class="w-16 px-2 py-1 text-xs border border-red-300 rounded focus:outline-none focus:ring-1 focus:ring-red-500 shadow-sm" [disabled]="isEmailSending">
-                            <input type="email" [(ngModel)]="authorityEmail" placeholder="Authority Email ID" class="flex-1 px-2 py-1 text-xs border border-red-300 rounded focus:outline-none focus:ring-1 focus:ring-red-500 shadow-sm" [disabled]="isEmailSending">
+                            <input type="text" [(ngModel)]="columnNumber" placeholder="Col No." class="w-16 px-2 py-1 text-xs border border-red-300 rounded-md focus:outline-none focus:ring-1 focus:ring-red-500 shadow-sm transition-shadow" [disabled]="isEmailSending">
+                            <input type="email" [(ngModel)]="authorityEmail" placeholder="Authority Email ID" class="flex-1 px-2 py-1 text-xs border border-red-300 rounded-md focus:outline-none focus:ring-1 focus:ring-red-500 shadow-sm transition-shadow" [disabled]="isEmailSending">
                         </div>
-                        <button (click)="sendEmailReport()" [disabled]="isEmailSending" class="w-full bg-red-600 hover:bg-red-700 text-white text-xs px-3 py-1.5 rounded font-medium transition-colors flex items-center justify-center gap-2 active:scale-95 shadow-sm">
+                        <button (click)="sendEmailReport()" [disabled]="isEmailSending" class="w-full bg-red-600 hover:bg-red-700 text-white text-xs px-3 py-1.5 rounded-lg font-medium transition-all duration-300 flex items-center justify-center gap-2 active:scale-95 shadow-sm disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed">
                           <span *ngIf="isEmailSending" class="animate-spin h-3 w-3 border-2 border-white border-t-transparent rounded-full"></span>
                           {{ isEmailSending ? 'Sending...' : 'Send Alert Report' }}
                         </button>
                     </div>
-                    <div *ngIf="emailSent" class="bg-green-100 text-green-800 border border-green-200 px-3 py-2 rounded text-xs font-medium inline-flex items-center gap-2 w-full">
+                    <div *ngIf="emailSent" class="bg-green-100 text-green-800 border border-green-200 px-3 py-2 rounded-lg text-xs font-medium inline-flex items-center gap-2 w-full animate-fade-in">
                         <lucide-icon [img]="icons.CheckCircle2" class="w-4 h-4 text-green-600 shrink-0" /> Report sent successfully!
                     </div>
                 </div>
-
             </div>
 
-            <!-- Annotated Image Card -->
-            <div class="bg-slate-900 border border-slate-800 shadow-inner rounded-xl lg:flex-1 lg:min-h-0 relative overflow-hidden flex items-center justify-center">
-                
-                <!-- Open in New Tab Button -->
-                <button (click)="openImageInNewTab(result.annotated_image)" class="absolute top-3 right-3 z-10 bg-black/50 hover:bg-black/80 text-white px-3 py-2 rounded-lg backdrop-blur-md transition-colors shadow-sm focus:outline-none flex items-center gap-2 text-xs font-medium border border-white/10" title="Open Image in New Tab">
+            <div class="bg-slate-900 border border-slate-800 shadow-inner rounded-xl lg:flex-1 lg:min-h-0 relative overflow-hidden flex items-center justify-center transition-all duration-300 hover:shadow-lg group">
+                <button (click)="openImageInNewTab(result.annotated_image)" class="absolute top-3 right-3 z-10 bg-black/50 hover:bg-black/80 text-white px-3 py-2 rounded-lg backdrop-blur-md transition-all duration-300 opacity-0 group-hover:opacity-100 shadow-sm focus:outline-none flex items-center gap-2 text-xs font-medium border border-white/10" title="Open Image in New Tab">
                     <lucide-icon [img]="icons.ExternalLink" class="w-4 h-4"></lucide-icon>
                     <span class="hidden sm:inline">Open in New Tab</span>
                 </button>
-
-                <!-- Mobile: Scales dynamically up to 60vh | Desktop: Absolute fill to utilize remaining flex container height perfectly -->
-                <img [src]="result.annotated_image" class="w-full h-auto max-h-[60vh] lg:max-h-none lg:absolute lg:inset-0 lg:h-full object-contain block">
+                <img [src]="result.annotated_image" class="w-full h-auto max-h-[60vh] lg:max-h-none lg:absolute lg:inset-0 lg:h-full object-contain block transition-transform duration-700 ease-in-out group-hover:scale-[1.02]">
             </div>
-
         </div>
 
-        <!-- =================== RIGHT PANEL (Maximized Table) =================== -->
         <div class="w-full lg:w-2/3 flex flex-col gap-4 flex-1 lg:min-h-0">
-            
-            <!-- Compliance Table (Takes Maximum Space) -->
-            <div class="card p-0 flex flex-col flex-1 lg:min-h-0 overflow-hidden shadow-sm border border-slate-200 bg-white h-96 lg:h-auto">
+            <div class="card p-0 flex flex-col flex-1 lg:min-h-0 overflow-hidden shadow-sm border border-slate-200 bg-white h-96 lg:h-auto transition-all duration-300 hover:shadow-md rounded-xl">
                 <div class="bg-slate-100 px-4 py-3 border-b border-slate-200 flex justify-between items-center shrink-0">
                     <h2 class="text-xs font-bold text-slate-600 uppercase tracking-widest flex items-center gap-2">
                       <lucide-icon [img]="icons.CheckCircle2" class="w-4 h-4 text-slate-400" /> Compliance Report
                     </h2>
                 </div>
-                
-                <!-- Inner Table Scroll Container -->
                 <div class="overflow-y-auto overflow-x-auto flex-1 bg-white table-scrollbar relative">
                     <table class="w-full text-sm text-left min-w-[500px]">
                         <thead class="bg-white/95 backdrop-blur sticky top-0 z-10 text-slate-500 uppercase text-[10px] font-bold border-b border-slate-200">
@@ -393,8 +512,8 @@
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-100 bg-white">
-                            <tr *ngFor="let row of result.comparison_table; trackBy: trackByIndex" class="hover:bg-slate-50/80 transition-colors group">
-                                <td class="px-4 py-2.5 font-medium text-slate-700 whitespace-nowrap">{{ row.parameter }}</td>
+                            <tr *ngFor="let row of result.comparison_table; trackBy: trackByIndex" class="hover:bg-slate-50/80 transition-colors duration-300 ease-in-out group">
+                                <td class="px-4 py-2.5 font-medium text-slate-700 whitespace-nowrap group-hover:text-blue-700 transition-colors duration-300">{{ row.parameter }}</td>
                                 <td class="px-4 py-2.5 font-mono text-slate-500 text-xs">{{ row.design }}</td>
                                 <td class="px-4 py-2.5 font-mono text-slate-800 font-semibold text-xs">{{ row.actual }}</td>
                                 <td class="px-4 py-2.5 whitespace-nowrap">
@@ -406,52 +525,57 @@
                 </div>
             </div>
 
-            <!-- Compact Execution Profiler Footer -->
-            <div class="card p-2.5 shrink-0 bg-white shadow-sm border border-slate-200 flex items-center justify-between text-xs overflow-x-auto gap-4 rounded-lg">
+            <div class="card p-2.5 shrink-0 bg-white shadow-sm border border-slate-200 flex items-center justify-between text-xs overflow-x-auto gap-4 rounded-xl transition-all duration-300 hover:shadow-md">
                 <div class="flex items-center gap-2 font-bold text-slate-500 shrink-0 uppercase tracking-widest pl-2">
                     <lucide-icon [img]="icons.Timer" class="w-4 h-4"></lucide-icon> Execution Runtime
                 </div>
                 <div class="flex items-center gap-4 sm:gap-6 shrink-0 pr-2">
                     <div class="flex flex-col text-right">
-                        <span class="text-[9px] text-slate-400 uppercase tracking-wider">Detection</span>
-                        <span class="font-mono font-medium text-slate-700">{{ timers.autoDetect | number:'1.2-2' }}s</span>
+                        <span class="text-[9px] text-slate-400 uppercase tracking-wider">Auto-Detection</span>
+                        <span class="font-mono font-medium text-slate-700">{{ (timers.autoDetectCancelled || !timers.autoDetectRun) ? 'NA' : (timers.autoDetect | number:'1.1-1') + 's' }}</span>
                     </div>
                     <div class="w-px h-6 bg-slate-200"></div>
                     <div class="flex flex-col text-right">
-                        <span class="text-[9px] text-slate-400 uppercase tracking-wider">Gemini AI</span>
-                        <span class="font-mono font-medium" [class.text-slate-700]="designImageFile" [class.text-slate-400]="!designImageFile">
-                          {{ designImageFile ? (timers.ai | number:'1.2-2') + 's' : 'N/A' }}
-                        </span>
+                        <span class="text-[9px] text-slate-400 uppercase tracking-wider">Design Extract</span>
+                        <span class="font-mono font-medium text-slate-700">{{ designInputMode === 'manual' ? 'NA' : (timers.ai | number:'1.1-1') + 's' }}</span>
                     </div>
                     <div class="w-px h-6 bg-slate-200"></div>
                     <div class="flex flex-col text-right">
                         <span class="text-[9px] text-slate-400 uppercase tracking-wider">Vision Engine</span>
-                        <span class="font-mono font-medium text-slate-700">{{ timers.cv | number:'1.2-2' }}s</span>
-                    </div>
-                    <div class="w-px h-6 bg-slate-200"></div>
-                    <div class="flex flex-col text-right">
-                        <span class="text-[9px] text-primary uppercase font-bold tracking-wider">Total Pipeline</span>
-                        <span class="font-mono font-black text-primary">{{ timers.total | number:'1.2-2' }}s</span>
+                        <span class="font-mono font-medium text-slate-700">{{ timers.cv | number:'1.1-1' }}s</span>
                     </div>
                 </div>
             </div>
-
         </div>
       </div>
     </div>
   </main>
 </div>
 
+<!-- Full screen Analysis Loading Overlay -->
+<div *ngIf="isAnalyzing" class="fixed inset-0 bg-slate-900/90 backdrop-blur-md z-[200] text-white animate-fade-in flex flex-col items-center justify-center transition-all duration-500">
+    <div class="animate-spin h-12 w-12 border-4 border-blue-500 border-t-transparent rounded-full mb-6 shrink-0"></div>
+    
+    <div *ngIf="timers.aiRunning" class="text-sm font-bold text-purple-300 uppercase tracking-widest text-center mb-2 animate-fade-in">AI Analyzing Blueprint...</div>
+    <div *ngIf="!isBackendWarmedUp && !timers.aiRunning" class="text-sm font-bold text-orange-300 uppercase tracking-widest text-center mb-2 animate-fade-in">Backend Waking Up...</div>
+    <div *ngIf="isBackendWarmedUp && !timers.aiRunning" class="text-sm font-bold text-blue-300 uppercase tracking-widest text-center mb-2 animate-fade-in">Vision Engine Processing...</div>
+    
+    <div class="font-mono text-4xl font-black text-blue-200 flex items-center justify-center gap-3">
+        <lucide-icon [img]="icons.Timer" class="w-8 h-8 opacity-70"></lucide-icon>
+        {{ (timers.aiRunning ? timers.ai : (!isBackendWarmedUp ? timers.backendWarmup : timers.cv)) | number:'1.1-1' }}s
+    </div>
+</div>
+
 <!-- Evaluation Methodology Modal -->
 <div *ngIf="showScoreModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 animate-fade-in">
-  <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" (click)="toggleScoreModal()"></div>
-  <div class="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col relative z-10 border border-slate-300">
-    <div class="bg-slate-50 px-6 py-4 flex items-center justify-between border-b border-slate-200 rounded-t-xl shrink-0">
+  <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity duration-300" (click)="toggleScoreModal()"></div>
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col relative z-10 border border-slate-300 overflow-hidden transform transition-all duration-300 scale-100">
+    <div class="bg-slate-50 px-6 py-4 flex items-center justify-between border-b border-slate-200 shrink-0">
       <div class="flex items-center gap-3">
         <lucide-icon [img]="icons.Calculator" class="w-5 h-5 text-slate-600" />
         <h3 class="text-lg sm:text-xl font-bold text-slate-800">Evaluation Methodology & Tolerances</h3>
       </div>
-      <button (click)="toggleScoreModal()" class="p-2 rounded-md hover:bg-slate-200 text-slate-500 transition-colors focus:outline-none">
+      <button (click)="toggleScoreModal()" class="p-2 rounded-lg hover:bg-slate-200 text-slate-500 transition-colors focus:outline-none">
         <lucide-icon [img]="icons.X" class="w-5 h-5" />
       </button>
     </div>
@@ -470,22 +594,22 @@
               </tr>
             </thead>
             <tbody class="divide-y divide-slate-200 bg-white">
-              <tr><td class="p-3 font-mono text-slate-800">> 95</td><td class="p-3 text-green-700 font-bold">Excellent</td><td class="p-3 text-slate-600">Acceptable, no action.</td></tr>
-              <tr><td class="p-3 font-mono text-slate-800">90 – 95</td><td class="p-3 text-green-700 font-bold">Acceptable</td><td class="p-3 text-slate-600">Acceptable, no action.</td></tr>
-              <tr><td class="p-3 font-mono text-slate-800">80 – 89.9</td><td class="p-3 text-yellow-600 font-bold">Minor Deviation</td><td class="p-3 text-slate-600">Review Required. No email sent.</td></tr>
-              <tr><td class="p-3 font-mono text-slate-800">70 – 79.9</td><td class="p-3 text-red-600 font-bold">Major Deviation</td><td class="p-3 text-red-600 font-medium">Email Alert Triggered.</td></tr>
-              <tr><td class="p-3 font-mono text-slate-800">< 70</td><td class="p-3 text-red-600 font-bold">Defective</td><td class="p-3 text-red-600 font-medium">Email Alert Triggered.</td></tr>
+              <tr class="hover:bg-slate-50 transition-colors"><td class="p-3 font-mono text-slate-800">> 95</td><td class="p-3 text-green-700 font-bold">Excellent</td><td class="p-3 text-slate-600">Acceptable, no action.</td></tr>
+              <tr class="hover:bg-slate-50 transition-colors"><td class="p-3 font-mono text-slate-800">90 – 95</td><td class="p-3 text-green-700 font-bold">Acceptable</td><td class="p-3 text-slate-600">Acceptable, no action.</td></tr>
+              <tr class="hover:bg-slate-50 transition-colors"><td class="p-3 font-mono text-slate-800">80 – 89.9</td><td class="p-3 text-yellow-600 font-bold">Minor Deviation</td><td class="p-3 text-slate-600">Review Required. No email sent.</td></tr>
+              <tr class="hover:bg-slate-50 transition-colors"><td class="p-3 font-mono text-slate-800">70 – 79.9</td><td class="p-3 text-red-600 font-bold">Major Deviation</td><td class="p-3 text-red-600 font-medium">Email Alert Triggered.</td></tr>
+              <tr class="hover:bg-slate-50 transition-colors"><td class="p-3 font-mono text-slate-800">< 70</td><td class="p-3 text-red-600 font-bold">Defective</td><td class="p-3 text-red-600 font-medium">Email Alert Triggered.</td></tr>
             </tbody>
           </table>
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div class="bg-slate-50 border border-slate-200 p-4 rounded-lg">
+          <div class="bg-slate-50 border border-slate-200 p-4 rounded-xl transition-shadow hover:shadow-sm">
             <div class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Top View Score Formula</div>
-            <div class="font-mono text-slate-800 bg-white border border-slate-200 p-3 rounded text-center text-sm md:text-base shadow-sm">Final Score = (Rc + Rr + Rs) / 3</div>
+            <div class="font-mono text-slate-800 bg-white border border-slate-200 p-3 rounded-lg text-center text-sm md:text-base shadow-sm">Final Score = (Rc + Rr + Rs) / 3</div>
           </div>
-          <div class="bg-slate-50 border border-slate-200 p-4 rounded-lg">
+          <div class="bg-slate-50 border border-slate-200 p-4 rounded-xl transition-shadow hover:shadow-sm">
             <div class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Side View Score Formula</div>
-            <div class="font-mono text-slate-800 bg-white border border-slate-200 p-3 rounded text-center text-sm md:text-base shadow-sm">Final Score = Average(Rs_all_pairs)</div>
+            <div class="font-mono text-slate-800 bg-white border border-slate-200 p-3 rounded-lg text-center text-sm md:text-base shadow-sm">Final Score = Average(Rs_all_pairs)</div>
           </div>
         </div>
         <p class="mt-4 text-sm text-red-600 font-medium">Note: Any final score below 80% automatically flags the overall column as requiring intervention, triggering an automated email alert.</p>
@@ -502,41 +626,39 @@
               </tr>
             </thead>
             <tbody class="divide-y divide-slate-200 bg-white">
-              <tr>
+              <tr class="hover:bg-slate-50 transition-colors">
                 <td class="p-3 font-medium text-slate-800 align-top">Rebar Count (Rc)</td>
                 <td class="p-3 text-slate-600 align-top">Architectural Design</td>
                 <td class="p-3 text-slate-600 align-top">Strict Exact Match Required.</td>
               </tr>
-              <tr>
+              <tr class="hover:bg-slate-50 transition-colors">
                 <td class="p-3 font-medium text-slate-800 align-top">Rebar Radius / Dia (Rr)</td>
                 <td class="p-3 text-slate-600 align-top">IS 1786:2008<br><span class="text-xs text-slate-400">(Derived from unit mass variation)</span></td>
                 <td class="p-3 text-slate-600 align-top">
                   <ul class="list-disc list-inside space-y-1">
-                    <li><span class="font-mono bg-slate-50 px-1 rounded border border-slate-100">≤ 10 mm</span> diameter: ± 3.5%</li>
-                    <li><span class="font-mono bg-slate-50 px-1 rounded border border-slate-100">12 – 16 mm</span> diameter: ± 2.5%</li>
-                    <li><span class="font-mono bg-slate-50 px-1 rounded border border-slate-100">> 16 mm</span> diameter: ± 2.0%</li>
+                    <li><span class="font-mono bg-slate-50 px-1 rounded border border-slate-200">≤ 10 mm</span> diameter: ± 3.5%</li>
+                    <li><span class="font-mono bg-slate-50 px-1 rounded border border-slate-200">12 – 16 mm</span> diameter: ± 2.5%</li>
+                    <li><span class="font-mono bg-slate-50 px-1 rounded border border-slate-200">> 16 mm</span> diameter: ± 2.0%</li>
                   </ul>
                 </td>
               </tr>
-              <tr>
+              <tr class="hover:bg-slate-50 transition-colors">
                 <td class="p-3 font-medium text-slate-800 align-top">Rebar Spacing (Rs)</td>
                 <td class="p-3 text-slate-600 align-top">IS 456:2000<br><span class="text-xs text-slate-400">(Placement/Effective depth tolerance)</span></td>
                 <td class="p-3 text-slate-600 align-top">
                   <ul class="list-disc list-inside space-y-1">
-                    <li>Spacing <span class="font-mono bg-slate-50 px-1 rounded border border-slate-100">≤ 200 mm</span>: ± 10 mm</li>
-                    <li>Spacing <span class="font-mono bg-slate-50 px-1 rounded border border-slate-100">> 200 mm</span>: ± 15 mm</li>
+                    <li>Spacing <span class="font-mono bg-slate-50 px-1 rounded border border-slate-200">≤ 200 mm</span>: ± 10 mm</li>
+                    <li>Spacing <span class="font-mono bg-slate-50 px-1 rounded border border-slate-200">> 200 mm</span>: ± 15 mm</li>
                   </ul>
                 </td>
               </tr>
-              <tr>
+              <tr class="hover:bg-slate-50 transition-colors">
                 <td class="p-3 font-medium text-slate-800 align-top">Lateral Tie Spacing (Side View)</td>
-                <td class="p-3 text-slate-600 align-top">IS 456:2000 Clause 26.5.3.2</td>
+                <td class="p-3 text-slate-600 align-top">IS 456:2000<br><span class="text-xs text-slate-400">(Vertical pitch tolerance)</span></td>
                 <td class="p-3 text-slate-600 align-top">
-                  Maximum spacing shall not exceed the least of:
-                  <ul class="list-disc list-inside space-y-1 mt-1">
-                    <li>Least lateral dim. of the column</li>
-                    <li>16 × dia of smallest longitudinal bar</li>
-                    <li>300 mm</li>
+                  <ul class="list-disc list-inside space-y-1">
+                    <li>Spacing <span class="font-mono bg-slate-50 px-1 rounded border border-slate-200">≤ 200 mm</span>: ± 10 mm</li>
+                    <li>Spacing <span class="font-mono bg-slate-50 px-1 rounded border border-slate-200">> 200 mm</span>: ± 15 mm</li>
                   </ul>
                 </td>
               </tr>
@@ -548,17 +670,17 @@
         <h4 class="font-bold text-slate-900 border-b border-slate-200 pb-2 mb-4 text-lg">3. Processing Methodology</h4>
         <div class="space-y-4">
           <div><strong class="text-slate-800">Top View Evaluation:</strong><p class="mt-1">Extracts the main perimeter rods, verifies the exact count (Rc), calculates the median localized pixel radius (Rr) mapped to mm, and assesses the sequential perimeter gaps (Rs) between consecutive rods in a clockwise arrangement.</p></div>
-          <div><strong class="text-slate-800">Side View Evaluation:</strong><p class="mt-1">Isolates the foreground horizontal ties (stirrups). The evaluation focuses on the vertical pitch spacing (Rs) between consecutive bars. Checks are made against the IS 456 limit (least of column dim, 16× dia, or 300mm) and designed spacing (±10mm/±15mm). If any interval exceeds limits, it drops to 0%, affecting the whole average.</p></div>
+          <div><strong class="text-slate-800">Side View Evaluation:</strong><p class="mt-1">Isolates the foreground horizontal ties (stirrups). The evaluation focuses on the vertical pitch spacing (Rs) between consecutive bars. Checks are made against the designed spacing (±10mm/±15mm). If any interval exceeds the tolerance limit, it drops to 0%, affecting the overall average.</p></div>
         </div>
       </section>
       <section>
         <h4 class="font-bold text-slate-900 border-b border-slate-200 pb-2 mb-4 text-lg">4. Status Reporting</h4>
         <div class="flex flex-col sm:flex-row gap-4">
-          <div class="flex-1 p-4 bg-green-50 border border-green-200 rounded-lg flex items-start gap-3">
+          <div class="flex-1 p-4 bg-green-50 border border-green-200 rounded-xl flex items-start gap-3 transition-transform hover:scale-[1.02]">
             <lucide-icon [img]="icons.CheckCircle2" class="w-5 h-5 text-green-600 shrink-0 mt-0.5" />
             <div><strong class="text-green-800 block">Acceptable (100%)</strong><span class="text-sm text-green-700">The measured parameter is strictly within the allowable limit.</span></div>
           </div>
-          <div class="flex-1 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
+          <div class="flex-1 p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3 transition-transform hover:scale-[1.02]">
             <lucide-icon [img]="icons.AlertCircle" class="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
             <div><strong class="text-red-800 block">Not Acceptable (0%)</strong><span class="text-sm text-red-700">The measurement exceeds the permissible allowance.</span></div>
           </div>

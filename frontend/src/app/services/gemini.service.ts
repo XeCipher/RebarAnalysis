@@ -24,19 +24,14 @@ Output Structure (Strict JSON):
 
 const PROMPT_DESIGN_SIDE = `Analyze the architectural rebar drawing (Side/Elevation View).
 Extract the **Vertical Spacing** (pitch) between the horizontal bars (stirrups/ties).
-Also extract the **Least lateral dimension** of the column (if specified) and the **diameter** of the smallest longitudinal (main vertical) bar.
 
 Look for labels like:
 - "8mm @ 150mm c/c" (Spacing is 150)
 - "Stirrups @ 200mm" (Spacing is 200)
-- "Column 400x600" (Least lateral dim is 400)
-- "6 - 20mm dia" (Longitudinal bar dia is 20)
 
 Output Structure (Strict JSON):
 {
-  "spacing_mm": Float or null,
-  "least_lateral_dim_mm": Float or null,
-  "longitudinal_bar_dia_mm": Float or null
+  "spacing_mm": Float or null
 }`;
 
 const PROMPT_AUTO_DETECT_TOP = `You are an expert AI vision system. Analyze this Site Photograph of a concrete block.
@@ -78,6 +73,11 @@ Output Structure (Strict JSON):
 
 @Injectable({ providedIn: 'root' })
 export class GeminiService {
+  
+  // --- Configure Gemini Models Here ---
+  public readonly MODEL_AUTO_DETECT = 'gemini-flash-latest';
+  public readonly MODEL_DESIGN_EXTRACT = 'gemini-flash-latest';
+
   constructor(private http: HttpClient) {}
 
   async fileToBase64(file: File, maxDim: number = 1000): Promise<string> {
@@ -105,31 +105,28 @@ export class GeminiService {
     });
   }
 
-  // Streamlined AI call to solely process the Blueprint for the simulation layer
   async analyzeDesignOnly(designB64: string, viewMode: 'top' | 'side'): Promise<any> {
     const prompt = viewMode === 'side' ? PROMPT_DESIGN_SIDE : PROMPT_DESIGN_TOP;
-    const data = await this.askGemini(prompt, [designB64]);
+    const data = await this.askGemini(prompt, [designB64], this.MODEL_DESIGN_EXTRACT);
 
     if (!data) {
       return viewMode === 'side' 
-        ? { spacing_mm: 0, least_lateral_dim_mm: 0, longitudinal_bar_dia_mm: 0 } 
+        ? { spacing_mm: 0 } 
         : { count: 0, radius_mm: 0, spacings_mm: [] };
     }
     
-    // Safely unwrap if the AI accidentally wrapped it inside a parent "design" object
     return data.design ? data.design : data;
   }
 
   async getAutoDetectPoints(base64: string, viewMode: 'top' | 'side'): Promise<any[]> {
     const prompt = viewMode === 'side' ? PROMPT_AUTO_DETECT_SIDE : PROMPT_AUTO_DETECT_TOP;
-    const data = await this.askGemini(prompt, [base64]);
+    const data = await this.askGemini(prompt, [base64], this.MODEL_AUTO_DETECT);
     return data?.rods || [];
   }
 
-  private async askGemini(prompt: string, base64Images: string[], retries: number = 1): Promise<any> {
+  private async askGemini(prompt: string, base64Images: string[], targetModel: string, retries: number = 1): Promise<any> {
     try {
-      const model = (environment as any).geminiModel || 'gemini-flash-latest';
-      const url = `${environment.gemprismBaseUrl}/api/proxy/v1beta/models/${model}:generateContent?key=${environment.gemprismApiKey}`;
+      const url = `${environment.gemprismBaseUrl}/api/proxy/v1beta/models/${targetModel}:generateContent?key=${environment.gemprismApiKey}`;
       
       const parts: any[] = [{ text: prompt }];
       base64Images.forEach(b64 => {
@@ -154,7 +151,7 @@ export class GeminiService {
     } catch (err) {
       if (retries > 0) {
         console.warn(`Gemini Gateway timeout, retrying... (${retries} retries left)`, err);
-        return await this.askGemini(prompt, base64Images, retries - 1);
+        return await this.askGemini(prompt, base64Images, targetModel, retries - 1);
       }
       console.error("Gemini API Error:", err);
       return null;
