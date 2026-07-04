@@ -634,6 +634,20 @@ export class AppComponent implements OnInit, OnDestroy {
     return Array.from({length: this.rodPoints.length}, (_, i) => i + 1);
   }
 
+  getToRodNumbersArray() {
+    const rodA = Number(this.scaleRodA);
+    return this.getRodNumbersArray().filter(i => i !== rodA);
+  }
+
+  onScaleRodAChange() {
+    if (Number(this.scaleRodA) === Number(this.scaleRodB)) {
+      const available = this.getToRodNumbersArray();
+      if (available.length > 0) {
+        this.scaleRodB = available[0];
+      }
+    }
+  }
+
   onFileSelected(event: any, type: 'real') {
     const file = event.target.files[0];
     if (file) {

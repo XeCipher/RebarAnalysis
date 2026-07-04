@@ -48,9 +48,6 @@
 
   <main class="w-full max-w-[1400px] mx-auto p-4 sm:p-6 flex-1 flex flex-col min-h-0">
     
-    <!-- ======================================================== -->
-    <!-- PRE-ANALYSIS SETUP LAYOUT (Split Left/Right) -->
-    <!-- ======================================================== -->
     <div *ngIf="!result" class="flex flex-col flex-1 min-h-0 relative">
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 flex-1 min-h-0 overflow-y-auto no-scrollbar pb-6">
         
@@ -152,7 +149,7 @@
                 <div *ngIf="scaleMode === 'rods'" class="flex items-end gap-2 animate-fade-in">
                    <div class="flex flex-col flex-1">
                       <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">From Rod</label>
-                      <select [(ngModel)]="scaleRodA" class="w-full px-2 py-1.5 text-sm border border-slate-300 rounded-md bg-white outline-none cursor-pointer transition-shadow">
+                      <select [(ngModel)]="scaleRodA" (ngModelChange)="onScaleRodAChange()" class="w-full px-2 py-1.5 text-sm border border-slate-300 rounded-md bg-white outline-none cursor-pointer transition-shadow">
                         <option *ngFor="let i of getRodNumbersArray()" [value]="i">R{{i}}</option>
                       </select>
                    </div>
@@ -160,7 +157,7 @@
                    <div class="flex flex-col flex-1">
                       <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">To Rod</label>
                       <select [(ngModel)]="scaleRodB" class="w-full px-2 py-1.5 text-sm border border-slate-300 rounded-md bg-white outline-none cursor-pointer transition-shadow">
-                        <option *ngFor="let i of getRodNumbersArray()" [value]="i">R{{i}}</option>
+                        <option *ngFor="let i of getToRodNumbersArray()" [value]="i">R{{i}}</option>
                       </select>
                    </div>
                    <div class="flex flex-col flex-1">
@@ -214,7 +211,7 @@
                    <img [src]="designImagePreview" class="w-auto h-auto max-w-full max-h-[35vh] m-auto block object-contain opacity-40">
                    
                    <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm z-30 flex flex-col items-center justify-center rounded-xl transition-opacity duration-300">
-                      <div class="animate-spin h-10 w-10 border-4 border-green-500 border-t-transparent rounded-full mb-3 shrink-0"></div>
+                      <div class="animate-spin h-10 w-10 border-4 border-green-50 border-t-transparent rounded-full mb-3 shrink-0"></div>
                       <div class="text-sm font-bold text-green-300 uppercase tracking-widest mb-1 text-center">AI Analyzing Blueprint</div>
                       <div class="font-mono text-2xl font-black text-green-200 flex items-center justify-center gap-2">
                          <lucide-icon [img]="icons.Timer" class="w-5 h-5 opacity-70"></lucide-icon>{{ timers.ai | number:'1.1-1' }}s
@@ -250,7 +247,7 @@
                        <div class="w-full max-w-sm space-y-3 mt-6">
                           <div class="flex items-center justify-between bg-white p-2.5 rounded-lg border border-slate-200 shadow-sm transition-all duration-300 hover:shadow-md">
                              <label class="text-[11px] font-bold text-slate-600 uppercase tracking-wide">Vertical Stirrup Spacing</label>
-                             <div class="relative w-24"><input type="number" [(ngModel)]="sideExtractedState.spacing_mm" placeholder="mm" class="w-full pl-2 pr-6 py-1.5 text-sm font-bold border border-slate-300 rounded-md focus:ring-1 focus:ring-blue-500 outline-none transition-shadow"><span class="absolute right-2 top-2 text-[9px] font-bold text-slate-400">mm</span></div>
+                             <div class="relative w-24"><input type="number" [(ngModel)]="sideExtractedState.spacing_mm" class="w-full pl-2 pr-6 py-1.5 text-sm font-bold border border-slate-300 rounded-md focus:ring-1 focus:ring-blue-500 outline-none transition-shadow"><span class="absolute right-2 top-2 text-[9px] font-bold text-slate-400">mm</span></div>
                           </div>
                        </div>
                     </div>
@@ -327,7 +324,7 @@
                      <div *ngFor="let sp of activeModel.spacings" class="flex items-center justify-between bg-slate-50 p-2.5 border border-slate-200 rounded-lg hover:shadow-sm transition-all duration-300 group">
                          <span class="text-xs font-bold text-slate-600 group-hover:text-blue-700 transition-colors">Distance R{{sp.idx + 1}} to R{{(sp.idx + 1) % customRodCount + 1}}</span>
                          <div class="relative w-28">
-                            <input type="number" [ngModel]="sp.value" (ngModelChange)="onSpacingChange(sp.idx, $event)" placeholder="mm" class="w-full pl-3 pr-8 py-1.5 text-sm font-bold border border-slate-300 rounded-md focus:ring-1 focus:ring-blue-500 outline-none transition-shadow">
+                            <input type="number" [ngModel]="sp.value" (ngModelChange)="onSpacingChange(sp.idx, $event)" class="w-full pl-3 pr-8 py-1.5 text-sm font-bold border border-slate-300 rounded-md focus:ring-1 focus:ring-blue-500 outline-none transition-shadow">
                             <span class="absolute right-2 top-2 text-[10px] font-bold text-slate-400">mm</span>
                          </div>
                      </div>
@@ -357,7 +354,7 @@
                      <div *ngFor="let sp of sideManualState.spacings_mm; let i = index" class="flex items-center justify-between bg-slate-50 p-2.5 border border-slate-200 rounded-lg hover:shadow-sm transition-all duration-300 group">
                          <span class="text-xs font-bold text-slate-600 group-hover:text-blue-700 transition-colors">Spacing S{{i + 1}} to S{{i + 2}}</span>
                          <div class="relative w-28">
-                            <input type="number" [ngModel]="sp.value" (ngModelChange)="onSideSpacingChange(i, $event)" placeholder="mm" class="w-full pl-3 pr-8 py-1.5 text-sm font-bold border border-slate-300 rounded-md focus:ring-1 focus:ring-blue-500 outline-none transition-shadow">
+                            <input type="number" [ngModel]="sp.value" (ngModelChange)="onSideSpacingChange(i, $event)" class="w-full pl-3 pr-8 py-1.5 text-sm font-bold border border-slate-300 rounded-md focus:ring-1 focus:ring-blue-500 outline-none transition-shadow">
                             <span class="absolute right-2 top-2 text-[10px] font-bold text-slate-400">mm</span>
                          </div>
                      </div>
@@ -534,13 +531,13 @@
                 </div>
                 <div class="flex items-center gap-4 sm:gap-6 shrink-0 pr-2">
                     <div class="flex flex-col text-right">
-                        <span class="text-[9px] text-slate-400 uppercase tracking-wider">Design Extract</span>
-                        <span class="font-mono font-medium text-slate-700">{{ designInputMode === 'manual' ? 'NA' : (timers.ai | number:'1.1-1') + 's' }}</span>
+                        <span class="text-[9px] text-slate-400 uppercase tracking-wider">Auto-Detection</span>
+                        <span class="font-mono font-medium text-slate-700">{{ (timers.autoDetectCancelled || !timers.autoDetectRun) ? 'NA' : (timers.autoDetect | number:'1.1-1') + 's' }}</span>
                     </div>
                     <div class="w-px h-6 bg-slate-200"></div>
                     <div class="flex flex-col text-right">
-                        <span class="text-[9px] text-slate-400 uppercase tracking-wider">Auto-Detection</span>
-                        <span class="font-mono font-medium text-slate-700">{{ (timers.autoDetectCancelled || !timers.autoDetectRun) ? 'NA' : (timers.autoDetect | number:'1.1-1') + 's' }}</span>
+                        <span class="text-[9px] text-slate-400 uppercase tracking-wider">Design Extract</span>
+                        <span class="font-mono font-medium text-slate-700">{{ designInputMode === 'manual' ? 'NA' : (timers.ai | number:'1.1-1') + 's' }}</span>
                     </div>
                     <div class="w-px h-6 bg-slate-200"></div>
                     <div class="flex flex-col text-right">

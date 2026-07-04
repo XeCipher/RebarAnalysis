@@ -219,7 +219,7 @@ export class ScoringService {
           } else {
             status = "Not Acceptable";
             score = 0;
-            actualStr = `${aSpacing.toFixed(2)} mm (Deviates from design ${dSpacing}mm)`;
+            actualStr = `${aSpacing.toFixed(2)} mm`;
           }
         } else {
           status = "Acceptable";
