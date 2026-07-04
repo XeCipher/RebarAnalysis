@@ -327,7 +327,7 @@
                      <div *ngFor="let sp of activeModel.spacings" class="flex items-center justify-between bg-slate-50 p-2.5 border border-slate-200 rounded-lg hover:shadow-sm transition-all duration-300 group">
                          <span class="text-xs font-bold text-slate-600 group-hover:text-blue-700 transition-colors">Distance R{{sp.idx + 1}} to R{{(sp.idx + 1) % customRodCount + 1}}</span>
                          <div class="relative w-28">
-                            <input type="number" [(ngModel)]="sp.value" placeholder="mm" class="w-full pl-3 pr-8 py-1.5 text-sm font-bold border border-slate-300 rounded-md focus:ring-1 focus:ring-blue-500 outline-none transition-shadow">
+                            <input type="number" [ngModel]="sp.value" (ngModelChange)="onSpacingChange(sp.idx, $event)" placeholder="mm" class="w-full pl-3 pr-8 py-1.5 text-sm font-bold border border-slate-300 rounded-md focus:ring-1 focus:ring-blue-500 outline-none transition-shadow">
                             <span class="absolute right-2 top-2 text-[10px] font-bold text-slate-400">mm</span>
                          </div>
                      </div>
@@ -357,7 +357,7 @@
                      <div *ngFor="let sp of sideManualState.spacings_mm; let i = index" class="flex items-center justify-between bg-slate-50 p-2.5 border border-slate-200 rounded-lg hover:shadow-sm transition-all duration-300 group">
                          <span class="text-xs font-bold text-slate-600 group-hover:text-blue-700 transition-colors">Spacing S{{i + 1}} to S{{i + 2}}</span>
                          <div class="relative w-28">
-                            <input type="number" [(ngModel)]="sp.value" placeholder="mm" class="w-full pl-3 pr-8 py-1.5 text-sm font-bold border border-slate-300 rounded-md focus:ring-1 focus:ring-blue-500 outline-none transition-shadow">
+                            <input type="number" [ngModel]="sp.value" (ngModelChange)="onSideSpacingChange(i, $event)" placeholder="mm" class="w-full pl-3 pr-8 py-1.5 text-sm font-bold border border-slate-300 rounded-md focus:ring-1 focus:ring-blue-500 outline-none transition-shadow">
                             <span class="absolute right-2 top-2 text-[10px] font-bold text-slate-400">mm</span>
                          </div>
                      </div>
@@ -558,11 +558,14 @@
 <!-- Full screen Analysis Loading Overlay -->
 <div *ngIf="isAnalyzing" class="fixed inset-0 bg-slate-900/90 backdrop-blur-md z-[200] text-white animate-fade-in flex flex-col items-center justify-center transition-all duration-500">
     <div class="animate-spin h-12 w-12 border-4 border-blue-500 border-t-transparent rounded-full mb-6 shrink-0"></div>
-    <div *ngIf="!isBackendWarmedUp" class="text-sm font-bold text-orange-300 uppercase tracking-widest text-center mb-2 animate-fade-in">Backend Waking Up...</div>
-    <div *ngIf="isBackendWarmedUp" class="text-sm font-bold text-blue-300 uppercase tracking-widest text-center mb-2 animate-fade-in">Extracting & Computing</div>
+    
+    <div *ngIf="timers.aiRunning" class="text-sm font-bold text-purple-300 uppercase tracking-widest text-center mb-2 animate-fade-in">AI Analyzing Blueprint...</div>
+    <div *ngIf="!isBackendWarmedUp && !timers.aiRunning" class="text-sm font-bold text-orange-300 uppercase tracking-widest text-center mb-2 animate-fade-in">Backend Waking Up...</div>
+    <div *ngIf="isBackendWarmedUp && !timers.aiRunning" class="text-sm font-bold text-blue-300 uppercase tracking-widest text-center mb-2 animate-fade-in">Extracting & Computing</div>
+    
     <div class="font-mono text-4xl font-black text-blue-200 flex items-center justify-center gap-3">
         <lucide-icon [img]="icons.Timer" class="w-8 h-8 opacity-70"></lucide-icon>
-        {{ (isBackendWarmedUp ? timers.cv : timers.backendWarmup) | number:'1.1-1' }}s
+        {{ (timers.aiRunning ? timers.ai : (isBackendWarmedUp ? timers.cv : timers.backendWarmup)) | number:'1.1-1' }}s
     </div>
 </div>
 

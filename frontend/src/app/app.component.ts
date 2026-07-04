@@ -23,12 +23,14 @@ export interface ApiResponse {
 export interface BlueprintModel {
   id: string; count: number | 'custom'; shape: 'Square' | 'Rectangle' | 'Custom';
   viewBox?: string; maxWidth?: number;
+  hasBeenEdited?: boolean;
   rods: { cx: number, cy: number }[];
   spacings: { 
     idx: number; 
     x: number; y: number; 
     opposite?: number;
     value: number | null;
+    userEdited?: boolean;
   }[];
 }
 
@@ -92,9 +94,15 @@ export class AppComponent implements OnInit, OnDestroy {
 
   // Side View Manual States
   sideExtractedState = { spacing_mm: 150 };
-  sideManualState = { 
+  sideManualState: { stirrupCount: number, hasBeenEdited: boolean, spacings_mm: any[] } = { 
     stirrupCount: 5, 
-    spacings_mm: [{idx: 0, value: 150}, {idx: 1, value: 150}, {idx: 2, value: 150}, {idx: 3, value: 150}] 
+    hasBeenEdited: false,
+    spacings_mm: [
+      {idx: 0, value: null, userEdited: false}, 
+      {idx: 1, value: null, userEdited: false}, 
+      {idx: 2, value: null, userEdited: false}, 
+      {idx: 3, value: null, userEdited: false}
+    ] 
   };
 
   // Execution Processing States
@@ -232,6 +240,7 @@ export class AppComponent implements OnInit, OnDestroy {
             x: ((mx + offsetX) / vbW) * 100,
             y: ((my + offsetY) / vbH) * 100,
             value: null,
+            userEdited: false,
             opposite: (i + (L + S)) % ((L + S) * 2)
         });
     }
@@ -241,6 +250,7 @@ export class AppComponent implements OnInit, OnDestroy {
     return {
         id: `c${count}_${shape.toLowerCase()}`, count, shape,
         viewBox: `0 0 ${vbW} ${vbH}`, maxWidth: calculatedMaxWidth,
+        hasBeenEdited: false,
         rods, spacings
     };
   }
@@ -445,7 +455,9 @@ export class AppComponent implements OnInit, OnDestroy {
                }
                modelToPopulate.spacings.forEach((sp: any, i: number) => {
                  sp.value = mappedSpacings[i] !== undefined ? mappedSpacings[i] : null;
+                 sp.userEdited = true; // Mark AI extracted as explicitly touched
                });
+               modelToPopulate.hasBeenEdited = true;
             }
             this.extractedModel = modelToPopulate;
           }
@@ -472,10 +484,31 @@ export class AppComponent implements OnInit, OnDestroy {
     for (let i = 0; i < numSpacings; i++) {
         newSpacings.push({
             idx: i,
-            value: this.sideManualState.spacings_mm[i]?.value || 150
+            value: this.sideManualState.spacings_mm[i]?.value || null,
+            userEdited: this.sideManualState.spacings_mm[i]?.userEdited || false
         });
     }
     this.sideManualState.spacings_mm = newSpacings;
+    this.cdr.markForCheck();
+  }
+
+  onSideSpacingChange(idx: number, newValue: number | null) {
+    const spacing = this.sideManualState.spacings_mm[idx];
+    if (!spacing) return;
+    
+    const isFirstEntry = !this.sideManualState.hasBeenEdited;
+    spacing.value = newValue;
+    spacing.userEdited = true;
+    
+    if (isFirstEntry && newValue !== null) {
+        this.sideManualState.spacings_mm.forEach((s, i) => {
+            if (i !== idx) {
+                s.value = newValue;
+                s.userEdited = false;
+            }
+        });
+        this.sideManualState.hasBeenEdited = true;
+    }
     this.cdr.markForCheck();
   }
 
@@ -516,11 +549,11 @@ export class AppComponent implements OnInit, OnDestroy {
     this.customRodCount = Math.max(4, this.customRodCount);
     const customSpacings = [];
     for (let i = 0; i < this.customRodCount; i++) {
-        customSpacings.push({ idx: i, x: 0, y: 0, value: null });
+        customSpacings.push({ idx: i, x: 0, y: 0, value: null, userEdited: false });
     }
     this.activeModel = {
         id: 'custom', count: 'custom', shape: 'Custom',
-        rods: [], spacings: customSpacings
+        rods: [], spacings: customSpacings, hasBeenEdited: false
     };
     this.cdr.markForCheck();
   }
@@ -537,9 +570,21 @@ export class AppComponent implements OnInit, OnDestroy {
     const spacing = model.spacings.find(s => s.idx === idx);
     if (spacing) {
       spacing.value = newValue;
-      if (spacing.opposite !== undefined && newValue !== null) {
+      spacing.userEdited = true;
+      
+      if (!model.hasBeenEdited && newValue !== null) {
+        // First entry universally applies to all edges
+        model.spacings.forEach(s => {
+          if (s.idx !== idx) {
+            s.value = newValue;
+            s.userEdited = false;
+          }
+        });
+        model.hasBeenEdited = true;
+      } else if (spacing.opposite !== undefined && newValue !== null) {
+        // Apply mirroring to the geometric opposite edge unless explicitly modified already
         const opp = model.spacings.find(s => s.idx === spacing.opposite);
-        if (opp && (opp.value === null || opp.value === 0)) {
+        if (opp && !opp.userEdited) {
            opp.value = newValue;
         }
       }
@@ -788,9 +833,11 @@ export class AppComponent implements OnInit, OnDestroy {
       const now = performance.now();
       this.timers.total = (now - overallStart) / 1000;
       
-      if (!this.isBackendWarmedUp) {
-         this.timers.backendWarmup = (now - overallStart) / 1000;
-         cvStart = now; 
+      if (!this.isBackendWarmedUp || this.timers.aiRunning) {
+         if (!this.isBackendWarmedUp) {
+             this.timers.backendWarmup = (now - overallStart) / 1000;
+         }
+         cvStart = now; // Constantly reset cvStart while awaiting backend boot or AI extraction
       } else {
          if (this.timers.cvRunning) this.timers.cv = (now - cvStart) / 1000;
       }
