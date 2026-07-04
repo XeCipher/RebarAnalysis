@@ -22,33 +22,56 @@
               <lucide-icon [img]="icons.Box" class="w-4 h-4 text-slate-500"></lucide-icon>
               <span class="text-xs font-bold uppercase tracking-widest text-slate-600">BIM Integration</span>
             </div>
+            
+            <!-- Revit Model Download -->
             <a href="assets/downloads/models.rvt" download="models.rvt" class="px-4 py-3 hover:bg-slate-50 transition-colors flex items-center justify-between group border-b border-slate-50">
               <div class="flex items-center gap-3 text-sm font-medium text-slate-700">
-                <div class="p-1.5 bg-blue-100 text-blue-600 rounded-md group-hover:scale-110 transition-transform"><lucide-icon [img]="icons.DownloadCloud" class="w-4 h-4"></lucide-icon></div>
+                <div class="p-1.5 bg-blue-100 text-blue-600 rounded-md group-hover:scale-110 transition-transform">
+                  <lucide-icon [img]="icons.Box" class="w-4 h-4"></lucide-icon>
+                </div>
                 Revit Model (.rvt)
               </div>
+              <lucide-icon [img]="icons.DownloadCloud" class="w-4 h-4 text-slate-400 group-hover:text-blue-600 transition-colors"></lucide-icon>
             </a>
+            
+            <!-- rodhighlight.py Copy Button -->
             <button (click)="copyScript('rodhighlight.py')" class="w-full text-left px-4 py-3 hover:bg-slate-50 transition-colors flex items-center justify-between group border-b border-slate-50">
               <div class="flex items-center gap-3 text-sm font-medium text-slate-700">
-                <div class="p-1.5 bg-purple-100 text-purple-600 rounded-md group-hover:scale-110 transition-transform"><lucide-icon [img]="icons.FileCode" class="w-4 h-4"></lucide-icon></div>
+                <div class="p-1.5 bg-purple-100 text-purple-600 rounded-md group-hover:scale-110 transition-transform">
+                  <lucide-icon [img]="icons.FileCode" class="w-4 h-4"></lucide-icon>
+                </div>
                 rodhighlight.py
               </div>
+              <lucide-icon *ngIf="!copiedStates['rodhighlight.py']" [img]="icons.Copy" class="w-4 h-4 text-slate-400 group-hover:text-purple-600 transition-colors"></lucide-icon>
+              <lucide-icon *ngIf="copiedStates['rodhighlight.py']" [img]="icons.CheckCircle2" class="w-4 h-4 text-green-500 animate-fade-in"></lucide-icon>
             </button>
-            <button (click)="copyScript('rodlines.py')" class="w-full text-left px-4 py-3 hover:bg-slate-50 transition-colors flex items-center justify-between group">
+            
+            <!-- rodlines.py Copy Button -->
+            <button (click)="copyScript('rodlines.py')" class="w-full text-left px-4 py-3 hover:bg-slate-50 transition-colors flex items-center justify-between group border-b border-slate-50">
               <div class="flex items-center gap-3 text-sm font-medium text-slate-700">
-                <div class="p-1.5 bg-orange-100 text-orange-600 rounded-md group-hover:scale-110 transition-transform"><lucide-icon [img]="icons.FileCode" class="w-4 h-4"></lucide-icon></div>
+                <div class="p-1.5 bg-orange-100 text-orange-600 rounded-md group-hover:scale-110 transition-transform">
+                  <lucide-icon [img]="icons.FileCode" class="w-4 h-4"></lucide-icon>
+                </div>
                 rodlines.py
               </div>
+              <lucide-icon *ngIf="!copiedStates['rodlines.py']" [img]="icons.Copy" class="w-4 h-4 text-slate-400 group-hover:text-orange-600 transition-colors"></lucide-icon>
+              <lucide-icon *ngIf="copiedStates['rodlines.py']" [img]="icons.CheckCircle2" class="w-4 h-4 text-green-500 animate-fade-in"></lucide-icon>
             </button>
+            
             <div class="px-4 py-3 bg-slate-50 border-y border-slate-100 flex items-center gap-2">
               <lucide-icon [img]="icons.Smartphone" class="w-4 h-4 text-slate-500"></lucide-icon>
               <span class="text-xs font-bold uppercase tracking-widest text-slate-600">Mobile App</span>
             </div>
+            
+            <!-- Android APK Download -->
             <a href="assets/downloads/RebarAnalysis.apk" download="RebarAnalysis.apk" class="px-4 py-3 hover:bg-slate-50 transition-colors flex items-center justify-between group">
               <div class="flex items-center gap-3 text-sm font-medium text-slate-700">
-                <div class="p-1.5 bg-green-100 text-green-600 rounded-md group-hover:scale-110 transition-transform"><lucide-icon [img]="icons.DownloadCloud" class="w-4 h-4"></lucide-icon></div>
+                <div class="p-1.5 bg-green-100 text-green-600 rounded-md group-hover:scale-110 transition-transform">
+                  <lucide-icon [img]="icons.Smartphone" class="w-4 h-4"></lucide-icon>
+                </div>
                 Android APK
               </div>
+              <lucide-icon [img]="icons.DownloadCloud" class="w-4 h-4 text-slate-400 group-hover:text-green-600 transition-colors"></lucide-icon>
             </a>
           </div>
         </div>
