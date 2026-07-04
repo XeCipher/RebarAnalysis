@@ -72,7 +72,7 @@ if not exist "backend\venv\" (
 if not exist "frontend\node_modules\" (
     echo [SETUP] Installing frontend dependencies...
     cd frontend
-    call npm install
+    call npm install --legacy-peer-deps
     cd ..
     echo [SUCCESS] Frontend setup complete!
 )
