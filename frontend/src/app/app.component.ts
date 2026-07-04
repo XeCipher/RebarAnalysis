@@ -90,9 +90,14 @@ export class AppComponent implements OnInit, OnDestroy {
     return model?.rods?.map(r => `${r.cx},${r.cy}`).join(' ') || '';
   }
 
-  // Side View Manual State
-  sideManualState = { spacing_mm: 150, least_lateral_dim_mm: 400, longitudinal_bar_dia_mm: 20 };
+  // Side View Manual States
   sideExtractedState = { spacing_mm: 150, least_lateral_dim_mm: 400, longitudinal_bar_dia_mm: 20 };
+  sideManualState = { 
+    stirrupCount: 5, 
+    spacings_mm: [{idx: 0, value: 150}, {idx: 1, value: 150}, {idx: 2, value: 150}, {idx: 3, value: 150}], 
+    least_lateral_dim_mm: 400, 
+    longitudinal_bar_dia_mm: 20 
+  };
 
   // Execution Processing States
   isAnalyzing = false;
@@ -194,7 +199,7 @@ export class AppComponent implements OnInit, OnDestroy {
     const segmentLen = 65;
     const width = L * segmentLen; 
     const height = S * segmentLen;
-    const padX = 45; const padY = 45;
+    const padX = 60; const padY = 60; // Increased padding to prevent overflow
     const vbW = width + padX * 2;
     const vbH = height + padY * 2;
     
@@ -228,9 +233,11 @@ export class AppComponent implements OnInit, OnDestroy {
         });
     }
 
+    const calculatedMaxWidth = shape === 'Square' ? Math.min(vbW * 1.2, 350) : Math.min(Math.max(vbW * 1.5, 300), 500);
+
     return {
         id: `c${count}_${shape.toLowerCase()}`, count, shape,
-        viewBox: `0 0 ${vbW} ${vbH}`, maxWidth: Math.min(Math.max(vbW * 1.5, 300), 800),
+        viewBox: `0 0 ${vbW} ${vbH}`, maxWidth: calculatedMaxWidth,
         rods, spacings
     };
   }
@@ -437,19 +444,11 @@ export class AppComponent implements OnInit, OnDestroy {
                });
             }
             this.extractedModel = modelToPopulate;
-            
-            // Sync to manual state seamlessly without triggering UI switch 
-            this.selectedRodCount = targetModel.count;
-            this.selectedShape = targetModel.shape as 'Square' | 'Rectangle';
-            this.activeModel = JSON.parse(JSON.stringify(this.extractedModel));
-            this.designRadius = this.extractedRadius;
           }
         } else if (this.viewMode === 'side') {
            this.sideExtractedState.spacing_mm = data.spacing_mm || this.sideExtractedState.spacing_mm;
            this.sideExtractedState.least_lateral_dim_mm = data.least_lateral_dim_mm || this.sideExtractedState.least_lateral_dim_mm;
            this.sideExtractedState.longitudinal_bar_dia_mm = data.longitudinal_bar_dia_mm || this.sideExtractedState.longitudinal_bar_dia_mm;
-           
-           this.sideManualState = { ...this.sideExtractedState };
         }
       } catch (err) {
         console.error("Design Extract Error", err);
@@ -461,6 +460,21 @@ export class AppComponent implements OnInit, OnDestroy {
         }
       }
     })();
+  }
+
+  onSideStirrupCountChange() {
+    const count = Math.max(2, this.sideManualState.stirrupCount);
+    const numSpacings = count - 1;
+    
+    const newSpacings = [];
+    for (let i = 0; i < numSpacings; i++) {
+        newSpacings.push({
+            idx: i,
+            value: this.sideManualState.spacings_mm[i]?.value || 150
+        });
+    }
+    this.sideManualState.spacings_mm = newSpacings;
+    this.cdr.markForCheck();
   }
 
   onRodCountChange() {
@@ -797,12 +811,19 @@ export class AppComponent implements OnInit, OnDestroy {
            spacings_mm: modelToUse.spacings.map(s => s.value || 0)
          };
       } else {
-         const sideStateToUse = (this.designInputMode === 'upload') ? this.sideExtractedState : this.sideManualState;
-         designData = {
-           spacing_mm: sideStateToUse.spacing_mm,
-           least_lateral_dim_mm: sideStateToUse.least_lateral_dim_mm,
-           longitudinal_bar_dia_mm: sideStateToUse.longitudinal_bar_dia_mm
-         };
+         if (this.designInputMode === 'upload') {
+            designData = {
+              spacing_mm: this.sideExtractedState.spacing_mm,
+              least_lateral_dim_mm: this.sideExtractedState.least_lateral_dim_mm,
+              longitudinal_bar_dia_mm: this.sideExtractedState.longitudinal_bar_dia_mm
+            };
+         } else {
+            designData = {
+              spacings_mm: this.sideManualState.spacings_mm.map(s => s.value || 0),
+              least_lateral_dim_mm: this.sideManualState.least_lateral_dim_mm,
+              longitudinal_bar_dia_mm: this.sideManualState.longitudinal_bar_dia_mm
+            };
+         }
       }
 
       let payloadRefPoints = this.refPoints;

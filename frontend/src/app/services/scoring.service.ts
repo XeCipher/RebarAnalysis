@@ -181,7 +181,9 @@ export class ScoringService {
   }
 
   calculateSideScore(designData: any, actualData: any, hasScale: boolean): { score: number, score_count: number | null, score_radius: number | null, score_spacing: number | null, table: ComparisonRow[] } {
-    const dSpacing = this.safeFloat(designData.spacing_mm);
+    const singleDSpacing = this.safeFloat(designData.spacing_mm, -1);
+    const dSpacings = Array.isArray(designData.spacings_mm) ? designData.spacings_mm.map((x: any) => this.safeFloat(x, 0)) : [];
+    
     const leastDim = this.safeFloat(designData.least_lateral_dim_mm, 0);
     const longBarDia = this.safeFloat(designData.longitudinal_bar_dia_mm, 0);
     const aSpacings: number[] = Array.isArray(actualData.spacings) ? actualData.spacings : [];
@@ -199,13 +201,15 @@ export class ScoringService {
         score_count: null,
         score_radius: null,
         score_spacing: 0,
-        table: [{ parameter: "Vertical Spacing", design: dSpacing > 0 ? `${dSpacing} mm` : "Not Specified", actual: "None detected", status: "Not Acceptable" }] 
+        table: [{ parameter: "Vertical Spacing", design: singleDSpacing > 0 ? `${singleDSpacing} mm` : "Not Specified", actual: "None detected", status: "Not Acceptable" }] 
       };
     }
 
     let totalScore = 0;
 
     aSpacings.forEach((aSpacing, i) => {
+      // Pick current target spacing from array (if provided), otherwise fallback to single spacing or 0
+      const dSpacing = singleDSpacing !== -1 ? singleDSpacing : (i < dSpacings.length ? dSpacings[i] : (dSpacings.length > 0 ? dSpacings[dSpacings.length - 1] : 0));
       let score = 0;
       let status: ComparisonRow['status'] = "NA";
       let actualStr = "";
