@@ -74,6 +74,8 @@ export class ScoringService {
         actualDisplay = `${aRad.toFixed(2)} mm`;
       }
     } else {
+      // Specifically handled when there is no scale provided
+      scoreRadius = 0;
       actualDisplay = `${aRad.toFixed(2)} px`;
     }
 
@@ -174,7 +176,7 @@ export class ScoringService {
     return { 
       score: Math.round(finalScore), 
       score_count: Math.round(scoreCount), 
-      score_radius: hasScale ? Math.round(scoreRadius) : null,
+      score_radius: hasScale ? Math.round(scoreRadius) : 0, // Enforces 0% presentation in UI when no scale is provided
       score_spacing: Math.round(scoreSpacing),
       table: tableRows 
     };
