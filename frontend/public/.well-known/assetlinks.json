@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.rebaranalysis.app",
+      "sha256_cert_fingerprints": [
+        "CF:50:81:CC:73:FC:21:C3:15:15:40:4E:6C:DD:96:68:A1:BC:D2:71:E7:01:7D:D3:82:B0:51:24:E0:02:C9:E7"
+      ]
+    }
+  }
+]
