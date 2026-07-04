@@ -561,11 +561,11 @@
     
     <div *ngIf="timers.aiRunning" class="text-sm font-bold text-purple-300 uppercase tracking-widest text-center mb-2 animate-fade-in">AI Analyzing Blueprint...</div>
     <div *ngIf="!isBackendWarmedUp && !timers.aiRunning" class="text-sm font-bold text-orange-300 uppercase tracking-widest text-center mb-2 animate-fade-in">Backend Waking Up...</div>
-    <div *ngIf="isBackendWarmedUp && !timers.aiRunning" class="text-sm font-bold text-blue-300 uppercase tracking-widest text-center mb-2 animate-fade-in">Extracting & Computing</div>
+    <div *ngIf="isBackendWarmedUp && !timers.aiRunning" class="text-sm font-bold text-blue-300 uppercase tracking-widest text-center mb-2 animate-fade-in">Vision Engine Processing...</div>
     
     <div class="font-mono text-4xl font-black text-blue-200 flex items-center justify-center gap-3">
         <lucide-icon [img]="icons.Timer" class="w-8 h-8 opacity-70"></lucide-icon>
-        {{ (timers.aiRunning ? timers.ai : (isBackendWarmedUp ? timers.cv : timers.backendWarmup)) | number:'1.1-1' }}s
+        {{ (timers.aiRunning ? timers.ai : (!isBackendWarmedUp ? timers.backendWarmup : timers.cv)) | number:'1.1-1' }}s
     </div>
 </div>
 
