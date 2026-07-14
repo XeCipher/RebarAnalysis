@@ -211,10 +211,10 @@
               <h2 class="text-lg font-semibold flex items-center gap-2 text-slate-800">
                 <lucide-icon [img]="icons.PenTool" class="w-5 h-5 text-slate-400 group-hover:text-primary transition-colors" /> Design Blueprint
               </h2>
-              <div class="flex items-center gap-2">
-                <div class="flex bg-slate-100 rounded-lg p-1 transition-all duration-300">
-                  <button (click)="designInputMode = 'upload'" [class.bg-white]="designInputMode === 'upload'" [class.shadow-sm]="designInputMode === 'upload'" class="px-3 text-xs font-bold py-1 rounded-md text-slate-600 transition-all duration-300">Upload</button>
-                  <button (click)="designInputMode = 'manual'" [class.bg-white]="designInputMode === 'manual'" [class.shadow-sm]="designInputMode === 'manual'" class="px-3 text-xs font-bold py-1 rounded-md text-slate-600 transition-all duration-300">Manual</button>
+              <div class="flex items-center gap-4">
+                <div class="flex items-center text-xs sm:text-sm font-medium text-slate-400 select-none cursor-pointer transition-colors hover:text-slate-800" (click)="toggleDesignInputMode()" title="Toggle Input Mode">
+                  <lucide-icon [img]="designInputMode === 'upload' ? icons.Upload : icons.Settings2" class="w-4 h-4 mr-1.5 hidden sm:block"></lucide-icon>
+                  {{ designInputMode === 'upload' ? 'Upload' : 'Manual' }}
                 </div>
                 <button *ngIf="designImagePreview" (click)="clearDesignImage()" class="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="Remove Blueprint">
                    <lucide-icon [img]="icons.Trash2" class="w-4 h-4"></lucide-icon>
