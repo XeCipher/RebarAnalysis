@@ -335,6 +335,11 @@ export class AppComponent implements OnInit, OnDestroy {
     this.setViewMode(newMode);
   }
 
+  toggleDesignInputMode() {
+    this.designInputMode = this.designInputMode === 'upload' ? 'manual' : 'upload';
+    this.cdr.markForCheck();
+  }
+
   setViewMode(mode: 'top' | 'side') {
     if (this.viewMode !== mode) {
       this.viewMode = mode;
