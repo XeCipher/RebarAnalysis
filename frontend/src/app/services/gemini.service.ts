@@ -75,8 +75,8 @@ Output Structure (Strict JSON):
 export class GeminiService {
   
   // --- Configure Gemini Models Here ---
-  public readonly MODEL_AUTO_DETECT = 'gemini-flash-lite-latest';
-  public readonly MODEL_DESIGN_EXTRACT = 'gemini-flash-lite-latest';
+  public readonly MODEL_AUTO_DETECT = 'gemini-flash-latest';
+  public readonly MODEL_DESIGN_EXTRACT = 'gemini-flash-latest';
 
   constructor(private http: HttpClient) {}
 
