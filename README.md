@@ -29,13 +29,13 @@ A site engineer uploads a photograph of a reinforced concrete column along with 
 
 | Layer | Technology |
 |---|---|
-| Frontend | Angular 17, TypeScript, Tailwind CSS |
+| Frontend | Angular, TypeScript, Tailwind CSS |
 | Backend | Python, Flask, Flask-CORS |
 | Computer Vision | OpenCV, NumPy, SciPy |
 | AI / LLM | Gemini Flash (via GemPrism Gateway) |
 | BIM Integration | Autodesk Revit, Dynamo (Python) |
 | Hosting | Vercel (Frontend), Render (Backend) |
-| Notifications | Gmail SMTP (smtplib) |
+| Notifications | Brevo Email API |
 
 ---
 
@@ -250,11 +250,9 @@ pip install -r requirements.txt
 Create a `backend/.env` file:
 
 ```
-SENDER_EMAIL=your_gmail_address@gmail.com
-SENDER_APP_PASSWORD=your_gmail_app_password
+SENDER_EMAIL=your_verified_sender_email@example.com
+BREVO_API_KEY=xkeysib-your-brevo-api-key
 ```
-
-> To get a Gmail App Password: Google Account → Security → 2-Step Verification → App Passwords
 
 Start the backend:
 
@@ -267,16 +265,17 @@ python app.py
 
 Create a `frontend/src/environments/environment.ts` file:
 
-```
+```ts
 export const environment = {
   production: false,
   gemprismApiKey: 'gp_live_TOKEN',
   gemprismBaseUrl: 'https://gemprism.vercel.app',
-  apiBaseUrl: 'http://localhost:5000'
+  apiBaseUrl: 'http://localhost:5000',
+  geminiModel: 'gemini-flash-latest'
 };
 ```
 
-Start the backend:
+Start the frontend:
 
 ```bash
 cd frontend

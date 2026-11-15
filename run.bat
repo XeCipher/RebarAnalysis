@@ -24,13 +24,13 @@ if %errorlevel% neq 0 (
 
 :: 1. Setup Backend Environment Variables
 if not exist "backend\.env" (
-    echo [SETUP] Backend Setup: Please enter your Email credentials.
+    echo [SETUP] Backend Setup: Please enter your Brevo Email credentials.
     echo.
-    set /p SENDER_EMAIL="Sender Email Address (Gmail)              : "
-    set /p SENDER_PASS="Sender App Password (16 chars)            : "
+    set /p SENDER_EMAIL="Sender Email Address                       : "
+    set /p BREVO_API_KEY="Brevo API Key (xkeysib-...)                : "
 
     echo SENDER_EMAIL=!SENDER_EMAIL!> backend\.env
-    echo SENDER_PASS=!SENDER_PASS!>> backend\.env
+    echo BREVO_API_KEY=!BREVO_API_KEY!>> backend\.env
     echo.
     echo [SUCCESS] backend\.env file created successfully!
 )
@@ -42,10 +42,10 @@ if not exist "frontend\src\environments\environment.ts" (
     if not exist "frontend\src\environments" mkdir "frontend\src\environments"
     
     set /p GEMPRISM_API_KEY="GemPrism Gateway Token (e.g. gp_live_...)   : "
-    set /p GEMINI_MODEL="Gemini Model (default: gemini-flash-latest) : "
+    set /p GEMINI_MODEL="Gemini Model (default: gemini-flash-lite-latest) : "
     
     :: Apply default model if left blank
-    if "!GEMINI_MODEL!"=="" set GEMINI_MODEL=gemini-flash-latest
+    if "!GEMINI_MODEL!"=="" set GEMINI_MODEL=gemini-flash-lite-latest
 
     echo export const environment = {> frontend\src\environments\environment.ts
     echo   production: false,>> frontend\src\environments\environment.ts

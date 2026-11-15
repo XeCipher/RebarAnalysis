@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { LucideAngularModule, Upload, ScanLine, Ruler, CheckCircle2, AlertCircle, Trash2, Undo2, ArrowRight, Layers, ArrowUpDown, FileJson, Wand2, Info, HelpCircle, Calculator, X, Timer, DownloadCloud, Copy, FileCode, Box, ExternalLink, PenTool, Image as ImageIcon, Settings2, Smartphone } from 'lucide-angular';
 import { FormsModule } from '@angular/forms';
-import { Subscription, firstValueFrom } from 'rxjs';
+import { firstValueFrom } from 'rxjs';
 import { environment } from '../environments/environment';
 import { GeminiService } from './services/gemini.service';
 import { ScoringService, ComparisonRow } from './services/scoring.service';
@@ -21,13 +21,17 @@ export interface ApiResponse {
 }
 
 export interface BlueprintModel {
-  id: string; count: number | 'custom'; shape: 'Square' | 'Rectangle' | 'Custom';
-  viewBox?: string; maxWidth?: number;
+  id: string;
+  count: number | 'custom';
+  shape: 'Square' | 'Rectangle' | 'Custom';
+  viewBox?: string;
+  maxWidth?: number;
   firstEditedIdx?: number | null; // Tracks the "master field" to allow continuous multi-digit typing broadcasts
-  rods: { cx: number, cy: number }[];
-  spacings: { 
-    idx: number; 
-    x: number; y: number; 
+  rods: { cx: number; cy: number }[];
+  spacings: {
+    idx: number;
+    x: number;
+    y: number;
     opposite?: number;
     value: number | null;
     userEdited?: boolean;
@@ -40,7 +44,7 @@ export interface BlueprintModel {
   imports: [CommonModule, LucideAngularModule, FormsModule],
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.scss'],
-  changeDetection: ChangeDetectionStrategy.OnPush 
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class AppComponent implements OnInit, OnDestroy {
   icons = { Upload, ScanLine, Ruler, CheckCircle2, AlertCircle, Trash2, Undo2, ArrowRight, Layers, ArrowUpDown, FileJson, Wand2, Info, HelpCircle, Calculator, X, Timer, DownloadCloud, Copy, FileCode, Box, ExternalLink, PenTool, ImageIcon, Settings2, Smartphone };
@@ -56,64 +60,66 @@ export class AppComponent implements OnInit, OnDestroy {
   rodPoints: number[][] = [];
   imgNatWidth: number = 0;
   imgNatHeight: number = 0;
-  
+
   // Scale / Ref State
   scaleMode: 'freehand' | 'rods' = 'freehand';
   refPoints: number[][] = [];
-  refLengthInput: number = 100;
+  refLengthInput: number | null = 100;
   scaleRodA: number = 1;
   scaleRodB: number = 2;
-  scaleRodDistance: number = 125;
+  scaleRodDistance: number | null = 125;
 
   // Right Column (Design Blueprint) State
   designImageFile: File | null = null;
   designImagePreview: string | null = null;
   designInputMode: 'upload' | 'manual' = 'upload';
-  
+  hasExtractedData = false;
+  designExtractFailed = false;
+
   TOP_MODELS: BlueprintModel[] = [];
 
   selectedRodCount: number | 'custom' = 8;
   selectedShape: 'Square' | 'Rectangle' | 'Custom' = 'Rectangle';
   customRodCount: number = 4;
-  
+
   // Separation of AI extracted vs Manual configurations
   activeModel!: BlueprintModel;
   extractedModel: BlueprintModel | null = null;
-  
+
   designRadius: number | null = 8;
   extractedRadius: number | null = null;
-  
+
   get availableShapes(): string[] {
     if (this.selectedRodCount === 'custom') return ['Custom'];
     return Array.from(new Set(this.TOP_MODELS.filter(m => m.count === Number(this.selectedRodCount)).map(m => m.shape)));
   }
-  
+
   getPolygonPoints(model: BlueprintModel): string {
     return model?.rods?.map(r => `${r.cx},${r.cy}`).join(' ') || '';
   }
 
-  // Side View Manual States
-  sideExtractedState = { spacing_mm: 150 };
-  sideManualState: { stirrupCount: number, firstEditedIdx: number | null, spacings_mm: any[] } = { 
-    stirrupCount: 5, 
+  // Side View States
+  sideExtractedState: { spacing_mm: number | null } = { spacing_mm: 150 };
+  sideManualState: { stirrupCount: number; firstEditedIdx: number | null; spacings_mm: any[] } = {
+    stirrupCount: 5,
     firstEditedIdx: null,
     spacings_mm: [
-      {idx: 0, value: null, userEdited: false}, 
-      {idx: 1, value: null, userEdited: false}, 
-      {idx: 2, value: null, userEdited: false}, 
-      {idx: 3, value: null, userEdited: false}
-    ] 
+      { idx: 0, value: null, userEdited: false },
+      { idx: 1, value: null, userEdited: false },
+      { idx: 2, value: null, userEdited: false },
+      { idx: 3, value: null, userEdited: false }
+    ]
   };
 
   // Execution Processing States
   isAnalyzing = false;
   isAutoDetecting = false;
-  
+
   private currentAutoDetectId = 0;
   private currentAnalysisId = 0;
   private currentDesignExtractId = 0;
   designExtractionPromise: Promise<void> | null = null;
-  
+
   result: ApiResponse | null = null;
   errorMsg: string | null = null;
   revitData: any = null;
@@ -123,6 +129,7 @@ export class AppComponent implements OnInit, OnDestroy {
   authorityEmail: string = '';
   isEmailSending: boolean = false;
   emailSent: boolean = false;
+  emailError: string | null = null;
 
   showScoreModal: boolean = false;
   showDownloadsMenu: boolean = false;
@@ -134,13 +141,17 @@ export class AppComponent implements OnInit, OnDestroy {
     total: 0, backendWarmup: 0,
     cv: 0, cvRunning: false, ai: 0, aiRunning: false
   };
-  private intervals: any[] = [];
+  private autoDetectInterval: any = null;
+  private designExtractInterval: any = null;
+  private analysisInterval: any = null;
 
   // Drag Drop Variables
   draggingPointIndex: number | null = null;
   draggingPointType: 'rod' | 'ref' | null = null;
-  dragStartX = 0; dragStartY = 0;
-  dragStartPointX = 0; dragStartPointY = 0;
+  dragStartX = 0;
+  dragStartY = 0;
+  dragStartPointX = 0;
+  dragStartPointY = 0;
   hasMoved = false;
 
   @ViewChild('imageRef') imageElement!: ElementRef<HTMLImageElement>;
@@ -149,7 +160,7 @@ export class AppComponent implements OnInit, OnDestroy {
   @ViewChild('fileInputDesign') fileInputDesign!: ElementRef<HTMLInputElement>;
 
   constructor(
-    private http: HttpClient, 
+    private http: HttpClient,
     private cdr: ChangeDetectorRef,
     private gemini: GeminiService,
     private scoring: ScoringService
@@ -159,8 +170,14 @@ export class AppComponent implements OnInit, OnDestroy {
 
   ngOnInit() {
     this.http.get(environment.apiBaseUrl + '/', { responseType: 'text' }).subscribe({
-      next: () => { this.isBackendWarmedUp = true; },
-      error: () => { this.isBackendWarmedUp = true; } 
+      next: () => {
+        this.isBackendWarmedUp = true;
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        this.isBackendWarmedUp = true;
+        this.cdr.markForCheck();
+      }
     });
 
     const analyticsId = (environment as any).googleAnalyticsId;
@@ -170,14 +187,40 @@ export class AppComponent implements OnInit, OnDestroy {
       script.src = `https://www.googletagmanager.com/gtag/js?id=${analyticsId}`;
       document.head.appendChild(script);
       (window as any).dataLayer = (window as any).dataLayer || [];
-      function gtag(...args: any[]) { (window as any).dataLayer.push(args); }
+      function gtag(..._args: any[]) {
+        // GA4 requires the native Arguments object rather than a plain array
+        (window as any).dataLayer.push(arguments);
+      }
       gtag('js', new Date());
       gtag('config', analyticsId);
     }
   }
 
   ngOnDestroy() {
-    this.intervals.forEach(i => clearInterval(i));
+    this.clearAutoDetectInterval();
+    this.clearDesignExtractInterval();
+    this.clearAnalysisInterval();
+  }
+
+  private clearAutoDetectInterval() {
+    if (this.autoDetectInterval) {
+      clearInterval(this.autoDetectInterval);
+      this.autoDetectInterval = null;
+    }
+  }
+
+  private clearDesignExtractInterval() {
+    if (this.designExtractInterval) {
+      clearInterval(this.designExtractInterval);
+      this.designExtractInterval = null;
+    }
+  }
+
+  private clearAnalysisInterval() {
+    if (this.analysisInterval) {
+      clearInterval(this.analysisInterval);
+      this.analysisInterval = null;
+    }
   }
 
   getRevitColumnId(count: number, shape: 'Square' | 'Rectangle'): string {
@@ -201,28 +244,32 @@ export class AppComponent implements OnInit, OnDestroy {
   generateModel(count: number, shape: 'Square' | 'Rectangle'): BlueprintModel {
     const rods: any[] = [];
     const spacings: any[] = [];
-    let L = 0; let S = 0;
-    
+    let L = 0;
+    let S = 0;
+
     if (shape === 'Square') {
       if (count === 16) {
         // Special case: 16-Rod "Square" configuration translates to a 6x4 layout (L=5, S=3)
-        L = 5; 
+        L = 5;
         S = 3;
       } else {
         const N = count / 4;
-        L = N; S = N;
+        L = N;
+        S = N;
       }
     } else {
-      S = 1; L = (count / 2) - 1;
+      S = 1;
+      L = (count / 2) - 1;
     }
-    
+
     const segmentLen = 65;
-    const width = L * segmentLen; 
+    const width = L * segmentLen;
     const height = S * segmentLen;
-    const padX = 60; const padY = 60; // Base margin to prevent edge cropping
+    const padX = 60;
+    const padY = 60; // Base margin to prevent edge cropping
     const vbW = width + padX * 2;
     const vbH = height + padY * 2;
-    
+
     // Top Edge (L-R)
     for (let i = 0; i < L; i++) rods.push({ cx: padX + (width / L) * i, cy: padY });
     // Right Edge (T-B)
@@ -233,44 +280,49 @@ export class AppComponent implements OnInit, OnDestroy {
     for (let i = 0; i < S; i++) rods.push({ cx: padX, cy: padY + height - (height / S) * i });
 
     // Calculate input box positions with a uniform physical offset across all aspect ratios
-    const offsetPx = 34; // Uniform SVG pixel offset distance from the rebar boundary line
+    const offsetPx = 34;
 
     for (let i = 0; i < rods.length; i++) {
-        const r1 = rods[i];
-        const r2 = rods[(i + 1) % rods.length];
-        const mx = (r1.cx + r2.cx) / 2;
-        const my = (r1.cy + r2.cy) / 2;
-        
-        let offsetX = 0; let offsetY = 0;
-        
-        // Match edge orientation with threshold tolerance for precision
-        if (Math.abs(r1.cy - padY) < 1 && Math.abs(r2.cy - padY) < 1) offsetY = -offsetPx; 
-        else if (Math.abs(r1.cx - (padX + width)) < 1 && Math.abs(r2.cx - (padX + width)) < 1) offsetX = offsetPx; 
-        else if (Math.abs(r1.cy - (padY + height)) < 1 && Math.abs(r2.cy - (padY + height)) < 1) offsetY = offsetPx; 
-        else if (Math.abs(r1.cx - padX) < 1 && Math.abs(r2.cx - padX) < 1) offsetX = -offsetPx; 
+      const r1 = rods[i];
+      const r2 = rods[(i + 1) % rods.length];
+      const mx = (r1.cx + r2.cx) / 2;
+      const my = (r1.cy + r2.cy) / 2;
 
-        spacings.push({
-            idx: i,
-            x: ((mx + offsetX) / vbW) * 100,
-            y: ((my + offsetY) / vbH) * 100,
-            value: null,
-            userEdited: false,
-            opposite: (i + (L + S)) % ((L + S) * 2)
-        });
+      let offsetX = 0;
+      let offsetY = 0;
+
+      // Match edge orientation with threshold tolerance for precision
+      if (Math.abs(r1.cy - padY) < 1 && Math.abs(r2.cy - padY) < 1) offsetY = -offsetPx;
+      else if (Math.abs(r1.cx - (padX + width)) < 1 && Math.abs(r2.cx - (padX + width)) < 1) offsetX = offsetPx;
+      else if (Math.abs(r1.cy - (padY + height)) < 1 && Math.abs(r2.cy - (padY + height)) < 1) offsetY = offsetPx;
+      else if (Math.abs(r1.cx - padX) < 1 && Math.abs(r2.cx - padX) < 1) offsetX = -offsetPx;
+
+      spacings.push({
+        idx: i,
+        x: ((mx + offsetX) / vbW) * 100,
+        y: ((my + offsetY) / vbH) * 100,
+        value: null,
+        userEdited: false,
+        opposite: (i + (L + S)) % ((L + S) * 2)
+      });
     }
 
     let calculatedMaxWidth = shape === 'Square' ? Math.min(vbW * 1.2, 350) : Math.min(Math.max(vbW * 1.5, 300), 500);
-    
+
     // Override max width specifically for 16-rod models so they render cleanly on both desktop and mobile
     if (count === 16) {
-        calculatedMaxWidth = Math.min(Math.max(vbW * 1.5, 300), 500);
+      calculatedMaxWidth = Math.min(Math.max(vbW * 1.5, 300), 500);
     }
 
     return {
-        id: this.getRevitColumnId(count, shape), count, shape,
-        viewBox: `0 0 ${vbW} ${vbH}`, maxWidth: calculatedMaxWidth,
-        firstEditedIdx: null,
-        rods, spacings
+      id: this.getRevitColumnId(count, shape),
+      count,
+      shape,
+      viewBox: `0 0 ${vbW} ${vbH}`,
+      maxWidth: calculatedMaxWidth,
+      firstEditedIdx: null,
+      rods,
+      spacings
     };
   }
 
@@ -287,7 +339,7 @@ export class AppComponent implements OnInit, OnDestroy {
     this.cdr.markForCheck();
   }
 
-  getQualityTier(score: number): { label: string, color: 'green' | 'yellow' | 'red' } {
+  getQualityTier(score: number): { label: string; color: 'green' | 'yellow' | 'red' } {
     if (score > 95) return { label: 'Excellent', color: 'green' };
     if (score >= 90) return { label: 'Acceptable', color: 'green' };
     if (score >= 80) return { label: 'Minor Deviation', color: 'yellow' };
@@ -304,22 +356,46 @@ export class AppComponent implements OnInit, OnDestroy {
         let w = img.width;
         let h = img.height;
         if (w <= maxDim && h <= maxDim) {
-            resolve(file);
-            return;
+          resolve(file);
+          return;
         }
         const scale = maxDim / Math.max(w, h);
         w = Math.floor(w * scale);
         h = Math.floor(h * scale);
-        
+
         const canvas = document.createElement('canvas');
         canvas.width = w;
         canvas.height = h;
-        const ctx = canvas.getContext('2d')!;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          resolve(file);
+          return;
+        }
         ctx.drawImage(img, 0, 0, w, h);
-        
+
         canvas.toBlob((blob) => {
-            resolve(blob ? new File([blob], file.name, { type: 'image/jpeg' }) : file);
+          resolve(blob ? new File([blob], file.name, { type: 'image/jpeg' }) : file);
         }, 'image/jpeg', quality);
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(objectUrl);
+        resolve(file);
+      };
+      img.src = objectUrl;
+    });
+  }
+
+  private getImageDimensions(file: File): Promise<{ width: number; height: number }> {
+    return new Promise((resolve) => {
+      const img = new Image();
+      const objectUrl = URL.createObjectURL(file);
+      img.onload = () => {
+        URL.revokeObjectURL(objectUrl);
+        resolve({ width: img.naturalWidth || img.width, height: img.naturalHeight || img.height });
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(objectUrl);
+        resolve({ width: 0, height: 0 });
       };
       img.src = objectUrl;
     });
@@ -350,20 +426,19 @@ export class AppComponent implements OnInit, OnDestroy {
   fullReset() {
     this.cancelAutoDetect();
     this.cancelAnalysis();
-    this.realImageFile = null;
-    this.designImageFile = null;
-    this.realImagePreview = null;
-    this.designImagePreview = null;
-    this.timers.autoDetect = 0;
-    this.timers.autoDetectRun = false;
-    this.timers.autoDetectCancelled = false;
+    this.clearSiteImage();
+    this.clearDesignImage();
+    this.sideExtractedState = { spacing_mm: 150 };
     this.designInputMode = 'upload';
     this.resetMarkings();
   }
 
   clearSiteImage() {
+    this.cancelAutoDetect();
     this.realImageFile = null;
     this.realImagePreview = null;
+    this.imgNatWidth = 0;
+    this.imgNatHeight = 0;
     this.timers.autoDetect = 0;
     this.timers.autoDetectRun = false;
     this.timers.autoDetectCancelled = false;
@@ -371,16 +446,25 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   clearDesignImage() {
+    this.currentDesignExtractId++;
+    this.clearDesignExtractInterval();
+    this.timers.aiRunning = false;
+    this.timers.ai = 0;
+    this.designExtractionPromise = null;
     this.designImageFile = null;
     this.designImagePreview = null;
     this.extractedModel = null;
-    this.extractedRadius = null; 
+    this.extractedRadius = null;
+    this.hasExtractedData = false;
+    this.designExtractFailed = false;
     this.cdr.markForCheck();
   }
 
   resetMarkings() {
     this.rodPoints = [];
     this.refPoints = [];
+    this.scaleRodA = 1;
+    this.scaleRodB = 2;
     this.result = null;
     this.revitData = null;
     this.mode = 'rods';
@@ -389,11 +473,12 @@ export class AppComponent implements OnInit, OnDestroy {
     this.authorityEmail = '';
     this.isEmailSending = false;
     this.emailSent = false;
+    this.emailError = null;
     this.cdr.markForCheck();
   }
 
   onDesignFileSelected(event: any) {
-    const file = event.target.files[0];
+    const file = event.target?.files?.[0];
     if (file) {
       this.designImageFile = file;
       this.designInputMode = 'upload';
@@ -405,57 +490,61 @@ export class AppComponent implements OnInit, OnDestroy {
       };
       reader.readAsDataURL(file);
     }
-    if(this.fileInputDesign) this.fileInputDesign.nativeElement.value = '';
+    if (this.fileInputDesign) this.fileInputDesign.nativeElement.value = '';
   }
 
   triggerReExtract() {
     if (this.designImageFile) {
-        this.startDesignExtraction(this.designImageFile);
+      this.startDesignExtraction(this.designImageFile);
     }
   }
 
   alignSpacings(spacings: number[], targetL: number, targetS: number): number[] {
     const total = (targetL + targetS) * 2;
     if (spacings.length !== total) return spacings;
-    
+
     let bestShift = 0;
     let minVariance = Infinity;
 
     const getVariance = (arr: number[]) => {
-        if (arr.length <= 1) return 0;
-        const mean = arr.reduce((a, b) => a + b, 0) / arr.length;
-        return arr.reduce((a, b) => a + Math.pow(b - mean, 2), 0);
+      if (arr.length <= 1) return 0;
+      const mean = arr.reduce((a, b) => a + b, 0) / arr.length;
+      return arr.reduce((a, b) => a + Math.pow(b - mean, 2), 0);
     };
 
     for (let shift = 0; shift < total; shift++) {
-        const rotated = [...spacings.slice(shift), ...spacings.slice(0, shift)];
-        const l1 = rotated.slice(0, targetL);
-        const l2 = rotated.slice(targetL + targetS, targetL + targetS + targetL);
-        
-        const v1 = getVariance(l1);
-        const v2 = getVariance(l2);
-        
-        if ((v1 + v2) < minVariance) {
-            minVariance = v1 + v2;
-            bestShift = shift;
-        }
+      const rotated = [...spacings.slice(shift), ...spacings.slice(0, shift)];
+      const l1 = rotated.slice(0, targetL);
+      const l2 = rotated.slice(targetL + targetS, targetL + targetS + targetL);
+
+      const v1 = getVariance(l1);
+      const v2 = getVariance(l2);
+
+      if ((v1 + v2) < minVariance) {
+        minVariance = v1 + v2;
+        bestShift = shift;
+      }
     }
     return [...spacings.slice(bestShift), ...spacings.slice(0, bestShift)];
   }
 
   async startDesignExtraction(file: File) {
     const execId = ++this.currentDesignExtractId;
+    this.clearDesignExtractInterval();
     this.timers.aiRunning = true;
     this.timers.ai = 0;
-    
+    this.hasExtractedData = false;
+    this.designExtractFailed = false;
+    this.extractedModel = null;
+    this.extractedRadius = null;
+
     const start = performance.now();
-    const interval = setInterval(() => {
-      if(this.timers.aiRunning) {
+    this.designExtractInterval = setInterval(() => {
+      if (this.timers.aiRunning) {
         this.timers.ai = (performance.now() - start) / 1000;
         this.cdr.markForCheck();
       }
     }, 30);
-    this.intervals.push(interval);
 
     this.designExtractionPromise = (async () => {
       try {
@@ -464,68 +553,118 @@ export class AppComponent implements OnInit, OnDestroy {
 
         if (this.currentDesignExtractId !== execId) return;
 
-        if (this.viewMode === 'top' && data?.count > 0) {
-          let targetModel = this.TOP_MODELS.find(m => m.count === data.count);
-          
-          if ([8, 10, 12].includes(data.count)) {
-            const rectMatch = this.TOP_MODELS.find(m => m.count === data.count && m.shape === 'Rectangle');
-            if (rectMatch) targetModel = rectMatch;
-          }
-          
-          if (!targetModel) targetModel = this.TOP_MODELS[0]; 
-          if (targetModel) {
-            const modelToPopulate = JSON.parse(JSON.stringify(targetModel));
-            this.extractedRadius = data.radius_mm || null;
-            
-            if (Array.isArray(data.spacings_mm)) {
-               let mappedSpacings = data.spacings_mm;
-               
-               if (targetModel.shape === 'Rectangle' || (targetModel.count === 16 && targetModel.shape === 'Square')) {
-                  let S_align = 1; 
-                  let L_align = (data.count / 2) - 1;
-                  
-                  if (targetModel.count === 16 && targetModel.shape === 'Square') {
-                      L_align = 5;
-                      S_align = 3;
-                  }
-                  
-                  mappedSpacings = this.alignSpacings(data.spacings_mm, L_align, S_align);
-               }
-               
-               modelToPopulate.spacings.forEach((sp: any, i: number) => {
-                 sp.value = mappedSpacings[i] !== undefined ? mappedSpacings[i] : null;
-                 sp.userEdited = true; // Mark AI extracted as explicitly touched
-               });
-               modelToPopulate.firstEditedIdx = -1; // Disables the auto-population override for AI extracted models
+        if (!data) {
+          this.designExtractFailed = true;
+          return;
+        }
+
+        if (this.viewMode === 'top') {
+          if (data.count > 0) {
+            let targetModel = this.TOP_MODELS.find(m => m.count === data.count);
+
+            if ([8, 10, 12].includes(data.count)) {
+              const rectMatch = this.TOP_MODELS.find(m => m.count === data.count && m.shape === 'Rectangle');
+              if (rectMatch) targetModel = rectMatch;
             }
+
+            let modelToPopulate: BlueprintModel;
+            if (targetModel) {
+              modelToPopulate = JSON.parse(JSON.stringify(targetModel));
+            } else {
+              // Build a custom list model when AI detects a rod count not in preset SVGs
+              const customSpacings = Array.from({ length: data.count }, (_, idx) => ({
+                idx,
+                x: 0,
+                y: 0,
+                value: null as number | null,
+                userEdited: false
+              }));
+              modelToPopulate = {
+                id: `C${data.count}`,
+                count: data.count,
+                shape: 'Custom',
+                rods: [],
+                spacings: customSpacings,
+                firstEditedIdx: -1
+              };
+            }
+
+            this.extractedRadius = data.radius_mm || null;
+
+            if (Array.isArray(data.spacings_mm)) {
+              let mappedSpacings = data.spacings_mm;
+
+              if (modelToPopulate.shape === 'Rectangle' || (modelToPopulate.count === 16 && modelToPopulate.shape === 'Square')) {
+                let S_align = 1;
+                let L_align = (data.count / 2) - 1;
+
+                if (modelToPopulate.count === 16 && modelToPopulate.shape === 'Square') {
+                  L_align = 5;
+                  S_align = 3;
+                }
+
+                mappedSpacings = this.alignSpacings(data.spacings_mm, L_align, S_align);
+              }
+
+              modelToPopulate.spacings.forEach((sp: any, i: number) => {
+                sp.value = mappedSpacings[i] !== undefined ? mappedSpacings[i] : null;
+                sp.userEdited = true; // Mark AI extracted as explicitly touched
+              });
+              modelToPopulate.firstEditedIdx = -1; // Disables the auto-population override for AI extracted models
+            }
+
             this.extractedModel = modelToPopulate;
+            this.hasExtractedData = true;
+          } else {
+            this.designExtractFailed = true;
           }
         } else if (this.viewMode === 'side') {
-           this.sideExtractedState.spacing_mm = data.spacing_mm || this.sideExtractedState.spacing_mm;
+          if (data.spacing_mm === null) {
+            this.sideExtractedState.spacing_mm = null;
+            this.hasExtractedData = true;
+          } else if (typeof data.spacing_mm === 'number' && data.spacing_mm > 0) {
+            this.sideExtractedState.spacing_mm = data.spacing_mm;
+            this.hasExtractedData = true;
+          } else {
+            this.designExtractFailed = true;
+          }
         }
       } catch (err) {
-        console.error("Design Extract Error", err);
+        console.error('Design Extract Error', err);
+        if (this.currentDesignExtractId === execId) {
+          this.designExtractFailed = true;
+        }
       } finally {
         if (this.currentDesignExtractId === execId) {
-            this.timers.aiRunning = false;
-            clearInterval(interval);
-            this.cdr.markForCheck();
+          this.timers.aiRunning = false;
+          this.clearDesignExtractInterval();
+          this.cdr.markForCheck();
         }
       }
     })();
   }
 
   onSideStirrupCountChange() {
-    const count = Math.max(2, this.sideManualState.stirrupCount);
+    const count = Math.max(2, Math.floor(this.sideManualState.stirrupCount || 2));
+    this.sideManualState.stirrupCount = count;
     const numSpacings = count - 1;
-    
+
+    if (this.sideManualState.firstEditedIdx !== null && this.sideManualState.firstEditedIdx >= numSpacings) {
+      this.sideManualState.firstEditedIdx = null;
+    }
+
+    const masterVal = this.sideManualState.firstEditedIdx !== null
+      ? this.sideManualState.spacings_mm[this.sideManualState.firstEditedIdx]?.value ?? null
+      : null;
+
     const newSpacings = [];
     for (let i = 0; i < numSpacings; i++) {
-        newSpacings.push({
-            idx: i,
-            value: this.sideManualState.spacings_mm[i]?.value || null,
-            userEdited: this.sideManualState.spacings_mm[i]?.userEdited || false
-        });
+      const existing = this.sideManualState.spacings_mm[i];
+      newSpacings.push({
+        idx: i,
+        value: existing ? existing.value : masterVal,
+        userEdited: existing ? existing.userEdited : false
+      });
     }
     this.sideManualState.spacings_mm = newSpacings;
     this.cdr.markForCheck();
@@ -534,36 +673,36 @@ export class AppComponent implements OnInit, OnDestroy {
   onSideSpacingChange(idx: number, newValue: number | null) {
     const spacing = this.sideManualState.spacings_mm[idx];
     if (!spacing) return;
-    
+
     spacing.value = newValue;
     spacing.userEdited = true;
-    
+
     if (this.sideManualState.firstEditedIdx === null) {
-        this.sideManualState.firstEditedIdx = idx;
+      this.sideManualState.firstEditedIdx = idx;
     }
-    
+
     if (this.sideManualState.firstEditedIdx === idx) {
-        this.sideManualState.spacings_mm.forEach((s, i) => {
-            if (i !== idx && !s.userEdited) {
-                s.value = newValue;
-            }
-        });
+      this.sideManualState.spacings_mm.forEach((s, i) => {
+        if (i !== idx && !s.userEdited) {
+          s.value = newValue;
+        }
+      });
     }
     this.cdr.markForCheck();
   }
 
   onRodCountChange() {
     if (this.selectedRodCount === 'custom') {
-        this.selectedShape = 'Custom';
-        this.generateCustomModel();
-        return;
+      this.selectedShape = 'Custom';
+      this.generateCustomModel();
+      return;
     }
     const count = Number(this.selectedRodCount);
     const available = this.TOP_MODELS.filter(m => m.count === count);
     if (available.length > 0) {
-       const shapeExists = available.find(m => m.shape === this.selectedShape);
-       if (!shapeExists) this.selectedShape = available[0].shape as 'Square' | 'Rectangle';
-       this.updateActiveModel();
+      const shapeExists = available.find(m => m.shape === this.selectedShape);
+      if (!shapeExists) this.selectedShape = available[0].shape as 'Square' | 'Rectangle';
+      this.updateActiveModel();
     }
   }
 
@@ -574,8 +713,8 @@ export class AppComponent implements OnInit, OnDestroy {
 
   updateActiveModel() {
     if (this.selectedRodCount === 'custom') {
-        this.generateCustomModel();
-        return;
+      this.generateCustomModel();
+      return;
     }
     const count = Number(this.selectedRodCount);
     const selected = this.TOP_MODELS.find(m => m.count === count && m.shape === this.selectedShape);
@@ -586,14 +725,18 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   generateCustomModel() {
-    this.customRodCount = Math.max(4, this.customRodCount);
+    this.customRodCount = Math.max(4, Math.floor(this.customRodCount || 4));
     const customSpacings = [];
     for (let i = 0; i < this.customRodCount; i++) {
-        customSpacings.push({ idx: i, x: 0, y: 0, value: null, userEdited: false });
+      customSpacings.push({ idx: i, x: 0, y: 0, value: null, userEdited: false });
     }
     this.activeModel = {
-        id: 'custom', count: 'custom', shape: 'Custom',
-        rods: [], spacings: customSpacings, firstEditedIdx: null
+      id: 'custom',
+      count: 'custom',
+      shape: 'Custom',
+      rods: [],
+      spacings: customSpacings,
+      firstEditedIdx: null
     };
     this.cdr.markForCheck();
   }
@@ -611,13 +754,13 @@ export class AppComponent implements OnInit, OnDestroy {
     if (spacing) {
       spacing.value = newValue;
       spacing.userEdited = true;
-      
+
       if (model.firstEditedIdx === undefined) model.firstEditedIdx = null;
-      
+
       if (model.firstEditedIdx === null) {
         model.firstEditedIdx = idx;
       }
-      
+
       if (model.firstEditedIdx === idx) {
         // Master field seamlessly broadcasts multiple typing keystrokes to all untouched fields
         model.spacings.forEach(s => {
@@ -629,14 +772,14 @@ export class AppComponent implements OnInit, OnDestroy {
         // Apply secondary mirroring to the geometric opposite edge unless explicitly modified
         const opp = model.spacings.find(s => s.idx === spacing.opposite);
         if (opp && !opp.userEdited) {
-           opp.value = newValue;
+          opp.value = newValue;
         }
       }
     }
   }
-  
+
   getRodNumbersArray() {
-    return Array.from({length: this.rodPoints.length}, (_, i) => i + 1);
+    return Array.from({ length: this.rodPoints.length }, (_, i) => i + 1);
   }
 
   getToRodNumbersArray() {
@@ -653,11 +796,27 @@ export class AppComponent implements OnInit, OnDestroy {
     }
   }
 
-  onFileSelected(event: any, type: 'real') {
-    const file = event.target.files[0];
+  private syncScaleRodIndices() {
+    const count = this.rodPoints.length;
+    if (count < 2) {
+      this.scaleRodA = 1;
+      this.scaleRodB = 2;
+      return;
+    }
+    if (this.scaleRodA < 1 || this.scaleRodA > count) {
+      this.scaleRodA = 1;
+    }
+    if (this.scaleRodB < 1 || this.scaleRodB > count || this.scaleRodB === this.scaleRodA) {
+      const available = this.getToRodNumbersArray();
+      this.scaleRodB = available.length > 0 ? available[0] : (this.scaleRodA === 1 ? 2 : 1);
+    }
+  }
+
+  onFileSelected(event: any, _type: 'real') {
+    const file = event.target?.files?.[0];
     if (file) {
       this.realImageFile = file;
-      this.imgNatWidth = 0; 
+      this.imgNatWidth = 0;
       this.imgNatHeight = 0;
       const reader = new FileReader();
       reader.onload = (e: any) => {
@@ -670,7 +829,7 @@ export class AppComponent implements OnInit, OnDestroy {
       };
       reader.readAsDataURL(file);
     }
-    if(this.fileInputReal) this.fileInputReal.nativeElement.value = '';
+    if (this.fileInputReal) this.fileInputReal.nativeElement.value = '';
   }
 
   onImageLoad(event: Event) {
@@ -681,12 +840,14 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   onImageClick(event: MouseEvent) {
-    if (!this.realImagePreview) return;
+    if (!this.realImagePreview || this.isAutoDetecting || this.isAnalyzing) return;
     const img = this.imageElement.nativeElement;
     this.imgNatWidth = img.naturalWidth;
     this.imgNatHeight = img.naturalHeight;
 
     const rect = img.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+
     const scaleX = img.naturalWidth / rect.width;
     const scaleY = img.naturalHeight / rect.height;
     const x = Math.round((event.clientX - rect.left) * scaleX);
@@ -694,6 +855,7 @@ export class AppComponent implements OnInit, OnDestroy {
 
     if (this.mode === 'rods') {
       this.rodPoints = [...this.rodPoints, [x, y]];
+      this.syncScaleRodIndices();
     } else {
       if (this.refPoints.length < 2 && this.scaleMode === 'freehand') {
         this.refPoints = [...this.refPoints, [x, y]];
@@ -709,13 +871,17 @@ export class AppComponent implements OnInit, OnDestroy {
     this.draggingPointType = type;
     this.dragStartX = event.clientX;
     this.dragStartY = event.clientY;
-    
+
     const pt = type === 'rod' ? this.rodPoints[index] : this.refPoints[index];
     this.dragStartPointX = pt[0];
     this.dragStartPointY = pt[1];
     this.hasMoved = false;
 
-    (event.target as HTMLElement).setPointerCapture(event.pointerId);
+    try {
+      (event.target as HTMLElement).setPointerCapture(event.pointerId);
+    } catch {
+      // Ignore if pointer capture is unsupported for this pointer event
+    }
   }
 
   onPointerMove(event: PointerEvent) {
@@ -731,6 +897,8 @@ export class AppComponent implements OnInit, OnDestroy {
     if (this.hasMoved) {
       const img = this.imageElement.nativeElement;
       const rect = img.getBoundingClientRect();
+      if (!rect.width || !rect.height) return;
+
       const scaleX = img.naturalWidth / rect.width;
       const scaleY = img.naturalHeight / rect.height;
 
@@ -757,20 +925,50 @@ export class AppComponent implements OnInit, OnDestroy {
     if (this.draggingPointIndex === null) return;
     event.preventDefault();
     event.stopPropagation();
-    (event.target as HTMLElement).releasePointerCapture(event.pointerId);
+
+    try {
+      const target = event.target as HTMLElement;
+      if (target.hasPointerCapture?.(event.pointerId)) {
+        target.releasePointerCapture(event.pointerId);
+      }
+    } catch {
+      // Safe fallback when pointer capture already ended
+    }
 
     if (!this.hasMoved) {
-      if (type === 'rod') this.rodPoints = this.rodPoints.filter((_, i) => i !== index);
-      else this.refPoints = this.refPoints.filter((_, i) => i !== index);
+      if (type === 'rod') {
+        this.rodPoints = this.rodPoints.filter((_, i) => i !== index);
+        this.syncScaleRodIndices();
+      } else {
+        this.refPoints = this.refPoints.filter((_, i) => i !== index);
+      }
       this.cdr.markForCheck();
     }
     this.draggingPointIndex = null;
     this.draggingPointType = null;
   }
 
+  onPointerCancel(event: PointerEvent) {
+    try {
+      const target = event.target as HTMLElement;
+      if (target.hasPointerCapture?.(event.pointerId)) {
+        target.releasePointerCapture(event.pointerId);
+      }
+    } catch {
+      // Ignore
+    }
+    this.draggingPointIndex = null;
+    this.draggingPointType = null;
+    this.hasMoved = false;
+  }
+
   undoLast() {
-    if (this.mode === 'rods' && this.rodPoints.length > 0) this.rodPoints = this.rodPoints.slice(0, -1);
-    else if (this.mode === 'ref' && this.refPoints.length > 0) this.refPoints = this.refPoints.slice(0, -1);
+    if (this.mode === 'rods' && this.rodPoints.length > 0) {
+      this.rodPoints = this.rodPoints.slice(0, -1);
+      this.syncScaleRodIndices();
+    } else if (this.mode === 'ref' && this.refPoints.length > 0) {
+      this.refPoints = this.refPoints.slice(0, -1);
+    }
     this.cdr.markForCheck();
   }
 
@@ -784,7 +982,7 @@ export class AppComponent implements OnInit, OnDestroy {
     const originalFirst = points[0];
     const cx = points.reduce((sum, p) => sum + p[0], 0) / points.length;
     const cy = points.reduce((sum, p) => sum + p[1], 0) / points.length;
-    let sortedPts = [...points].sort((a, b) => {
+    const sortedPts = [...points].sort((a, b) => {
       const angleA = Math.atan2(a[1] - cy, a[0] - cx);
       const angleB = Math.atan2(b[1] - cy, b[0] - cx);
       return angleA - angleB;
@@ -803,43 +1001,56 @@ export class AppComponent implements OnInit, OnDestroy {
 
   async autoDetect() {
     if (!this.realImageFile) return;
+    this.clearAutoDetectInterval();
     this.isAutoDetecting = true;
     const execId = ++this.currentAutoDetectId;
     this.timers.autoDetectRunning = true;
     this.timers.autoDetectCancelled = false;
     this.timers.autoDetectRun = true;
     this.timers.autoDetect = 0;
-    
+
     const adStart = performance.now();
-    const adInterval = setInterval(() => {
-      if(this.timers.autoDetectRunning) {
+    this.autoDetectInterval = setInterval(() => {
+      if (this.timers.autoDetectRunning) {
         this.timers.autoDetect = (performance.now() - adStart) / 1000;
         this.cdr.markForCheck();
       }
     }, 30);
-    this.intervals.push(adInterval);
 
     const finishAutoDetect = () => {
       this.timers.autoDetectRunning = false;
       this.isAutoDetecting = false;
-      clearInterval(adInterval);
+      this.clearAutoDetectInterval();
       this.cdr.markForCheck();
     };
 
     try {
       if (this.imgNatWidth === 0 && this.imageElement?.nativeElement) {
-         this.imgNatWidth = this.imageElement.nativeElement.naturalWidth;
-         this.imgNatHeight = this.imageElement.nativeElement.naturalHeight;
+        this.imgNatWidth = this.imageElement.nativeElement.naturalWidth;
+        this.imgNatHeight = this.imageElement.nativeElement.naturalHeight;
       }
+      if (this.imgNatWidth === 0 && this.realImageFile) {
+        const dims = await this.getImageDimensions(this.realImageFile);
+        this.imgNatWidth = dims.width;
+        this.imgNatHeight = dims.height;
+      }
+      if (this.imgNatWidth === 0 || this.imgNatHeight === 0) {
+        finishAutoDetect();
+        return;
+      }
+
       const tinyB64 = await this.gemini.fileToBase64(this.realImageFile, 400);
       const aiPoints = await this.gemini.getAutoDetectPoints(tinyB64, this.viewMode);
-      
-      if (this.currentAutoDetectId !== execId || !this.isAutoDetecting) return;
-      if (!aiPoints || aiPoints.length === 0) { finishAutoDetect(); return; }
 
-      let mappedPoints = aiPoints.map((pt: any) => [
-          Math.round((pt.x || 0.5) * this.imgNatWidth),
-          Math.round((pt.y || 0.5) * this.imgNatHeight)
+      if (this.currentAutoDetectId !== execId || !this.isAutoDetecting) return;
+      if (!aiPoints || aiPoints.length === 0) {
+        finishAutoDetect();
+        return;
+      }
+
+      const mappedPoints = aiPoints.map((pt: any) => [
+        Math.round((pt.x ?? 0.5) * this.imgNatWidth),
+        Math.round((pt.y ?? 0.5) * this.imgNatHeight)
       ]);
 
       if (this.viewMode === 'top') {
@@ -847,9 +1058,10 @@ export class AppComponent implements OnInit, OnDestroy {
       } else {
         this.rodPoints = mappedPoints.sort((a, b) => a[1] - b[1]);
       }
+      this.syncScaleRodIndices();
       finishAutoDetect();
     } catch (e) {
-      console.error("Auto detection engine failed:", e);
+      console.error('Auto detection engine failed:', e);
       finishAutoDetect();
     }
   }
@@ -859,6 +1071,7 @@ export class AppComponent implements OnInit, OnDestroy {
     this.timers.autoDetectRunning = false;
     this.isAutoDetecting = false;
     this.timers.autoDetectCancelled = true;
+    this.clearAutoDetectInterval();
     this.cdr.markForCheck();
   }
 
@@ -866,82 +1079,87 @@ export class AppComponent implements OnInit, OnDestroy {
     this.currentAnalysisId++;
     this.isAnalyzing = false;
     this.timers.cvRunning = false;
-    this.intervals.forEach(i => clearInterval(i));
-    this.intervals = [];
+    this.clearAnalysisInterval();
     this.cdr.markForCheck();
   }
 
   async analyze() {
-    if (!this.realImageFile) return;
-    if (this.rodPoints.length < 2) { alert("Please mark points on the site image first."); return; }
+    if (!this.realImageFile || !this.imgNatWidth || !this.imgNatHeight) return;
+    if (this.rodPoints.length < 2) {
+      this.errorMsg = 'Please mark at least 2 points on the site image first.';
+      this.cdr.markForCheck();
+      return;
+    }
 
+    this.clearAnalysisInterval();
     this.isAnalyzing = true;
     const execId = ++this.currentAnalysisId;
     this.errorMsg = null;
     this.result = null;
     this.revitData = null;
     this.emailSent = false;
+    this.emailError = null;
     this.isEmailSending = false;
-    
+
     this.timers.total = 0;
-    this.timers.cv = 0; this.timers.cvRunning = false;
+    this.timers.cv = 0;
+    this.timers.cvRunning = false;
     this.timers.backendWarmup = 0;
 
     const overallStart = performance.now();
     let cvStart = overallStart;
 
-    const aInterval = setInterval(() => {
+    this.analysisInterval = setInterval(() => {
       const now = performance.now();
       this.timers.total = (now - overallStart) / 1000;
-      
+
       if (!this.isBackendWarmedUp || this.timers.aiRunning) {
-         if (!this.isBackendWarmedUp) {
-             this.timers.backendWarmup = (now - overallStart) / 1000;
-         }
-         cvStart = now; // Constantly reset cvStart while awaiting backend boot or AI extraction
+        if (!this.isBackendWarmedUp) {
+          this.timers.backendWarmup = (now - overallStart) / 1000;
+        }
+        cvStart = now; // Keep resetting cvStart while awaiting backend boot or AI extraction
       } else {
-         if (this.timers.cvRunning) this.timers.cv = (now - cvStart) / 1000;
+        if (this.timers.cvRunning) this.timers.cv = (now - cvStart) / 1000;
       }
       this.cdr.markForCheck();
     }, 30);
-    this.intervals.push(aInterval);
-    
+
     try {
       if (this.designInputMode === 'upload' && this.designExtractionPromise) {
-          await this.designExtractionPromise; 
+        await this.designExtractionPromise;
       }
       if (this.currentAnalysisId !== execId) return;
 
       let designData: any = {};
       const modelToUse = (this.designInputMode === 'upload' && this.extractedModel) ? this.extractedModel : this.activeModel;
       const radToUse = (this.designInputMode === 'upload' && this.extractedModel) ? this.extractedRadius : this.designRadius;
-      
+
       if (this.viewMode === 'top') {
-         designData = {
-           count: this.selectedRodCount === 'custom' && this.designInputMode === 'manual' ? this.customRodCount : modelToUse.count,
-           radius_mm: radToUse || 0,
-           spacings_mm: modelToUse.spacings.map(s => s.value || 0)
-         };
+        designData = {
+          count: (this.designInputMode === 'manual' && this.selectedRodCount === 'custom') ? this.customRodCount : modelToUse.count,
+          radius_mm: radToUse || 0,
+          spacings_mm: modelToUse.spacings.map(s => s.value || 0)
+        };
       } else {
-         if (this.designInputMode === 'upload') {
-            designData = {
-              spacing_mm: this.sideExtractedState.spacing_mm
-            };
-         } else {
-            designData = {
-              spacings_mm: this.sideManualState.spacings_mm.map(s => s.value || 0)
-            };
-         }
+        if (this.designInputMode === 'upload') {
+          designData = {
+            spacing_mm: this.sideExtractedState.spacing_mm || 0
+          };
+        } else {
+          designData = {
+            spacings_mm: this.sideManualState.spacings_mm.map(s => s.value || 0)
+          };
+        }
       }
 
       let payloadRefPoints = this.refPoints;
-      let payloadRefLength = this.refLengthInput.toString();
-      
+      let payloadRefLength = String(this.refLengthInput || 0);
+
       if (this.scaleMode === 'rods' && this.rodPoints.length >= 2) {
-          const idxA = Math.max(0, Math.min(this.scaleRodA - 1, this.rodPoints.length - 1));
-          const idxB = Math.max(0, Math.min(this.scaleRodB - 1, this.rodPoints.length - 1));
-          payloadRefPoints = [this.rodPoints[idxA], this.rodPoints[idxB]];
-          payloadRefLength = this.scaleRodDistance.toString();
+        const idxA = Math.max(0, Math.min(Number(this.scaleRodA) - 1, this.rodPoints.length - 1));
+        const idxB = Math.max(0, Math.min(Number(this.scaleRodB) - 1, this.rodPoints.length - 1));
+        payloadRefPoints = [this.rodPoints[idxA], this.rodPoints[idxB]];
+        payloadRefLength = String(this.scaleRodDistance || 0);
       }
 
       const finalNormRodPoints = this.rodPoints.map(p => [p[0] / this.imgNatWidth, p[1] / this.imgNatHeight]);
@@ -949,7 +1167,7 @@ export class AppComponent implements OnInit, OnDestroy {
 
       this.timers.cvRunning = true;
       const compressedReal = await this.compressFile(this.realImageFile!, 1600, 0.9);
-      
+
       const formData = new FormData();
       formData.append('real_image', compressedReal);
       formData.append('rod_points', JSON.stringify(finalNormRodPoints));
@@ -959,20 +1177,21 @@ export class AppComponent implements OnInit, OnDestroy {
 
       const endpoint = this.viewMode === 'top' ? '/analyze-cv' : '/analyze-cv/side';
       const cvRes = await firstValueFrom(this.http.post<any>(`${environment.apiBaseUrl}${endpoint}`, formData));
-      
+
       if (this.currentAnalysisId !== execId || !this.isAnalyzing) return;
-      this.timers.cvRunning = false;
-      this.isBackendWarmedUp = true; 
+      this.isBackendWarmedUp = true;
 
-      if (cvRes?.status !== 'success') { throw new Error("Computer Vision processing failed."); }
+      if (cvRes?.status !== 'success') {
+        throw new Error('Computer Vision processing failed.');
+      }
 
-      let defectData = { reset: true, rods: [] as number[], column_id: 'C8_Rect', frontend_points: finalNormRodPoints };
+      const defectData = { reset: true, rods: [] as number[], column_id: 'C8_Rect', frontend_points: finalNormRodPoints };
       let finalAnnotatedImage = cvRes.annotated_image;
       let scoreData;
 
       if (this.viewMode === 'top') {
         scoreData = this.scoring.calculateTopScore(designData, cvRes.actual_data, cvRes.has_scale);
-        
+
         // Root Cause Analysis: Identify defective rod(s) by tracking frequency of defective spacing pairs
         const rodFrequencies = new Map<number, number>();
         scoreData.table.forEach(r => {
@@ -988,30 +1207,31 @@ export class AppComponent implements OnInit, OnDestroy {
         });
 
         const sortedDefective = Array.from(rodFrequencies.entries())
-            .sort((a, b) => b[1] - a[1]).map(entry => entry[0]);
+          .sort((a, b) => b[1] - a[1])
+          .map(entry => entry[0]);
 
         defectData.rods = sortedDefective.slice(0, 3);
         defectData.reset = defectData.rods.length === 0;
-        defectData.column_id = this.selectedRodCount === 'custom' ? 'Custom' : modelToUse.id; 
+        defectData.column_id = (this.designInputMode === 'manual' && this.selectedRodCount === 'custom') ? 'Custom' : modelToUse.id;
       } else {
         scoreData = this.scoring.calculateSideScore(designData, cvRes.actual_data, cvRes.has_scale);
       }
 
-      let statuses: string[] = [];
+      const statuses: string[] = [];
       if (this.viewMode === 'top') {
-          for (let i = 0; i < cvRes.actual_data.distances.length; i++) {
-              const rStart = i + 1;
-              const rEnd = ((i + 1) % cvRes.actual_data.distances.length) + 1;
-              const paramLabel = `Distance R${rStart} to R${rEnd}`;
-              const row = scoreData.table.find(r => r.parameter === paramLabel);
-              statuses.push(row ? row.status : "NA");
-          }
+        for (let i = 0; i < cvRes.actual_data.distances.length; i++) {
+          const rStart = i + 1;
+          const rEnd = ((i + 1) % cvRes.actual_data.distances.length) + 1;
+          const paramLabel = `Distance R${rStart} to R${rEnd}`;
+          const row = scoreData.table.find(r => r.parameter === paramLabel);
+          statuses.push(row ? row.status : 'NA');
+        }
       } else {
-          for (let i = 0; i < cvRes.actual_data.spacings.length; i++) {
-              const paramLabel = `Spacing Bar ${i+1} to ${i+2}`;
-              const row = scoreData.table.find(r => r.parameter === paramLabel);
-              statuses.push(row ? row.status : "NA");
-          }
+        for (let i = 0; i < cvRes.actual_data.spacings.length; i++) {
+          const paramLabel = `Spacing Bar ${i + 1} to ${i + 2}`;
+          const row = scoreData.table.find(r => r.parameter === paramLabel);
+          statuses.push(row ? row.status : 'NA');
+        }
       }
 
       const formDataFinal = new FormData();
@@ -1019,13 +1239,16 @@ export class AppComponent implements OnInit, OnDestroy {
       formDataFinal.append('rod_points', JSON.stringify(finalNormRodPoints));
       formDataFinal.append('ref_points', JSON.stringify(normRefPoints));
       formDataFinal.append('ref_length', payloadRefPoints.length === 2 ? payloadRefLength : '0');
-      formDataFinal.append('design_data', JSON.stringify(designData)); 
+      formDataFinal.append('design_data', JSON.stringify(designData));
       formDataFinal.append('statuses', JSON.stringify(statuses));
 
       const cvResFinal = await firstValueFrom(this.http.post<any>(`${environment.apiBaseUrl}${endpoint}`, formDataFinal));
       if (this.currentAnalysisId !== execId) return;
-      if (cvResFinal?.status === 'success') { finalAnnotatedImage = cvResFinal.annotated_image; }
+      if (cvResFinal?.status === 'success') {
+        finalAnnotatedImage = cvResFinal.annotated_image;
+      }
 
+      this.timers.cvRunning = false;
       const qualityTier = this.getQualityTier(scoreData.score);
       this.result = {
         status: 'success',
@@ -1035,43 +1258,62 @@ export class AppComponent implements OnInit, OnDestroy {
         score_radius: scoreData.score_radius,
         score_spacing: scoreData.score_spacing,
         comparison_table: scoreData.table,
-        annotated_image: finalAnnotatedImage,
+        annotated_image: finalAnnotatedImage
       };
-      
-      this.revitData = defectData;
 
+      this.revitData = defectData;
     } catch (err: any) {
       console.error(err);
-      this.errorMsg = `Analysis Error: ${err.message || 'Server timeout or network failure.'}`;
+      if (this.currentAnalysisId === execId) {
+        this.errorMsg = `Analysis Error: ${err?.error?.message || err?.message || 'Server timeout or network failure.'}`;
+      }
     } finally {
       if (this.currentAnalysisId === execId) {
-          this.isAnalyzing = false;
-          this.timers.cvRunning = false;
-          clearInterval(aInterval);
-          this.cdr.markForCheck();
+        this.isAnalyzing = false;
+        this.timers.cvRunning = false;
+        this.clearAnalysisInterval();
+        this.cdr.markForCheck();
       }
     }
   }
 
   sendEmailReport() {
-    if (!this.columnNumber || !this.authorityEmail || !this.result) return;
+    const colNo = this.columnNumber.trim();
+    const email = this.authorityEmail.trim();
+    if (!colNo || !email || !this.result) return;
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      this.emailError = 'Please enter a valid email address.';
+      this.cdr.markForCheck();
+      return;
+    }
+
+    this.emailError = null;
     this.isEmailSending = true;
     this.cdr.markForCheck();
-    
+
     const payload = {
-      column_number: this.columnNumber, email: this.authorityEmail,
-      score: this.result.score, label: this.result.quality_tier?.label || 'Defective',
-      table: this.result.comparison_table, image: this.result.annotated_image
+      column_number: colNo,
+      email: email,
+      score: this.result.score,
+      label: this.result.quality_tier?.label || 'Defective',
+      table: this.result.comparison_table,
+      image: this.result.annotated_image
     };
 
     this.http.post<any>(`${environment.apiBaseUrl}/send-email-report`, payload).subscribe({
       next: (res) => {
-        if (res.status === 'success') this.emailSent = true;
+        if (res.status === 'success') {
+          this.emailSent = true;
+        } else {
+          this.emailError = res.message || 'Failed to initiate alert email.';
+        }
         this.isEmailSending = false;
         this.cdr.markForCheck();
       },
       error: (err) => {
-        alert("Server error while sending email.");
+        this.emailError = err?.error?.message || 'Server error while sending email.';
         this.isEmailSending = false;
         this.cdr.markForCheck();
       }
@@ -1081,11 +1323,28 @@ export class AppComponent implements OnInit, OnDestroy {
   async copyScript(scriptName: string) {
     try {
       const response = await firstValueFrom(this.http.get(`assets/downloads/${scriptName}`, { responseType: 'text' }));
-      await navigator.clipboard.writeText(response);
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(response);
+      } else {
+        const textarea = document.createElement('textarea');
+        textarea.value = response;
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+      }
       this.copiedStates[scriptName] = true;
       this.cdr.markForCheck();
-      setTimeout(() => { this.copiedStates[scriptName] = false; this.cdr.markForCheck(); }, 2000);
-    } catch (err) { alert(`Could not load ${scriptName}.`); }
+      setTimeout(() => {
+        this.copiedStates[scriptName] = false;
+        this.cdr.markForCheck();
+      }, 2000);
+    } catch {
+      this.errorMsg = `Could not load ${scriptName}.`;
+      this.cdr.markForCheck();
+    }
   }
 
   openImageInNewTab(base64Image: string) {
@@ -1098,14 +1357,26 @@ export class AppComponent implements OnInit, OnDestroy {
     }
   }
 
-  trackByIndex(index: number): number { return index; }
-  
+  trackByIndex(index: number): number {
+    return index;
+  }
+
+  private triggerBlobDownload(blob: Blob, filename: string) {
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => window.URL.revokeObjectURL(url), 1000);
+  }
+
   downloadRevitJson() {
     if (!this.revitData) return;
     const jsonString = JSON.stringify(this.revitData, null, 2);
     const blob = new Blob([jsonString], { type: 'application/json' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a'); a.href = url; a.download = 'highlight_rod.json'; a.click();
+    this.triggerBlobDownload(blob, 'highlight_rod.json');
   }
 
   downloadRodLinesJson() {
@@ -1114,27 +1385,34 @@ export class AppComponent implements OnInit, OnDestroy {
     const distanceRegex = /Distance R(\d+) to R(\d+)/i;
     for (const row of this.result.comparison_table) {
       const match = row.parameter.match(distanceRegex);
-      if (match) lines.push({ from: parseInt(match[1]), to: parseInt(match[2]), status: row.status });
+      if (match) lines.push({ from: parseInt(match[1], 10), to: parseInt(match[2], 10), status: row.status });
     }
-    const rodLinesData = { 
-      reset: lines.length === 0, column_id: this.revitData?.column_id || 'C8_Rect', 
-      lines: lines, frontend_points: this.revitData?.frontend_points || []
+    const rodLinesData = {
+      reset: lines.length === 0,
+      column_id: this.revitData?.column_id || 'C8_Rect',
+      lines: lines,
+      frontend_points: this.revitData?.frontend_points || []
     };
     const blob = new Blob([JSON.stringify(rodLinesData, null, 2)], { type: 'application/json' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a'); a.href = url; a.download = 'rod_lines.json'; a.click();
+    this.triggerBlobDownload(blob, 'rod_lines.json');
   }
 
   downloadCSV() {
     if (!this.result) return;
     const headers = ['Parameter', 'Design Spec', 'Site Actual', 'Status'];
-    const rows = this.result.comparison_table.map(row => [row.parameter, row.design, row.actual, row.status].map(val => `"${val}"`).join(','));
+    const rows = this.result.comparison_table.map(row =>
+      [row.parameter, row.design, row.actual, row.status].map(val => `"${val}"`).join(',')
+    );
     const blob = new Blob([[headers.join(','), ...rows].join('\n')], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a'); a.href = url; a.download = 'report.csv'; a.click();
+    this.triggerBlobDownload(blob, 'report.csv');
   }
 
   getStatusClass(status: string) {
-    switch(status) { case 'Acceptable': return 'status-ok'; case 'Minor Mismatch': return 'status-warn'; case 'Not Acceptable': return 'status-bad'; default: return 'status-na'; }
+    switch (status) {
+      case 'Acceptable': return 'status-ok';
+      case 'Minor Mismatch': return 'status-warn';
+      case 'Not Acceptable': return 'status-bad';
+      default: return 'status-na';
+    }
   }
 }

@@ -12,9 +12,10 @@ const targetPath = path.join(__dirname, 'src/environments/environment.ts');
 // Create the dynamic environment file content
 const envConfigFile = `export const environment = {
   production: true,
-  gemprismApiKey: '${process.env.GEMPRISM_API_KEY}',
+  gemprismApiKey: '${process.env.GEMPRISM_API_KEY || ''}',
   gemprismBaseUrl: '${process.env.GEMPRISM_BASE_URL || 'https://gemprism.vercel.app'}',
   apiBaseUrl: '${process.env.API_BASE_URL || 'https://rebaranalysis.onrender.com'}',
+  geminiModel: '${process.env.GEMINI_MODEL || 'gemini-flash-lite-latest'}',
   googleAnalyticsId: '${process.env.GOOGLE_ANALYTICS_ID || ''}'
 };
 `;

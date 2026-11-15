@@ -22,54 +22,58 @@ export class ScoringService {
     return isNaN(parsed) ? def : parsed;
   }
 
-  calculateTopScore(designData: any, actualData: any, hasScale: boolean): { score: number, score_count: number, score_radius: number | null, score_spacing: number, table: ComparisonRow[] } {
+  calculateTopScore(
+    designData: any,
+    actualData: any,
+    hasScale: boolean
+  ): { score: number; score_count: number; score_radius: number | null; score_spacing: number; table: ComparisonRow[] } {
     const tableRows: ComparisonRow[] = [];
-    
+
     // 1. Number of Bars (Rc) - Strict 100 / 0
     const dCount = this.safeInt(designData.count);
     const aCount = this.safeInt(actualData.count);
     const diffCount = Math.abs(dCount - aCount);
-    
+
     const scoreCount = diffCount === 0 ? 100 : 0;
-    
+
     tableRows.push({
-      parameter: "Number of rods",
+      parameter: 'Number of rods',
       design: String(dCount),
       actual: String(aCount),
-      status: diffCount === 0 ? "Acceptable" : "Not Acceptable"
+      status: diffCount === 0 ? 'Acceptable' : 'Not Acceptable'
     });
 
     // 2. Radius (Rr) - Based on IS 1786:2008 Mass/Dia Tolerance limits
     let scoreRadius = 100;
     const dRad = this.safeFloat(designData.radius_mm);
     const aRad = this.safeFloat(actualData.avg_radius);
-    
-    let radiusStatus: ComparisonRow['status'] = "NA";
-    let actualDisplay = "";
+
+    let radiusStatus: ComparisonRow['status'] = 'NA';
+    let actualDisplay = '';
 
     if (hasScale) {
       if (dRad > 0) {
         const diameter = dRad * 2;
-        
+
         // IS 1786:2008 Approximations for Diametrical Tolerance based on unit weight
-        let tol_pct = 2.0;
-        if (diameter <= 10) tol_pct = 3.5;
-        else if (diameter <= 16) tol_pct = 2.5; // Covers 12mm to 16mm
-        else tol_pct = 2.0; // Over 16mm
+        let tolPct = 2.0;
+        if (diameter <= 10) tolPct = 3.5;
+        else if (diameter <= 16) tolPct = 2.5; // Covers 12mm to 16mm
+        else tolPct = 2.0; // Over 16mm
 
         const errRad = Math.abs(dRad - aRad);
         const percentErr = (errRad / dRad) * 100;
-        
-        if (percentErr <= tol_pct) {
-          radiusStatus = "Acceptable";
+
+        if (percentErr <= tolPct) {
+          radiusStatus = 'Acceptable';
           scoreRadius = 100;
         } else {
-          radiusStatus = "Not Acceptable";
+          radiusStatus = 'Not Acceptable';
           scoreRadius = 0;
         }
         actualDisplay = `${aRad.toFixed(2)} mm`;
       } else {
-        radiusStatus = "Not Acceptable";
+        radiusStatus = 'Not Acceptable';
         scoreRadius = 0;
         actualDisplay = `${aRad.toFixed(2)} mm`;
       }
@@ -80,8 +84,8 @@ export class ScoringService {
     }
 
     tableRows.push({
-      parameter: "Radius of rods (avg)",
-      design: dRad > 0 ? `${dRad} mm` : "Not Specified",
+      parameter: 'Radius of rods (avg)',
+      design: dRad > 0 ? `${dRad} mm` : 'Not Specified',
       actual: actualDisplay,
       status: radiusStatus
     });
@@ -91,10 +95,10 @@ export class ScoringService {
     const dSpacings = rawDSpacings.map((x: any) => this.safeFloat(x));
     const rawASpacings = Array.isArray(actualData.distances) ? actualData.distances : [];
     const aSpacings = rawASpacings.map((x: any) => this.safeFloat(x));
-    
+
     let scoreSpacingAccum = 0;
     let validSpacingChecks = 0;
-    
+
     if (aCount > 1) {
       const dMax = Math.max(...(dSpacings.length ? dSpacings : [1]));
       const aMax = Math.max(...(aSpacings.length ? aSpacings : [1]));
@@ -103,28 +107,28 @@ export class ScoringService {
         const rStart = i + 1;
         const rEnd = ((i + 1) % aCount) + 1;
         const paramLabel = `Distance R${rStart} to R${rEnd}`;
-        
+
         const valActual = i < aSpacings.length ? aSpacings[i] : 0.0;
         const valDesign = i < dSpacings.length ? dSpacings[i] : null;
-        
-        let rowStatus: ComparisonRow['status'] = "NA";
+
+        let rowStatus: ComparisonRow['status'] = 'NA';
         let rowScore = 100;
-        
+
         if (valDesign !== null) {
           if (hasScale) {
             if (valDesign > 0) {
               // IS 456:2000 Tolerance limit checks
-              const tol_mm = valDesign <= 200 ? 10 : 15;
-              const err_mm = Math.abs(valDesign - valActual);
-              
-              if (err_mm <= tol_mm) {
-                rowStatus = "Acceptable";
+              const tolMm = valDesign <= 200 ? 10 : 15;
+              const errMm = Math.abs(valDesign - valActual);
+
+              if (errMm <= tolMm) {
+                rowStatus = 'Acceptable';
                 rowScore = 100;
               } else {
-                rowStatus = "Not Acceptable";
+                rowStatus = 'Not Acceptable';
                 rowScore = 0;
               }
-              
+
               scoreSpacingAccum += rowScore;
               validSpacingChecks++;
             }
@@ -133,25 +137,25 @@ export class ScoringService {
               const dNorm = valDesign / (dMax > 0 ? dMax : 1);
               const aNorm = valActual / (aMax > 0 ? aMax : 1);
               const diffRatio = Math.abs(dNorm - aNorm);
-              
+
               // Visual pixel-ratio fallback tolerance
               if (diffRatio <= 0.05) {
-                rowStatus = "Acceptable";
+                rowStatus = 'Acceptable';
                 rowScore = 100;
               } else {
-                rowStatus = "Not Acceptable";
+                rowStatus = 'Not Acceptable';
                 rowScore = 0;
               }
-              
+
               scoreSpacingAccum += rowScore;
               validSpacingChecks++;
             }
           }
         }
-        
+
         tableRows.push({
           parameter: paramLabel,
-          design: valDesign !== null ? `${valDesign} mm` : "Not Specified",
+          design: valDesign !== null && valDesign > 0 ? `${valDesign} mm` : 'Not Specified',
           actual: `${valActual.toFixed(2)} ${hasScale ? 'mm' : 'px'}`,
           status: rowStatus
         });
@@ -164,7 +168,7 @@ export class ScoringService {
     } else if (aCount !== dCount) {
       scoreSpacing = 0;
     }
-    
+
     // Formula: Final Score = (Rc + Rr + Rs) / 3
     let finalScore = 0;
     if (hasScale) {
@@ -172,87 +176,86 @@ export class ScoringService {
     } else {
       finalScore = (scoreCount + scoreSpacing) / 2;
     }
-        
-    return { 
-      score: Math.round(finalScore), 
-      score_count: Math.round(scoreCount), 
+
+    return {
+      score: Math.round(finalScore),
+      score_count: Math.round(scoreCount),
       score_radius: hasScale ? Math.round(scoreRadius) : 0, // Enforces 0% presentation in UI when no scale is provided
       score_spacing: Math.round(scoreSpacing),
-      table: tableRows 
+      table: tableRows
     };
   }
 
-  calculateSideScore(designData: any, actualData: any, hasScale: boolean): { score: number, score_count: number | null, score_radius: number | null, score_spacing: number | null, table: ComparisonRow[] } {
+  calculateSideScore(
+    designData: any,
+    actualData: any,
+    hasScale: boolean
+  ): { score: number; score_count: number | null; score_radius: number | null; score_spacing: number | null; table: ComparisonRow[] } {
     const singleDSpacing = this.safeFloat(designData.spacing_mm, -1);
     const dSpacings = Array.isArray(designData.spacings_mm) ? designData.spacings_mm.map((x: any) => this.safeFloat(x, 0)) : [];
-    
+
     const aSpacings: number[] = Array.isArray(actualData.spacings) ? actualData.spacings : [];
     const tableRows: ComparisonRow[] = [];
-    
+
     if (aSpacings.length === 0) {
-      return { 
-        score: 0, 
+      return {
+        score: 0,
         score_count: null,
         score_radius: null,
         score_spacing: 0,
-        table: [{ parameter: "Vertical Spacing", design: singleDSpacing > 0 ? `${singleDSpacing} mm` : "Not Specified", actual: "None detected", status: "Not Acceptable" }] 
+        table: [{
+          parameter: 'Vertical Spacing',
+          design: singleDSpacing > 0 ? `${singleDSpacing} mm` : 'Not Specified',
+          actual: 'None detected',
+          status: 'Not Acceptable'
+        }]
       };
     }
 
-    let totalScore = 0;
+    let validSpacingScoreAccum = 0;
+    let validChecks = 0;
 
     aSpacings.forEach((aSpacing, i) => {
       // Pick current target spacing from array (if provided), otherwise fallback to single spacing or 0
-      const dSpacing = singleDSpacing !== -1 ? singleDSpacing : (i < dSpacings.length ? dSpacings[i] : (dSpacings.length > 0 ? dSpacings[dSpacings.length - 1] : 0));
-      let score = 0;
-      let status: ComparisonRow['status'] = "NA";
-      let actualStr = "";
-      
-      if (hasScale) {
-        if (dSpacing > 0) {
-          // IS 456:2000 Tolerance limit checks
-          const tol_mm = dSpacing <= 200 ? 10 : 15;
-          const err_mm = Math.abs(dSpacing - aSpacing);
-          
-          if (err_mm <= tol_mm) {
-            status = "Acceptable";
-            score = 100;
-            actualStr = `${aSpacing.toFixed(2)} mm`;
-          } else {
-            status = "Not Acceptable";
-            score = 0;
-            actualStr = `${aSpacing.toFixed(2)} mm`;
-          }
+      const dSpacing = singleDSpacing !== -1
+        ? singleDSpacing
+        : (i < dSpacings.length ? dSpacings[i] : (dSpacings.length > 0 ? dSpacings[dSpacings.length - 1] : 0));
+
+      let status: ComparisonRow['status'] = 'NA';
+      const actualStr = `${aSpacing.toFixed(2)} ${hasScale ? 'mm' : 'px'}`;
+
+      if (hasScale && dSpacing > 0) {
+        // IS 456:2000 Tolerance limit checks
+        const tolMm = dSpacing <= 200 ? 10 : 15;
+        const errMm = Math.abs(dSpacing - aSpacing);
+
+        if (errMm <= tolMm) {
+          status = 'Acceptable';
+          validSpacingScoreAccum += 100;
         } else {
-          status = "Acceptable";
-          score = 100;
-          actualStr = `${aSpacing.toFixed(2)} mm`;
+          status = 'Not Acceptable';
         }
-      } else {
-        if (aSpacing > 0) {
-          score = 100; // Baseline fallback without physical scale
-          status = "NA";
-        }
-        actualStr = `${aSpacing.toFixed(2)} ${hasScale ? 'mm' : 'px'}`;
+        validChecks++;
       }
-      
-      totalScore += score;
 
       tableRows.push({
-        parameter: `Spacing Bar ${i+1} to ${i+2}`,
-        design: dSpacing > 0 ? `${dSpacing} mm` : "Not Specified",
+        parameter: `Spacing Bar ${i + 1} to ${i + 2}`,
+        design: dSpacing > 0 ? `${dSpacing} mm` : 'Not Specified',
         actual: actualStr,
         status: status
       });
     });
-    
-    const finalScore = Math.round(totalScore / aSpacings.length);
-    return { 
-      score: finalScore, 
+
+    const finalScore = validChecks > 0
+      ? Math.round(validSpacingScoreAccum / validChecks)
+      : 100;
+
+    return {
+      score: finalScore,
       score_count: null,
       score_radius: null,
       score_spacing: finalScore,
-      table: tableRows 
+      table: tableRows
     };
   }
 }

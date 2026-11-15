@@ -15,14 +15,25 @@ body {
 ::-webkit-scrollbar-track { @apply bg-slate-100; }
 ::-webkit-scrollbar-thumb { @apply bg-slate-300 rounded hover:bg-slate-400; }
 
+/* Hide number spinners inside compact SVG spacing inputs */
+.no-spinner::-webkit-outer-spin-button,
+.no-spinner::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.no-spinner {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
 .card {
   @apply bg-white rounded-xl shadow-sm border border-slate-200 p-5 sm:p-6 transition-all;
 }
 
 .btn {
   @apply px-4 py-2 rounded-lg font-medium transition-all duration-300 flex items-center gap-2 outline-none;
-  &:disabled { 
-    @apply opacity-40 cursor-not-allowed transform-none shadow-none; 
+  &:disabled {
+    @apply opacity-40 cursor-not-allowed transform-none shadow-none;
     filter: grayscale(100%);
   }
 }

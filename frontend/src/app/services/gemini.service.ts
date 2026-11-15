@@ -73,61 +73,68 @@ Output Structure (Strict JSON):
 
 @Injectable({ providedIn: 'root' })
 export class GeminiService {
-  
-  // --- Configure Gemini Models Here ---
-  public readonly MODEL_AUTO_DETECT = 'gemini-flash-latest';
-  public readonly MODEL_DESIGN_EXTRACT = 'gemini-flash-latest';
+  // Configured via frontend environment so the model can be swapped without touching code
+  public readonly geminiModel: string = (environment as any).geminiModel || 'gemini-flash-latest';
 
   constructor(private http: HttpClient) {}
 
   async fileToBase64(file: File, maxDim: number = 1000): Promise<string> {
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
       const img = new Image();
       const objectUrl = URL.createObjectURL(file);
+
       img.onload = () => {
         URL.revokeObjectURL(objectUrl);
         let w = img.width;
         let h = img.height;
         const scale = Math.min(1, maxDim / Math.max(w, h));
-        w = Math.floor(w * scale);
-        h = Math.floor(h * scale);
-        
+        w = Math.max(1, Math.floor(w * scale));
+        h = Math.max(1, Math.floor(h * scale));
+
         const canvas = document.createElement('canvas');
         canvas.width = w;
         canvas.height = h;
-        const ctx = canvas.getContext('2d')!;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          reject(new Error('Could not acquire 2D canvas context.'));
+          return;
+        }
         ctx.drawImage(img, 0, 0, w, h);
-        
+
         const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
-        resolve(dataUrl.split(',')[1]); 
+        resolve(dataUrl.split(',')[1]);
       };
+
+      img.onerror = () => {
+        URL.revokeObjectURL(objectUrl);
+        reject(new Error('Failed to decode selected image file.'));
+      };
+
       img.src = objectUrl;
     });
   }
 
   async analyzeDesignOnly(designB64: string, viewMode: 'top' | 'side'): Promise<any> {
     const prompt = viewMode === 'side' ? PROMPT_DESIGN_SIDE : PROMPT_DESIGN_TOP;
-    const data = await this.askGemini(prompt, [designB64], this.MODEL_DESIGN_EXTRACT);
+    const data = await this.askGemini(prompt, [designB64]);
 
     if (!data) {
-      return viewMode === 'side' 
-        ? { spacing_mm: 0 } 
-        : { count: 0, radius_mm: 0, spacings_mm: [] };
+      return null;
     }
-    
+
     return data.design ? data.design : data;
   }
 
   async getAutoDetectPoints(base64: string, viewMode: 'top' | 'side'): Promise<any[]> {
     const prompt = viewMode === 'side' ? PROMPT_AUTO_DETECT_SIDE : PROMPT_AUTO_DETECT_TOP;
-    const data = await this.askGemini(prompt, [base64], this.MODEL_AUTO_DETECT);
+    const data = await this.askGemini(prompt, [base64]);
     return data?.rods || [];
   }
 
-  private async askGemini(prompt: string, base64Images: string[], targetModel: string, retries: number = 1): Promise<any> {
+  private async askGemini(prompt: string, base64Images: string[], retries: number = 1): Promise<any> {
     try {
-      const url = `${environment.gemprismBaseUrl}/api/proxy/v1beta/models/${targetModel}:generateContent?key=${environment.gemprismApiKey}`;
-      
+      const url = `${environment.gemprismBaseUrl}/api/proxy/v1beta/models/${this.geminiModel}:generateContent?key=${environment.gemprismApiKey}`;
+
       const parts: any[] = [{ text: prompt }];
       base64Images.forEach(b64 => {
         if (b64) parts.push({ inlineData: { mimeType: 'image/jpeg', data: b64 } });
@@ -140,20 +147,26 @@ export class GeminiService {
 
       const response: any = await firstValueFrom(this.http.post(url, payload));
       const text = response?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-      
+
       try {
         return JSON.parse(text);
       } catch {
         const match = text.match(/\{[\s\S]*\}/);
-        if (match) return JSON.parse(match[0]);
+        if (match) {
+          try {
+            return JSON.parse(match[0]);
+          } catch {
+            return null;
+          }
+        }
         return null;
       }
     } catch (err) {
       if (retries > 0) {
         console.warn(`Gemini Gateway timeout, retrying... (${retries} retries left)`, err);
-        return await this.askGemini(prompt, base64Images, targetModel, retries - 1);
+        return await this.askGemini(prompt, base64Images, retries - 1);
       }
-      console.error("Gemini API Error:", err);
+      console.error('Gemini API Error:', err);
       return null;
     }
   }
