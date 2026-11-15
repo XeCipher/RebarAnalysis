@@ -58,11 +58,11 @@ A site engineer uploads a photograph of a reinforced concrete column along with 
 
 | Site Photograph | Architect's Design |
 |---|---|
-| <img src="test_dataset/lab_columns/C6/C6_site.jpeg" width="380"> | <img src="test_dataset/lab_columns/C6/C6_design.jpeg" width="380"> |
+| <img src="test_dataset/lab_columns/C/C6/C6_site.jpeg" width="380"> | <img src="test_dataset/lab_columns/C/C6/C6_design.jpeg" width="380"> |
 
 ### Annotated Output
 
-<img src="test_dataset/lab_columns/C6/C6_annotated.jpg" width="760">
+<img src="test_dataset/lab_columns/C/C6/C6_annotated.jpg" width="760">
 
 ### Revit BIM Outputs
 
@@ -70,7 +70,7 @@ After downloading the result JSON files from the website, the Dynamo scripts are
 
 | Rod Lines (Colour-coded spacings) | Rod Highlight (Defective rod) |
 |---|---|
-| <img src="test_dataset/lab_columns/C6/C6_revit_rodlines.png" width="380"> | <img src="test_dataset/lab_columns/C6/C6_revit_rodhighlight.png" width="380"> |
+| <img src="test_dataset/lab_columns/C/C6/C6_revit_rodlines.png" width="380"> | <img src="test_dataset/lab_columns/C/C6/C6_revit_rodhighlight.png" width="380"> |
 
 - 🟢 **Green**: Acceptable spacing
 - 🟡 **Yellow**: Minor Mismatch
@@ -92,7 +92,7 @@ After downloading the result JSON files from the website, the Dynamo scripts are
 | Distance R7 to R8 | 125.0 mm | 155.55 mm | ❌ Not Acceptable |
 | Distance R8 to R1 | 154.0 mm | 199.60 mm | ❌ Not Acceptable |
 
-> The CSV report, Rod Lines JSON, and Rod Highlight JSON can all be downloaded directly from the result page on the website. These files are then used with the Dynamo scripts inside Autodesk Revit to produce the BIM visualisations shown above. The Dynamo scripts are located at `test_dataset/revit_models/dynamo_scripts/`.
+> The CSV report, Rod Lines JSON, and Rod Highlight JSON can all be downloaded directly from the result page on the website. These files are then used with the Dynamo scripts inside Autodesk Revit to produce the BIM visualisations shown above. The Dynamo scripts are located at `frontend/public/assets/downloads/` (and can also be downloaded directly from the app's top navigation bar).
 
 ---
 
@@ -193,40 +193,42 @@ RebarAnalysis/
 ├── run.bat
 ├── backend/
 │   ├── src/
-│   │   ├── app.py                  # Flask API (routes, email)
+│   │   ├── app.py                  # Flask API (routes, email alerts)
 │   │   ├── analysis_service.py     # OpenCV top-view analysis
-│   │   ├── side_view_service.py    # OpenCV side-view analysis
-│   │   └── scoring_utils.py        # Compliance scoring logic
-│   ├── .env.example
+│   │   └── side_view_service.py    # OpenCV side-view analysis
+│   ├── .python-version
 │   └── requirements.txt
 │
 ├── frontend/
+│   ├── public/
+│   │   └── assets/
+│   │       └── downloads/          # In-app downloadable resources
+│   │           ├── models.rvt      # Revit BIM model
+│   │           ├── rodhighlight.py # Dynamo highlight script
+│   │           ├── rodlines.py     # Dynamo lines script
+│   │           └── RebarAnalysis.apk
 │   └── src/
-│       ├── app/
-│       │   ├── app.component.ts        # Main logic
-│       │   ├── app.component.html      # UI template
-│       │   └── app.component.scss      # Styles
-│       │
-│       └── environments/
-│           └── environment.ts          # Development environment config
+│       └── app/
+│           ├── services/
+│           │   ├── gemini.service.ts   # Gemini AI vision integration
+│           │   └── scoring.service.ts  # IS-code compliance scoring logic
+│           ├── app.component.ts        # UI & analysis orchestration
+│           ├── app.component.html      # Interactive canvas & dashboard
+│           └── app.component.scss
 │
 └── test_dataset/
-    ├── lab_columns/                # C1–C8 test images and outputs
-    │   └── C6/                     # Full demonstration dataset
-    │       ├── C6_site.jpeg
-    │       ├── C6_design.jpeg
-    │       ├── C6_annotated.jpg
-    │       ├── C6_revit_rodlines.png
-    │       ├── C6_revit_rodhighlight.png
-    │       ├── C6_output_report.csv
-    │       ├── C6_output_rod_lines.json
-    │       └── C6_output_highlight_rod.json
-    ├── revit_models/
-    │   ├── 4_rod_model.rvt
-    │   ├── 8_rod_model.rvt
-    │   └── dynamo_scripts/
-    │       ├── rodhighlight.py
-    │       └── rodlines.py
+    ├── lab_columns/
+    │   ├── C/                      # Standard columns (C1–C8)
+    │   │   └── C6/                 # Full demonstration dataset
+    │   │       ├── C6_site.jpeg
+    │   │       ├── C6_design.jpeg
+    │   │       ├── C6_annotated.jpg
+    │   │       ├── C6_revit_rodlines.png
+    │   │       ├── C6_revit_rodhighlight.png
+    │   │       ├── C6_output_report.csv
+    │   │       ├── C6_output_rod_lines.json
+    │   │       └── C6_output_highlight_rod.json
+    │   └── CI/                     # Inverted columns (C1–C8)
     └── use_case_examples/
         ├── top_view/
         └── side_view/
@@ -298,7 +300,7 @@ Open `http://localhost:4200` in your browser.
 8. If score < 80%, enter the column number and authority email, an alert will be sent automatically
 9. Download the **Rod Lines JSON** and **Rod Highlight JSON**
 10. Place both files in your `Downloads` folder
-11. Open Autodesk Revit with the appropriate `.rvt` model
+11. Open Autodesk Revit with `models.rvt` (downloadable from the top bar on the site or located at `frontend/public/assets/downloads/models.rvt`)
 12. Run `rodlines.py` and `rodhighlight.py` via Dynamo to visualise results in BIM
 
 ---
