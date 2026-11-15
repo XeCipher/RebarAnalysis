@@ -42,10 +42,10 @@ if not exist "frontend\src\environments\environment.ts" (
     if not exist "frontend\src\environments" mkdir "frontend\src\environments"
     
     set /p GEMPRISM_API_KEY="GemPrism Gateway Token (e.g. gp_live_...)   : "
-    set /p GEMINI_MODEL="Gemini Model (default: gemini-flash-lite-latest) : "
+    set /p GEMINI_MODEL="Gemini Model (default: gemini-flash-latest) : "
     
     :: Apply default model if left blank
-    if "!GEMINI_MODEL!"=="" set GEMINI_MODEL=gemini-flash-lite-latest
+    if "!GEMINI_MODEL!"=="" set GEMINI_MODEL=gemini-flash-latest
 
     echo export const environment = {> frontend\src\environments\environment.ts
     echo   production: false,>> frontend\src\environments\environment.ts
