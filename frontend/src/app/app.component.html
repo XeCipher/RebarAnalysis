@@ -1,17 +1,17 @@
 <div class="min-h-screen lg:h-screen flex flex-col bg-slate-50 font-sans lg:overflow-hidden relative">
-  
+
   <nav class="bg-white/80 backdrop-blur-lg border-b border-slate-200 z-50 shadow-sm shrink-0 transition-all duration-300">
     <div class="max-w-[1400px] mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
       <div class="flex items-center gap-2">
         <div class="bg-primary/10 p-2 rounded-lg hover:bg-primary/20 transition-colors"><lucide-icon [img]="icons.ScanLine" class="text-primary w-5 h-5 sm:w-6 sm:h-6"></lucide-icon></div>
         <span class="font-bold text-lg sm:text-xl tracking-tight text-slate-800">Rebar<span class="text-primary">Analysis</span></span>
       </div>
-      
-      <div class="flex items-center gap-4 sm:gap-6">
-        <div class="flex items-center text-xs sm:text-sm font-medium text-slate-400 select-none cursor-pointer transition-colors hover:text-slate-800" (click)="toggleViewMode()">
-          <lucide-icon [img]="viewMode === 'top' ? icons.Layers : icons.ArrowUpDown" class="w-4 h-4 mr-1.5 hidden sm:block"></lucide-icon>
+
+      <div class="flex items-center gap-3 sm:gap-6">
+        <button type="button" class="flex items-center text-xs sm:text-sm font-medium text-slate-500 select-none cursor-pointer transition-colors hover:text-slate-800 px-2.5 py-1.5 rounded-lg hover:bg-slate-100" (click)="toggleViewMode()">
+          <lucide-icon [img]="viewMode === 'top' ? icons.Layers : icons.ArrowUpDown" class="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5"></lucide-icon>
           {{ viewMode === 'top' ? 'Top View' : 'Side View' }}
-        </div>
+        </button>
 
         <div class="relative" #downloadsMenuRef>
           <button (click)="toggleDownloadsMenu()" class="bg-primary/10 text-primary hover:bg-primary/20 p-2 rounded-lg transition-colors focus:outline-none" title="Downloads & Resources">
@@ -22,7 +22,7 @@
               <lucide-icon [img]="icons.Box" class="w-4 h-4 text-slate-500"></lucide-icon>
               <span class="text-xs font-bold uppercase tracking-widest text-slate-600">BIM Integration</span>
             </div>
-            
+
             <!-- Revit Model Download -->
             <a href="assets/downloads/models.rvt" download="models.rvt" class="px-4 py-3 hover:bg-slate-50 transition-colors flex items-center justify-between group border-b border-slate-50">
               <div class="flex items-center gap-3 text-sm font-medium text-slate-700">
@@ -33,7 +33,7 @@
               </div>
               <lucide-icon [img]="icons.DownloadCloud" class="w-4 h-4 text-slate-400 group-hover:text-blue-600 transition-colors"></lucide-icon>
             </a>
-            
+
             <!-- rodhighlight.py Copy Button -->
             <button (click)="copyScript('rodhighlight.py')" class="w-full text-left px-4 py-3 hover:bg-slate-50 transition-colors flex items-center justify-between group border-b border-slate-50">
               <div class="flex items-center gap-3 text-sm font-medium text-slate-700">
@@ -45,7 +45,7 @@
               <lucide-icon *ngIf="!copiedStates['rodhighlight.py']" [img]="icons.Copy" class="w-4 h-4 text-slate-400 group-hover:text-purple-600 transition-colors"></lucide-icon>
               <lucide-icon *ngIf="copiedStates['rodhighlight.py']" [img]="icons.CheckCircle2" class="w-4 h-4 text-green-500 animate-fade-in"></lucide-icon>
             </button>
-            
+
             <!-- rodlines.py Copy Button -->
             <button (click)="copyScript('rodlines.py')" class="w-full text-left px-4 py-3 hover:bg-slate-50 transition-colors flex items-center justify-between group border-b border-slate-50">
               <div class="flex items-center gap-3 text-sm font-medium text-slate-700">
@@ -57,12 +57,12 @@
               <lucide-icon *ngIf="!copiedStates['rodlines.py']" [img]="icons.Copy" class="w-4 h-4 text-slate-400 group-hover:text-orange-600 transition-colors"></lucide-icon>
               <lucide-icon *ngIf="copiedStates['rodlines.py']" [img]="icons.CheckCircle2" class="w-4 h-4 text-green-500 animate-fade-in"></lucide-icon>
             </button>
-            
+
             <div class="px-4 py-3 bg-slate-50 border-y border-slate-100 flex items-center gap-2">
               <lucide-icon [img]="icons.Smartphone" class="w-4 h-4 text-slate-500"></lucide-icon>
               <span class="text-xs font-bold uppercase tracking-widest text-slate-600">Mobile App</span>
             </div>
-            
+
             <!-- Android APK Download -->
             <a href="assets/downloads/RebarAnalysis.apk" download="RebarAnalysis.apk" class="px-4 py-3 hover:bg-slate-50 transition-colors flex items-center justify-between group">
               <div class="flex items-center gap-3 text-sm font-medium text-slate-700">
@@ -80,338 +80,385 @@
   </nav>
 
   <main class="w-full max-w-[1400px] mx-auto p-4 sm:p-6 flex-1 flex flex-col min-h-0">
-    
+
+    <!-- Global Error Banner -->
+    <div *ngIf="errorMsg" class="mb-4 px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-red-700 flex items-center justify-between gap-3 shrink-0 shadow-sm animate-fade-in">
+      <div class="flex items-center gap-2.5 text-xs sm:text-sm font-medium">
+        <lucide-icon [img]="icons.AlertCircle" class="w-4 h-4 sm:w-5 sm:h-5 text-red-600 shrink-0"></lucide-icon>
+        <span>{{ errorMsg }}</span>
+      </div>
+      <button (click)="errorMsg = null" class="p-1 rounded-lg hover:bg-red-100 text-red-500 transition-colors shrink-0" title="Dismiss">
+        <lucide-icon [img]="icons.X" class="w-4 h-4"></lucide-icon>
+      </button>
+    </div>
+
     <div *ngIf="!result" class="flex flex-col flex-1 min-h-0 relative">
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 flex-1 min-h-0 overflow-y-auto no-scrollbar pb-6">
-        
+
         <!-- ================= LEFT COLUMN: SITE IMAGE ============== -->
-        <div class="card flex flex-col gap-4 h-full relative group">
-           <div class="flex items-center justify-between shrink-0">
-              <h2 class="text-lg font-semibold flex items-center gap-2 text-slate-800">
-                <lucide-icon [img]="icons.ImageIcon" class="w-5 h-5 text-slate-400 group-hover:text-primary transition-colors" /> Site Photograph
-              </h2>
-              <div class="flex items-center gap-2">
-                <button *ngIf="realImagePreview" (click)="clearSiteImage()" class="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="Remove Site Image">
-                   <lucide-icon [img]="icons.Trash2" class="w-4 h-4"></lucide-icon>
+        <div class="card flex flex-col gap-4 min-h-full relative group">
+          <div class="flex items-center justify-between shrink-0">
+            <h2 class="text-lg font-semibold flex items-center gap-2 text-slate-800">
+              <lucide-icon [img]="icons.ImageIcon" class="w-5 h-5 text-slate-400 group-hover:text-primary transition-colors" /> Site Photograph
+            </h2>
+            <div class="flex items-center gap-2">
+              <button *ngIf="realImagePreview" (click)="clearSiteImage()" class="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="Remove Site Image">
+                <lucide-icon [img]="icons.Trash2" class="w-4 h-4"></lucide-icon>
+              </button>
+            </div>
+          </div>
+
+          <div *ngIf="!realImagePreview" class="flex flex-col gap-4 flex-1 animate-fade-in">
+            <div>
+              <input type="file" #fileInputReal (change)="onFileSelected($event, 'real')" accept="image/*" class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-bold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 transition-colors cursor-pointer"/>
+            </div>
+            <div class="border-2 border-dashed border-slate-300 bg-slate-50 rounded-xl flex flex-col items-center justify-center p-6 flex-1 text-slate-500 hover:bg-slate-100 hover:border-slate-400 transition-colors duration-300 cursor-pointer min-h-[240px] sm:min-h-[280px]" (click)="fileInputReal.click()" (drop)="$event.preventDefault(); onFileSelected({target: {files: $event.dataTransfer?.files}}, 'real')" (dragover)="$event.preventDefault()">
+              <lucide-icon [img]="icons.Upload" class="w-12 h-12 mb-3 opacity-50"></lucide-icon>
+              <span class="font-bold text-slate-600 mb-1 text-center">Drag &amp; drop your site photograph here</span>
+              <span class="text-xs text-slate-400">JPEG, PNG supported</span>
+            </div>
+          </div>
+
+          <!-- Site Image Interactive Area -->
+          <div *ngIf="realImagePreview" class="relative select-none max-w-full flex items-center justify-center bg-slate-50 rounded-xl border border-slate-200 overflow-hidden flex-1 min-h-[240px] sm:min-h-[280px] animate-fade-in">
+            <div class="image-wrapper relative max-w-full rounded-lg shadow-sm overflow-hidden">
+              <img #imageRef [src]="realImagePreview" (load)="onImageLoad($event)" (click)="onImageClick($event)" class="w-auto h-auto max-w-full max-h-[45vh] block touch-manipulation">
+
+              <div *ngIf="isAutoDetecting" class="absolute inset-0 bg-slate-900/80 backdrop-blur-sm z-30 text-white animate-fade-in flex flex-col items-center justify-center rounded-lg">
+                <div class="animate-spin h-10 w-10 border-4 border-purple-50 border-t-transparent rounded-full mb-3 shrink-0"></div>
+                <div class="text-sm font-bold text-purple-300 uppercase tracking-widest mb-1 text-center">Auto-Detecting</div>
+                <div class="font-mono text-2xl font-black text-purple-200 mb-4 flex items-center justify-center gap-2">
+                  <lucide-icon [img]="icons.Timer" class="w-5 h-5 opacity-70"></lucide-icon>{{ timers.autoDetect | number:'1.1-1' }}s
+                </div>
+                <button (click)="cancelAutoDetect()" class="px-4 py-1.5 bg-white/10 hover:bg-white/20 border border-white/30 rounded-full text-xs font-medium backdrop-blur transition-all active:scale-95">Cancel</button>
+              </div>
+
+              <!-- Render Rod and Ref Points -->
+              <ng-container *ngIf="imgNatWidth > 0 && !isAnalyzing">
+                <div *ngIf="scaleMode === 'rods' && rodPoints.length >= 2 && rodPoints[scaleRodA - 1] && rodPoints[scaleRodB - 1]">
+                  <svg class="absolute inset-0 pointer-events-none w-full h-full z-0 overflow-visible">
+                    <line
+                      [attr.x1]="(rodPoints[scaleRodA - 1][0] / imgNatWidth) * 100 + '%'" [attr.y1]="(rodPoints[scaleRodA - 1][1] / imgNatHeight) * 100 + '%'"
+                      [attr.x2]="(rodPoints[scaleRodB - 1][0] / imgNatWidth) * 100 + '%'" [attr.y2]="(rodPoints[scaleRodB - 1][1] / imgNatHeight) * 100 + '%'"
+                      stroke="cyan" stroke-width="3" stroke-dasharray="6,4"></line>
+                  </svg>
+                </div>
+                <div *ngFor="let p of rodPoints; let i = index; trackBy: trackByIndex"
+                     class="dot-rod" (pointerdown)="onPointerDown($event, i, 'rod')" (pointermove)="onPointerMove($event)" (pointerup)="onPointerUp($event, i, 'rod')" (pointercancel)="onPointerCancel($event)"
+                     [style.left.%]="(p[0] / imgNatWidth) * 100" [style.top.%]="(p[1] / imgNatHeight) * 100">{{i + 1}}</div>
+                <ng-container *ngIf="scaleMode === 'freehand'">
+                  <div *ngFor="let p of refPoints; let i = index; trackBy: trackByIndex"
+                       class="dot-ref" (pointerdown)="onPointerDown($event, i, 'ref')" (pointermove)="onPointerMove($event)" (pointerup)="onPointerUp($event, i, 'ref')" (pointercancel)="onPointerCancel($event)"
+                       [style.left.%]="(p[0] / imgNatWidth) * 100" [style.top.%]="(p[1] / imgNatHeight) * 100"></div>
+                </ng-container>
+              </ng-container>
+            </div>
+          </div>
+
+          <!-- Site Image Tools -->
+          <div *ngIf="realImagePreview" class="flex flex-col gap-3 shrink-0 bg-slate-50 p-3 rounded-xl border border-slate-200 animate-fade-in">
+            <div class="flex border-b border-slate-200 mb-2 transition-all duration-300">
+              <button (click)="setMode('rods')" class="flex-1 pb-2 px-2 text-sm font-bold transition-all duration-300" [class.text-primary]="mode === 'rods'" [class.border-b-2]="mode === 'rods'" [class.border-primary]="mode === 'rods'" [class.text-slate-500]="mode !== 'rods'">Mark {{ viewMode === 'top' ? 'Rods' : 'Bars' }}</button>
+              <button (click)="setMode('ref')" class="flex-1 pb-2 px-2 text-sm font-bold transition-all duration-300" [class.text-primary]="mode === 'ref'" [class.border-b-2]="mode === 'ref'" [class.border-primary]="mode === 'ref'" [class.text-slate-500]="mode !== 'ref'">Calibration Scale</button>
+            </div>
+
+            <div *ngIf="mode === 'rods'" class="animate-fade-in flex flex-col gap-3">
+              <div class="text-[11px] sm:text-xs text-slate-500 bg-white p-2.5 rounded-lg text-center border border-slate-200 flex flex-wrap items-center justify-center gap-1.5 shadow-sm transition-all duration-300">
+                <lucide-icon [img]="icons.Info" class="w-3.5 h-3.5 text-slate-400 shrink-0"></lucide-icon>
+                <span>Tap image to <strong>Add</strong> • Tap dot to <strong>Remove</strong> • Drag to <strong>Move</strong></span>
+              </div>
+              <div class="flex items-center gap-3">
+                <button (click)="autoDetect()" [disabled]="isAutoDetecting" class="btn bg-purple-50 text-purple-700 border border-purple-200 hover:bg-purple-100 flex-1 text-sm justify-center shadow-sm transition-all duration-300 font-semibold">
+                  <lucide-icon [img]="icons.Wand2" class="w-4 h-4 mr-1"></lucide-icon> Re-detect via AI
                 </button>
+                <button (click)="undoLast()" class="btn btn-outline text-xs px-3 shadow-sm transition-all duration-300" title="Undo Last Point"><lucide-icon [img]="icons.Undo2" class="w-4 h-4"></lucide-icon></button>
               </div>
-           </div>
-           
-           <div *ngIf="!realImagePreview" class="flex flex-col gap-4 flex-1 animate-fade-in">
-              <div>
-                <input type="file" #fileInputReal (change)="onFileSelected($event, 'real')" accept="image/*" class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-bold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 transition-colors cursor-pointer"/>
-              </div>
-              <div class="border-2 border-dashed border-slate-300 bg-slate-50 rounded-xl flex flex-col items-center justify-center p-6 flex-1 text-slate-500 hover:bg-slate-100 hover:border-slate-400 transition-colors duration-300 cursor-pointer min-h-[280px]" (click)="fileInputReal.click()" (drop)="$event.preventDefault(); onFileSelected({target: {files: $event.dataTransfer?.files}}, 'real')" (dragover)="$event.preventDefault()">
-                 <lucide-icon [img]="icons.Upload" class="w-12 h-12 mb-3 opacity-50"></lucide-icon>
-                 <span class="font-bold text-slate-600 mb-1">Drag & drop your site photograph here</span>
-                 <span class="text-xs text-slate-400">JPEG, PNG supported</span>
-              </div>
-           </div>
+            </div>
 
-           <!-- Site Image Interactive Area -->
-           <div *ngIf="realImagePreview" class="relative select-none max-w-full flex items-center justify-center bg-slate-50 rounded-xl border border-slate-200 overflow-hidden flex-1 min-h-[300px] animate-fade-in">
-              <div class="image-wrapper relative max-w-full rounded-lg shadow-sm overflow-hidden">
-                 <img #imageRef [src]="realImagePreview" (load)="onImageLoad($event)" (click)="onImageClick($event)" class="w-auto h-auto max-w-full max-h-[45vh] block touch-manipulation">
-                 
-                 <div *ngIf="isAutoDetecting" class="absolute inset-0 bg-slate-900/80 backdrop-blur-sm z-30 text-white animate-fade-in flex flex-col items-center justify-center rounded-lg">
-                     <div class="animate-spin h-10 w-10 border-4 border-purple-50 border-t-transparent rounded-full mb-3 shrink-0"></div>
-                     <div class="text-sm font-bold text-purple-300 uppercase tracking-widest mb-1 text-center">Auto-Detecting</div>
-                     <div class="font-mono text-2xl font-black text-purple-200 mb-4 flex items-center justify-center gap-2">
-                       <lucide-icon [img]="icons.Timer" class="w-5 h-5 opacity-70"></lucide-icon>{{ timers.autoDetect | number:'1.1-1' }}s
-                     </div>
-                     <button (click)="cancelAutoDetect()" class="px-4 py-1.5 bg-white/10 hover:bg-white/20 border border-white/30 rounded-full text-xs font-medium backdrop-blur transition-all active:scale-95">Cancel</button>
-                 </div>
-
-                 <!-- Render Rod and Ref Points -->
-                 <ng-container *ngIf="imgNatWidth > 0 && !isAnalyzing">
-                    <div *ngIf="scaleMode === 'rods' && rodPoints.length >= 2 && rodPoints[scaleRodA - 1] && rodPoints[scaleRodB - 1]">
-                       <svg class="absolute inset-0 pointer-events-none w-full h-full z-0 overflow-visible">
-                          <line 
-                            [attr.x1]="(rodPoints[scaleRodA - 1][0] / imgNatWidth) * 100 + '%'" [attr.y1]="(rodPoints[scaleRodA - 1][1] / imgNatHeight) * 100 + '%'" 
-                            [attr.x2]="(rodPoints[scaleRodB - 1][0] / imgNatWidth) * 100 + '%'" [attr.y2]="(rodPoints[scaleRodB - 1][1] / imgNatHeight) * 100 + '%'" 
-                            stroke="cyan" stroke-width="3" stroke-dasharray="6,4"></line>
-                       </svg>
-                    </div>
-                    <div *ngFor="let p of rodPoints; let i = index; trackBy: trackByIndex" 
-                         class="dot-rod" (pointerdown)="onPointerDown($event, i, 'rod')" (pointermove)="onPointerMove($event)" (pointerup)="onPointerUp($event, i, 'rod')" (pointercancel)="onPointerUp($event, i, 'rod')"
-                         [style.left.%]="(p[0] / imgNatWidth) * 100" [style.top.%]="(p[1] / imgNatHeight) * 100">{{i + 1}}</div>
-                    <ng-container *ngIf="scaleMode === 'freehand'">
-                      <div *ngFor="let p of refPoints; let i = index; trackBy: trackByIndex" 
-                           class="dot-ref" (pointerdown)="onPointerDown($event, i, 'ref')" (pointermove)="onPointerMove($event)" (pointerup)="onPointerUp($event, i, 'ref')" (pointercancel)="onPointerUp($event, i, 'ref')"
-                           [style.left.%]="(p[0] / imgNatWidth) * 100" [style.top.%]="(p[1] / imgNatHeight) * 100"></div>
-                    </ng-container>
-                 </ng-container>
+            <div *ngIf="mode === 'ref'" class="animate-fade-in flex flex-col gap-3">
+              <div class="flex bg-slate-200 rounded-lg p-1 transition-all duration-300">
+                <button (click)="scaleMode = 'freehand'" [class.bg-white]="scaleMode === 'freehand'" [class.shadow-sm]="scaleMode === 'freehand'" class="flex-1 text-xs font-bold py-1.5 rounded-md text-slate-600 transition-all duration-300">2 Freehand Points</button>
+                <button (click)="scaleMode = 'rods'" [class.bg-white]="scaleMode === 'rods'" [class.shadow-sm]="scaleMode === 'rods'" class="flex-1 text-xs font-bold py-1.5 rounded-md text-slate-600 transition-all duration-300">Target Rods</button>
               </div>
-           </div>
-
-           <!-- Site Image Tools -->
-           <div *ngIf="realImagePreview" class="flex flex-col gap-3 shrink-0 bg-slate-50 p-3 rounded-xl border border-slate-200 animate-fade-in">
-              <div class="flex border-b border-slate-200 mb-2 transition-all duration-300">
-                <button (click)="setMode('rods')" class="flex-1 pb-2 px-2 text-sm font-bold transition-all duration-300" [class.text-primary]="mode === 'rods'" [class.border-b-2]="mode === 'rods'" [class.border-primary]="mode === 'rods'" [class.text-slate-500]="mode !== 'rods'">Mark {{ viewMode === 'top' ? 'Rods' : 'Bars' }}</button>
-                <button (click)="setMode('ref')" class="flex-1 pb-2 px-2 text-sm font-bold transition-all duration-300" [class.text-primary]="mode === 'ref'" [class.border-b-2]="mode === 'ref'" [class.border-primary]="mode === 'ref'" [class.text-slate-500]="mode !== 'ref'">Calibration Scale</button>
-              </div>
-
-              <div *ngIf="mode === 'rods'" class="animate-fade-in flex flex-col gap-3">
-                <div class="text-[11px] sm:text-xs text-slate-500 bg-white p-2.5 rounded-lg text-center border border-slate-200 flex flex-wrap items-center justify-center gap-1.5 shadow-sm transition-all duration-300">
-                   <lucide-icon [img]="icons.Info" class="w-3.5 h-3.5 text-slate-400 shrink-0"></lucide-icon>
-                   <span>Tap image to <strong>Add</strong> • Tap dot to <strong>Remove</strong> • Drag to <strong>Move</strong></span>
+              <div *ngIf="scaleMode === 'freehand'" class="flex items-center gap-3 animate-fade-in">
+                <div class="flex-1 flex flex-col">
+                  <label class="text-[10px] font-bold text-slate-500 uppercase mb-1 transition-colors">Physical Length</label>
+                  <div class="relative">
+                    <input type="number" [(ngModel)]="refLengthInput" class="w-full pl-3 pr-10 py-1.5 text-sm border border-slate-300 rounded-md focus:ring-1 focus:ring-blue-500 outline-none font-mono transition-shadow">
+                    <span class="absolute right-3 top-1.5 text-xs text-slate-400 font-bold">mm</span>
+                  </div>
                 </div>
-                <div class="flex items-center gap-3">
-                  <button (click)="autoDetect()" [disabled]="isAutoDetecting" class="btn bg-purple-50 text-purple-700 border border-purple-200 hover:bg-purple-100 flex-1 text-sm justify-center shadow-sm transition-all duration-300 font-semibold">
-                    <lucide-icon [img]="icons.Wand2" class="w-4 h-4 mr-1"></lucide-icon> Re-detect via AI
-                  </button>
-                  <button (click)="undoLast()" class="btn btn-outline text-xs px-3 shadow-sm transition-all duration-300"><lucide-icon [img]="icons.Undo2" class="w-4 h-4"></lucide-icon></button>
+                <button (click)="undoLast()" class="btn btn-outline text-xs mt-5 px-3 shadow-sm transition-all duration-300" title="Undo Last Point"><lucide-icon [img]="icons.Undo2" class="w-4 h-4"></lucide-icon></button>
+              </div>
+              <div *ngIf="scaleMode === 'rods'" class="flex flex-wrap sm:flex-nowrap items-end gap-2 animate-fade-in">
+                <div class="flex flex-col flex-1 min-w-[85px]">
+                  <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">From {{ viewMode === 'top' ? 'Rod' : 'Bar' }}</label>
+                  <select [(ngModel)]="scaleRodA" (ngModelChange)="onScaleRodAChange()" class="w-full px-2 py-1.5 text-sm border border-slate-300 rounded-md bg-white outline-none cursor-pointer transition-shadow">
+                    <option *ngFor="let i of getRodNumbersArray()" [ngValue]="i">R{{i}}</option>
+                  </select>
+                </div>
+                <lucide-icon [img]="icons.ArrowRight" class="w-4 h-4 text-slate-400 mb-2 shrink-0"></lucide-icon>
+                <div class="flex flex-col flex-1 min-w-[85px]">
+                  <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">To {{ viewMode === 'top' ? 'Rod' : 'Bar' }}</label>
+                  <select [(ngModel)]="scaleRodB" class="w-full px-2 py-1.5 text-sm border border-slate-300 rounded-md bg-white outline-none cursor-pointer transition-shadow">
+                    <option *ngFor="let i of getToRodNumbersArray()" [ngValue]="i">R{{i}}</option>
+                  </select>
+                </div>
+                <div class="flex flex-col w-full sm:w-auto sm:flex-1">
+                  <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Distance</label>
+                  <div class="relative">
+                    <input type="number" [(ngModel)]="scaleRodDistance" class="w-full pl-2 pr-8 py-1.5 text-sm border border-slate-300 rounded-md outline-none font-mono transition-shadow">
+                    <span class="absolute right-2 top-1.5 text-xs text-slate-400 font-bold">mm</span>
+                  </div>
                 </div>
               </div>
-
-              <div *ngIf="mode === 'ref'" class="animate-fade-in flex flex-col gap-3">
-                <div class="flex bg-slate-200 rounded-lg p-1 transition-all duration-300">
-                  <button (click)="scaleMode = 'freehand'" [class.bg-white]="scaleMode === 'freehand'" [class.shadow-sm]="scaleMode === 'freehand'" class="flex-1 text-xs font-bold py-1.5 rounded-md text-slate-600 transition-all duration-300">2 Freehand Points</button>
-                  <button (click)="scaleMode = 'rods'" [class.bg-white]="scaleMode === 'rods'" [class.shadow-sm]="scaleMode === 'rods'" class="flex-1 text-xs font-bold py-1.5 rounded-md text-slate-600 transition-all duration-300">Target Rods</button>
-                </div>
-                <div *ngIf="scaleMode === 'freehand'" class="flex items-center gap-3 animate-fade-in">
-                   <div class="flex-1 flex flex-col">
-                      <label class="text-[10px] font-bold text-slate-500 uppercase mb-1 transition-colors">Physical Length</label>
-                      <div class="relative">
-                         <input type="number" [(ngModel)]="refLengthInput" class="w-full pl-3 pr-10 py-1.5 text-sm border border-slate-300 rounded-md focus:ring-1 focus:ring-blue-500 outline-none font-mono transition-shadow">
-                         <span class="absolute right-3 top-1.5 text-xs text-slate-400 font-bold">mm</span>
-                      </div>
-                   </div>
-                   <button (click)="undoLast()" class="btn btn-outline text-xs mt-5 px-3 shadow-sm transition-all duration-300"><lucide-icon [img]="icons.Undo2" class="w-4 h-4"></lucide-icon></button>
-                </div>
-                <div *ngIf="scaleMode === 'rods'" class="flex items-end gap-2 animate-fade-in">
-                   <div class="flex flex-col flex-1">
-                      <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">From Rod</label>
-                      <select [(ngModel)]="scaleRodA" (ngModelChange)="onScaleRodAChange()" class="w-full px-2 py-1.5 text-sm border border-slate-300 rounded-md bg-white outline-none cursor-pointer transition-shadow">
-                        <option *ngFor="let i of getRodNumbersArray()" [value]="i">R{{i}}</option>
-                      </select>
-                   </div>
-                   <lucide-icon [img]="icons.ArrowRight" class="w-4 h-4 text-slate-400 mb-2 shrink-0"></lucide-icon>
-                   <div class="flex flex-col flex-1">
-                      <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">To Rod</label>
-                      <select [(ngModel)]="scaleRodB" class="w-full px-2 py-1.5 text-sm border border-slate-300 rounded-md bg-white outline-none cursor-pointer transition-shadow">
-                        <option *ngFor="let i of getToRodNumbersArray()" [value]="i">R{{i}}</option>
-                      </select>
-                   </div>
-                   <div class="flex flex-col flex-1">
-                      <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Distance</label>
-                      <div class="relative">
-                         <input type="number" [(ngModel)]="scaleRodDistance" class="w-full pl-2 pr-8 py-1.5 text-sm border border-slate-300 rounded-md outline-none font-mono transition-shadow">
-                         <span class="absolute right-2 top-1.5 text-xs text-slate-400 font-bold">mm</span>
-                      </div>
-                   </div>
-                </div>
-              </div>
-           </div>
+            </div>
+          </div>
         </div>
 
         <!-- ================= RIGHT COLUMN: DESIGN BLUEPRINT ============== -->
-        <div class="card flex flex-col gap-4 h-full relative group transition-all duration-300">
-           <div class="flex items-center justify-between shrink-0">
-              <h2 class="text-lg font-semibold flex items-center gap-2 text-slate-800">
-                <lucide-icon [img]="icons.PenTool" class="w-5 h-5 text-slate-400 group-hover:text-primary transition-colors" /> Design Blueprint
-              </h2>
-              <div class="flex items-center gap-4">
-                <div class="flex items-center text-xs sm:text-sm font-medium text-slate-400 select-none cursor-pointer transition-colors hover:text-slate-800" (click)="toggleDesignInputMode()" title="Toggle Input Mode">
-                  <lucide-icon [img]="designInputMode === 'upload' ? icons.Upload : icons.Settings2" class="w-4 h-4 mr-1.5 hidden sm:block"></lucide-icon>
-                  {{ designInputMode === 'upload' ? 'Upload' : 'Manual' }}
+        <div class="card flex flex-col gap-4 min-h-full relative group transition-all duration-300">
+          <div class="flex items-center justify-between shrink-0">
+            <h2 class="text-lg font-semibold flex items-center gap-2 text-slate-800">
+              <lucide-icon [img]="icons.PenTool" class="w-5 h-5 text-slate-400 group-hover:text-primary transition-colors" /> Design Blueprint
+            </h2>
+            <div class="flex items-center gap-3 sm:gap-4">
+              <button type="button" class="flex items-center text-xs sm:text-sm font-medium text-slate-500 select-none cursor-pointer transition-colors hover:text-slate-800 px-2 py-1 rounded-lg hover:bg-slate-100" (click)="toggleDesignInputMode()" title="Toggle Input Mode">
+                <lucide-icon [img]="designInputMode === 'upload' ? icons.Upload : icons.Settings2" class="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5"></lucide-icon>
+                {{ designInputMode === 'upload' ? 'Upload' : 'Manual' }}
+              </button>
+              <button *ngIf="designImagePreview" (click)="clearDesignImage()" class="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="Remove Blueprint">
+                <lucide-icon [img]="icons.Trash2" class="w-4 h-4"></lucide-icon>
+              </button>
+            </div>
+          </div>
+
+          <!-- Upload / Auto-Extract State -->
+          <div *ngIf="designInputMode === 'upload'" class="flex flex-col flex-1 min-h-[240px] sm:min-h-[280px] animate-fade-in">
+
+            <div *ngIf="!designImagePreview" class="flex flex-col gap-4 flex-1">
+              <div>
+                <input type="file" #fileInputDesign (change)="onDesignFileSelected($event)" accept="image/*" class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-bold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200 transition-colors cursor-pointer"/>
+              </div>
+              <div class="border-2 border-dashed border-slate-300 bg-slate-50 rounded-xl flex flex-col items-center justify-center p-6 flex-1 text-slate-500 hover:bg-slate-100 hover:border-slate-400 transition-colors duration-300 cursor-pointer min-h-[240px] sm:min-h-[280px]" (click)="fileInputDesign.click()" (drop)="$event.preventDefault(); onDesignFileSelected({target: {files: $event.dataTransfer?.files}})" (dragover)="$event.preventDefault()">
+                <lucide-icon [img]="icons.Upload" class="w-12 h-12 mb-3 opacity-50"></lucide-icon>
+                <span class="font-bold text-slate-600 mb-1 text-center">Drag &amp; drop architectural blueprint</span>
+                <span class="text-xs text-slate-400">JPEG, PNG supported</span>
+              </div>
+            </div>
+
+            <!-- Analyzing / Extracted / Failed Display State -->
+            <div *ngIf="designImagePreview" class="relative select-none flex flex-col bg-slate-900 rounded-xl border border-slate-200 overflow-hidden flex-1 animate-fade-in transition-all duration-300">
+
+              <!-- Loading Overlay while AI extracts -->
+              <div *ngIf="timers.aiRunning" class="relative flex-1 min-h-[220px] flex items-center justify-center p-2 animate-fade-in">
+                <img [src]="designImagePreview" class="w-auto h-auto max-w-full max-h-[35vh] m-auto block object-contain opacity-40">
+                <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm z-30 flex flex-col items-center justify-center rounded-xl transition-opacity duration-300">
+                  <div class="animate-spin h-10 w-10 border-4 border-green-50 border-t-transparent rounded-full mb-3 shrink-0"></div>
+                  <div class="text-sm font-bold text-green-300 uppercase tracking-widest mb-1 text-center">AI Analyzing Blueprint</div>
+                  <div class="font-mono text-2xl font-black text-green-200 flex items-center justify-center gap-2">
+                    <lucide-icon [img]="icons.Timer" class="w-5 h-5 opacity-70"></lucide-icon>{{ timers.ai | number:'1.1-1' }}s
+                  </div>
                 </div>
-                <button *ngIf="designImagePreview" (click)="clearDesignImage()" class="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="Remove Blueprint">
-                   <lucide-icon [img]="icons.Trash2" class="w-4 h-4"></lucide-icon>
-                </button>
-              </div>
-           </div>
-           
-           <!-- Upload / Auto-Extract State -->
-           <div *ngIf="designInputMode === 'upload'" class="flex flex-col flex-1 h-full min-h-[300px] animate-fade-in">
-              
-              <div *ngIf="!designImagePreview" class="flex flex-col gap-4 flex-1">
-                 <div>
-                   <input type="file" #fileInputDesign (change)="onDesignFileSelected($event)" accept="image/*" class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-bold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200 transition-colors cursor-pointer"/>
-                 </div>
-                 <div class="border-2 border-dashed border-slate-300 bg-slate-50 rounded-xl flex flex-col items-center justify-center p-6 flex-1 text-slate-500 hover:bg-slate-100 hover:border-slate-400 transition-colors duration-300 cursor-pointer min-h-[280px]" (click)="fileInputDesign.click()" (drop)="$event.preventDefault(); onDesignFileSelected({target: {files: $event.dataTransfer?.files}})" (dragover)="$event.preventDefault()">
-                    <lucide-icon [img]="icons.Upload" class="w-12 h-12 mb-3 opacity-50"></lucide-icon>
-                    <span class="font-bold text-slate-600 mb-1">Drag & drop architectural blueprint</span>
-                    <span class="text-xs text-slate-400">JPEG, PNG supported</span>
-                 </div>
               </div>
 
-              <!-- Analyzing / Display State -->
-              <div *ngIf="designImagePreview" class="relative select-none flex flex-col bg-slate-900 rounded-xl border border-slate-200 overflow-hidden flex-1 animate-fade-in transition-all duration-300">
-                 
-                 <!-- Image Section (Visible ONLY while analyzing or if extraction hasn't populated model yet) -->
-                 <div *ngIf="timers.aiRunning || !extractedModel" class="relative flex-1 min-h-[200px] flex items-center justify-center p-2 animate-fade-in">
-                   <img [src]="designImagePreview" class="w-auto h-auto max-w-full max-h-[35vh] m-auto block object-contain opacity-40">
-                   
-                   <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm z-30 flex flex-col items-center justify-center rounded-xl transition-opacity duration-300">
-                      <div class="animate-spin h-10 w-10 border-4 border-green-50 border-t-transparent rounded-full mb-3 shrink-0"></div>
-                      <div class="text-sm font-bold text-green-300 uppercase tracking-widest mb-1 text-center">AI Analyzing Blueprint</div>
-                      <div class="font-mono text-2xl font-black text-green-200 flex items-center justify-center gap-2">
-                         <lucide-icon [img]="icons.Timer" class="w-5 h-5 opacity-70"></lucide-icon>{{ timers.ai | number:'1.1-1' }}s
+              <!-- Extraction Failed Fallback -->
+              <div *ngIf="!timers.aiRunning && designExtractFailed && !hasExtractedData" class="flex-1 flex flex-col bg-slate-900 min-h-0 animate-fade-in">
+                <div class="relative flex-1 min-h-[180px] flex items-center justify-center p-3">
+                  <img [src]="designImagePreview" class="w-auto h-auto max-w-full max-h-[35vh] m-auto block object-contain">
+                </div>
+                <div class="bg-amber-50 border-t border-amber-200 p-3 flex flex-col sm:flex-row items-center justify-between gap-2.5 shrink-0">
+                  <div class="flex items-center gap-2 text-xs font-semibold text-amber-800">
+                    <lucide-icon [img]="icons.AlertCircle" class="w-4 h-4 text-amber-600 shrink-0"></lucide-icon>
+                    <span>Could not extract blueprint specs automatically.</span>
+                  </div>
+                  <div class="flex items-center gap-2 w-full sm:w-auto justify-end">
+                    <button (click)="toggleDesignInputMode()" class="btn btn-outline bg-white text-xs px-3 py-1.5">Manual Entry</button>
+                    <button (click)="triggerReExtract()" class="btn bg-purple-50 text-purple-700 border border-purple-200 hover:bg-purple-100 text-xs px-3 py-1.5 font-semibold">
+                      <lucide-icon [img]="icons.Wand2" class="w-3.5 h-3.5"></lucide-icon> Retry AI
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Extracted Data Section -->
+              <div *ngIf="!timers.aiRunning && hasExtractedData" class="flex-1 bg-white flex flex-col h-full min-h-0 relative animate-fade-in">
+
+                <div *ngIf="viewMode === 'top' && extractedModel" class="flex-1 flex flex-col min-h-0 relative bg-pattern overflow-hidden">
+                  <div class="absolute top-2 left-3 z-10 flex items-center gap-2">
+                    <span class="text-xs font-bold text-slate-600 bg-white/80 px-2 py-1 rounded-md shadow-sm border border-slate-100">
+                      Extracted AI Data ({{ extractedModel.count }} Rods)
+                    </span>
+                  </div>
+
+                  <!-- Preset SVG Layout -->
+                  <div *ngIf="extractedModel.shape !== 'Custom'" class="flex-1 flex items-center justify-center p-4 pt-10 min-h-0 overflow-y-auto">
+                    <div class="relative w-full transition-transform duration-300" [style.max-width.px]="extractedModel.maxWidth">
+                      <svg [attr.viewBox]="extractedModel.viewBox" class="w-full h-auto overflow-visible">
+                        <polygon [attr.points]="getPolygonPoints(extractedModel)" fill="transparent" stroke="#94a3b8" stroke-width="1.2" stroke-dasharray="2 2" />
+                        <circle *ngFor="let r of extractedModel.rods" [attr.cx]="r.cx" [attr.cy]="r.cy" r="3.5" fill="#334155" />
+                      </svg>
+
+                      <div *ngFor="let sp of extractedModel.spacings" class="absolute w-9 sm:w-12 text-center" [style.left.%]="sp.x" [style.top.%]="sp.y" style="transform: translate(-50%, -50%); z-index: 10;">
+                        <input type="number" [ngModel]="sp.value" (ngModelChange)="onSpacingChangeExtracted(sp.idx, $event)" placeholder="mm" class="no-spinner w-full text-center px-0.5 py-0.5 text-[9px] sm:text-[10px] font-bold text-blue-700 bg-white border border-blue-200 rounded shadow-sm focus:ring-1 focus:ring-blue-500 outline-none placeholder:font-normal placeholder:text-slate-300 transition-shadow">
                       </div>
-                   </div>
-                 </div>
-
-                 <!-- Extracted Data SVG Section -->
-                 <div *ngIf="!timers.aiRunning && extractedModel" class="flex-1 bg-white flex flex-col h-full min-h-0 relative animate-fade-in">
-
-                    <div *ngIf="viewMode === 'top'" class="flex-1 flex flex-col min-h-0 relative bg-pattern overflow-hidden">
-                       <div class="absolute top-2 left-3 z-10 flex items-center gap-2">
-                          <span class="text-xs font-bold text-slate-600 bg-white/80 px-2 py-1 rounded-md shadow-sm border border-slate-100">Extracted AI Data</span>
-                       </div>
-                       <div class="flex-1 flex items-center justify-center p-4 min-h-0 overflow-y-auto">
-                          <div class="relative w-full transition-transform duration-300" [style.max-width.px]="extractedModel.maxWidth">
-                             <svg [attr.viewBox]="extractedModel.viewBox" class="w-full h-auto overflow-visible">
-                                <polygon [attr.points]="getPolygonPoints(extractedModel)" fill="transparent" stroke="#94a3b8" stroke-width="1.2" stroke-dasharray="2 2" />
-                                <circle *ngFor="let r of extractedModel.rods" [attr.cx]="r.cx" [attr.cy]="r.cy" r="3.5" fill="#334155" />
-                             </svg>
-                             
-                             <div *ngFor="let sp of extractedModel.spacings" class="absolute w-12 text-center" [style.left.%]="sp.x" [style.top.%]="sp.y" style="transform: translate(-50%, -50%); z-index: 10;">
-                                <input type="number" [ngModel]="sp.value" (ngModelChange)="onSpacingChangeExtracted(sp.idx, $event)" placeholder="mm" class="w-full text-center px-0.5 py-0.5 text-[10px] font-bold text-blue-700 bg-white border border-blue-200 rounded shadow-sm focus:ring-1 focus:ring-blue-500 outline-none placeholder:font-normal placeholder:text-slate-300 transition-shadow">
-                             </div>
-                          </div>
-                       </div>
                     </div>
+                  </div>
 
-                    <div *ngIf="viewMode === 'side'" class="flex-1 flex flex-col p-4 gap-3 bg-slate-50 items-center justify-center overflow-y-auto relative min-h-0">
-                       <div class="absolute top-2 left-3 z-10 flex items-center gap-2">
-                          <span class="text-xs font-bold text-slate-600 bg-white/80 px-2 py-1 rounded-md shadow-sm border border-slate-100">Extracted AI Data</span>
-                       </div>
-                       <div class="w-full max-w-sm space-y-3 mt-6">
-                          <div class="flex items-center justify-between bg-white p-2.5 rounded-lg border border-slate-200 shadow-sm transition-all duration-300 hover:shadow-md">
-                             <label class="text-[11px] font-bold text-slate-600 uppercase tracking-wide">Vertical Stirrup Spacing</label>
-                             <div class="relative w-24"><input type="number" [(ngModel)]="sideExtractedState.spacing_mm" class="w-full pl-2 pr-6 py-1.5 text-sm font-bold border border-slate-300 rounded-md focus:ring-1 focus:ring-blue-500 outline-none transition-shadow"><span class="absolute right-2 top-2 text-[9px] font-bold text-slate-400">mm</span></div>
-                          </div>
-                       </div>
+                  <!-- Custom Rod Count List Fallback -->
+                  <div *ngIf="extractedModel.shape === 'Custom'" class="flex-1 overflow-y-auto bg-white p-4 pt-12 space-y-2 table-scrollbar max-h-[340px] lg:max-h-[42vh]">
+                    <div *ngFor="let sp of extractedModel.spacings" class="flex items-center justify-between bg-slate-50 p-2.5 border border-slate-200 rounded-lg hover:shadow-sm transition-all duration-300">
+                      <span class="text-xs font-bold text-slate-600">Distance R{{sp.idx + 1}} to R{{(sp.idx + 1) % extractedModel.spacings.length + 1}}</span>
+                      <div class="relative w-28">
+                        <input type="number" [ngModel]="sp.value" (ngModelChange)="onSpacingChangeExtracted(sp.idx, $event)" placeholder="mm" class="no-spinner w-full pl-3 pr-8 py-1.5 text-sm font-bold border border-slate-300 rounded-md focus:ring-1 focus:ring-blue-500 outline-none">
+                        <span class="absolute right-2 top-2 text-[10px] font-bold text-slate-400">mm</span>
+                      </div>
                     </div>
+                  </div>
+                </div>
 
-                    <!-- Toolbar -->
-                    <div class="bg-slate-100 border-t border-slate-200 p-3 flex justify-between items-center z-40 shrink-0 gap-3">
-                       <div class="flex items-center gap-2 px-1" *ngIf="viewMode === 'top'">
-                          <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Radius</span>
-                          <div class="relative w-24">
-                             <input type="number" [(ngModel)]="extractedRadius" class="w-full pl-2 pr-6 py-1.5 text-xs font-bold text-center border border-slate-300 rounded-md bg-white outline-none focus:ring-1 focus:ring-blue-500 transition-shadow">
-                             <span class="absolute right-1.5 top-1.5 text-[8px] font-bold text-slate-400 mt-0.5">mm</span>
-                          </div>
-                       </div>
-                       <div class="flex items-center gap-2 px-2" *ngIf="viewMode !== 'top'"></div>
-
-                       <button (click)="triggerReExtract()" class="btn bg-purple-50 text-purple-700 border border-purple-200 hover:bg-purple-100 text-sm px-4 py-2 shadow-sm transition-all duration-300 font-semibold">
-                          <lucide-icon [img]="icons.Wand2" class="w-4 h-4 mr-1"></lucide-icon> Re-extract via AI
-                       </button>
+                <div *ngIf="viewMode === 'side'" class="flex-1 flex flex-col p-4 gap-3 bg-slate-50 items-center justify-center overflow-y-auto relative min-h-[200px]">
+                  <div class="absolute top-2 left-3 z-10 flex items-center gap-2">
+                    <span class="text-xs font-bold text-slate-600 bg-white/80 px-2 py-1 rounded-md shadow-sm border border-slate-100">Extracted AI Data</span>
+                  </div>
+                  <div class="w-full max-w-sm space-y-3 mt-6">
+                    <div class="flex items-center justify-between bg-white p-2.5 rounded-lg border border-slate-200 shadow-sm transition-all duration-300 hover:shadow-md">
+                      <label class="text-[11px] font-bold text-slate-600 uppercase tracking-wide">Vertical Stirrup Spacing</label>
+                      <div class="relative w-24">
+                        <input type="number" [(ngModel)]="sideExtractedState.spacing_mm" placeholder="mm" class="no-spinner w-full pl-2 pr-7 py-1.5 text-sm font-bold border border-slate-300 rounded-md focus:ring-1 focus:ring-blue-500 outline-none transition-shadow">
+                        <span class="absolute right-2 top-2 text-[9px] font-bold text-slate-400">mm</span>
+                      </div>
                     </div>
+                  </div>
+                </div>
 
-                 </div>
+                <!-- Toolbar -->
+                <div class="bg-slate-100 border-t border-slate-200 p-3 flex flex-wrap justify-between items-center z-40 shrink-0 gap-3">
+                  <div class="flex items-center gap-2 px-1" *ngIf="viewMode === 'top'">
+                    <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Radius</span>
+                    <div class="relative w-24">
+                      <input type="number" [(ngModel)]="extractedRadius" placeholder="mm" class="no-spinner w-full pl-2 pr-7 py-1.5 text-xs font-bold text-center border border-slate-300 rounded-md bg-white outline-none focus:ring-1 focus:ring-blue-500 transition-shadow">
+                      <span class="absolute right-1.5 top-1.5 text-[8px] font-bold text-slate-400 mt-0.5">mm</span>
+                    </div>
+                  </div>
+                  <div class="flex items-center gap-2 px-2" *ngIf="viewMode !== 'top'"></div>
+
+                  <button (click)="triggerReExtract()" class="btn bg-purple-50 text-purple-700 border border-purple-200 hover:bg-purple-100 text-xs sm:text-sm px-3 sm:px-4 py-2 shadow-sm transition-all duration-300 font-semibold ml-auto">
+                    <lucide-icon [img]="icons.Wand2" class="w-4 h-4 mr-1"></lucide-icon> Re-extract via AI
+                  </button>
+                </div>
+
               </div>
-           </div>
+            </div>
+          </div>
 
-           <!-- Interactive Manual View -->
-           <div *ngIf="designInputMode === 'manual'" class="flex flex-col flex-1 min-h-0 bg-white border border-slate-200 rounded-xl shadow-inner overflow-hidden animate-fade-in transition-all duration-300">
-              
-              <div *ngIf="viewMode === 'top'" class="flex flex-col h-full">
-                 <div class="flex gap-3 p-3 border-b border-slate-200 shrink-0 bg-slate-50 items-center transition-all duration-300">
-                    <div class="flex flex-col flex-1">
-                       <label class="text-[10px] font-bold text-slate-500 uppercase mb-1 tracking-wider">Rod Count</label>
-                       <select [(ngModel)]="selectedRodCount" (change)="onRodCountChange()" class="w-full px-2 py-1.5 text-sm border border-slate-300 rounded-md bg-white font-bold text-slate-700 outline-none cursor-pointer transition-shadow">
-                          <option [value]="4">4 Rods</option>
-                          <option [value]="6">6 Rods</option>
-                          <option [value]="8">8 Rods</option>
-                          <option [value]="10">10 Rods</option>
-                          <option [value]="12">12 Rods</option>
-                          <option [value]="16">16 Rods</option>
-                          <option value="custom">Custom...</option>
-                       </select>
-                    </div>
-                    
-                    <div class="flex flex-col flex-1 animate-fade-in" *ngIf="selectedRodCount === 'custom'">
-                       <label class="text-[10px] font-bold text-slate-500 uppercase mb-1 tracking-wider">Exact Count</label>
-                       <input type="number" [(ngModel)]="customRodCount" (change)="generateCustomModel()" min="4" class="w-full px-2 py-1.5 text-sm border border-slate-300 rounded-md bg-white font-bold outline-none transition-shadow">
-                    </div>
-                    
-                    <div class="flex flex-col animate-fade-in" *ngIf="availableShapes.length > 1 && selectedRodCount !== 'custom'">
-                       <label class="text-[10px] font-bold text-slate-500 uppercase mb-1 tracking-wider">Shape</label>
-                       <div class="flex bg-slate-200 rounded-md p-1 transition-all duration-300">
-                          <button *ngFor="let s of availableShapes" (click)="setShape(s)" class="px-2 py-0.5 text-xs font-bold rounded transition-all duration-300" [class.bg-white]="selectedShape === s" [class.shadow-sm]="selectedShape === s" [class.text-slate-700]="selectedShape === s" [class.text-slate-500]="selectedShape !== s">
-                            {{s}}
-                          </button>
-                       </div>
-                    </div>
-                 </div>
-                 
-                 <!-- Standard Models SVG View -->
-                 <div *ngIf="selectedRodCount !== 'custom' && activeModel" class="flex-1 flex items-center justify-center p-4 bg-pattern min-h-0 overflow-y-auto animate-fade-in">
-                    <div class="relative w-full transition-transform duration-300" [style.max-width.px]="activeModel.maxWidth">
-                       <svg [attr.viewBox]="activeModel.viewBox" class="w-full h-auto overflow-visible transition-all duration-500">
-                          <polygon [attr.points]="getPolygonPoints(activeModel)" fill="transparent" stroke="#94a3b8" stroke-width="1.2" stroke-dasharray="2 2" />
-                          <circle *ngFor="let r of activeModel.rods" [attr.cx]="r.cx" [attr.cy]="r.cy" r="3.5" fill="#334155" />
-                       </svg>
-                       
-                       <div *ngFor="let sp of activeModel.spacings" class="absolute w-12 text-center" [style.left.%]="sp.x" [style.top.%]="sp.y" style="transform: translate(-50%, -50%); z-index: 10;">
-                          <input type="number" [ngModel]="sp.value" (ngModelChange)="onSpacingChange(sp.idx, $event)" placeholder="mm" class="w-full text-center px-0.5 py-0.5 text-[10px] font-bold text-blue-700 bg-white border border-blue-200 rounded shadow-sm focus:ring-1 focus:ring-blue-500 outline-none placeholder:font-normal placeholder:text-slate-300 transition-shadow">
-                       </div>
-                    </div>
-                 </div>
+          <!-- Interactive Manual View -->
+          <div *ngIf="designInputMode === 'manual'" class="flex flex-col flex-1 min-h-0 bg-white border border-slate-200 rounded-xl shadow-inner overflow-hidden animate-fade-in transition-all duration-300">
 
-                 <!-- Custom Infinite Scroll View -->
-                 <div *ngIf="selectedRodCount === 'custom'" class="flex-1 overflow-y-auto bg-white p-4 space-y-2 table-scrollbar border-b border-slate-100 animate-fade-in">
-                     <div *ngFor="let sp of activeModel.spacings" class="flex items-center justify-between bg-slate-50 p-2.5 border border-slate-200 rounded-lg hover:shadow-sm transition-all duration-300 group">
-                         <span class="text-xs font-bold text-slate-600 group-hover:text-blue-700 transition-colors">Distance R{{sp.idx + 1}} to R{{(sp.idx + 1) % customRodCount + 1}}</span>
-                         <div class="relative w-28">
-                            <input type="number" [ngModel]="sp.value" (ngModelChange)="onSpacingChange(sp.idx, $event)" class="w-full pl-3 pr-8 py-1.5 text-sm font-bold border border-slate-300 rounded-md focus:ring-1 focus:ring-blue-500 outline-none transition-shadow">
-                            <span class="absolute right-2 top-2 text-[10px] font-bold text-slate-400">mm</span>
-                         </div>
-                     </div>
-                 </div>
+            <div *ngIf="viewMode === 'top'" class="flex flex-col h-full">
+              <div class="flex flex-wrap sm:flex-nowrap gap-3 p-3 border-b border-slate-200 shrink-0 bg-slate-50 items-center transition-all duration-300">
+                <div class="flex flex-col flex-1 min-w-[120px]">
+                  <label class="text-[10px] font-bold text-slate-500 uppercase mb-1 tracking-wider">Rod Count</label>
+                  <select [(ngModel)]="selectedRodCount" (change)="onRodCountChange()" class="w-full px-2 py-1.5 text-sm border border-slate-300 rounded-md bg-white font-bold text-slate-700 outline-none cursor-pointer transition-shadow">
+                    <option [ngValue]="4">4 Rods</option>
+                    <option [ngValue]="6">6 Rods</option>
+                    <option [ngValue]="8">8 Rods</option>
+                    <option [ngValue]="10">10 Rods</option>
+                    <option [ngValue]="12">12 Rods</option>
+                    <option [ngValue]="16">16 Rods</option>
+                    <option value="custom">Custom...</option>
+                  </select>
+                </div>
 
-                 <!-- Global Radius -->
-                 <div class="p-3 border-t border-slate-200 bg-slate-50 flex items-center justify-between shrink-0 transition-all duration-300">
-                   <span class="text-xs font-bold text-slate-600 uppercase tracking-widest">Radius</span>
-                   <div class="flex items-center gap-2">
-                      <input type="number" [(ngModel)]="designRadius" class="w-24 px-2 py-1.5 text-sm font-bold text-center border border-slate-300 rounded-md shadow-sm focus:border-blue-500 outline-none text-slate-800 bg-white transition-shadow">
-                      <span class="text-xs text-slate-500 font-bold">mm</span>
-                   </div>
-                 </div>
+                <div class="flex flex-col flex-1 min-w-[100px] animate-fade-in" *ngIf="selectedRodCount === 'custom'">
+                  <label class="text-[10px] font-bold text-slate-500 uppercase mb-1 tracking-wider">Exact Count</label>
+                  <input type="number" [(ngModel)]="customRodCount" (change)="generateCustomModel()" min="4" class="w-full px-2 py-1.5 text-sm border border-slate-300 rounded-md bg-white font-bold outline-none transition-shadow">
+                </div>
+
+                <div class="flex flex-col animate-fade-in" *ngIf="availableShapes.length > 1 && selectedRodCount !== 'custom'">
+                  <label class="text-[10px] font-bold text-slate-500 uppercase mb-1 tracking-wider">Shape</label>
+                  <div class="flex bg-slate-200 rounded-md p-1 transition-all duration-300">
+                    <button *ngFor="let s of availableShapes" (click)="setShape(s)" class="px-2 py-0.5 text-xs font-bold rounded transition-all duration-300" [class.bg-white]="selectedShape === s" [class.shadow-sm]="selectedShape === s" [class.text-slate-700]="selectedShape === s" [class.text-slate-500]="selectedShape !== s">
+                      {{s}}
+                    </button>
+                  </div>
+                </div>
               </div>
 
-              <!-- Side View Data Configuration -->
-              <div *ngIf="viewMode === 'side'" class="flex flex-col flex-1 min-h-0 bg-white border border-slate-200 rounded-xl shadow-inner animate-fade-in">
-                 <div class="flex gap-3 p-3 border-b border-slate-200 shrink-0 bg-slate-50 items-center">
-                    <div class="flex flex-col flex-1">
-                       <label class="text-[10px] font-bold text-slate-500 uppercase mb-1 tracking-wider">Number of Stirrups</label>
-                       <input type="number" [(ngModel)]="sideManualState.stirrupCount" (change)="onSideStirrupCountChange()" min="2" class="w-full px-2 py-1.5 text-sm border border-slate-300 rounded-md bg-white font-bold outline-none transition-shadow">
-                    </div>
-                 </div>
-                 
-                 <!-- Stirrups Spacings Custom View -->
-                 <div class="flex-1 overflow-y-auto bg-white p-4 space-y-2 table-scrollbar border-b border-slate-100">
-                     <div *ngFor="let sp of sideManualState.spacings_mm; let i = index" class="flex items-center justify-between bg-slate-50 p-2.5 border border-slate-200 rounded-lg hover:shadow-sm transition-all duration-300 group">
-                         <span class="text-xs font-bold text-slate-600 group-hover:text-blue-700 transition-colors">Spacing S{{i + 1}} to S{{i + 2}}</span>
-                         <div class="relative w-28">
-                            <input type="number" [ngModel]="sp.value" (ngModelChange)="onSideSpacingChange(i, $event)" class="w-full pl-3 pr-8 py-1.5 text-sm font-bold border border-slate-300 rounded-md focus:ring-1 focus:ring-blue-500 outline-none transition-shadow">
-                            <span class="absolute right-2 top-2 text-[10px] font-bold text-slate-400">mm</span>
-                         </div>
-                     </div>
-                 </div>
+              <!-- Standard Models SVG View -->
+              <div *ngIf="selectedRodCount !== 'custom' && activeModel" class="flex-1 flex items-center justify-center p-4 bg-pattern min-h-[220px] overflow-y-auto animate-fade-in">
+                <div class="relative w-full transition-transform duration-300" [style.max-width.px]="activeModel.maxWidth">
+                  <svg [attr.viewBox]="activeModel.viewBox" class="w-full h-auto overflow-visible transition-all duration-500">
+                    <polygon [attr.points]="getPolygonPoints(activeModel)" fill="transparent" stroke="#94a3b8" stroke-width="1.2" stroke-dasharray="2 2" />
+                    <circle *ngFor="let r of activeModel.rods" [attr.cx]="r.cx" [attr.cy]="r.cy" r="3.5" fill="#334155" />
+                  </svg>
+
+                  <div *ngFor="let sp of activeModel.spacings" class="absolute w-9 sm:w-12 text-center" [style.left.%]="sp.x" [style.top.%]="sp.y" style="transform: translate(-50%, -50%); z-index: 10;">
+                    <input type="number" [ngModel]="sp.value" (ngModelChange)="onSpacingChange(sp.idx, $event)" placeholder="mm" class="no-spinner w-full text-center px-0.5 py-0.5 text-[9px] sm:text-[10px] font-bold text-blue-700 bg-white border border-blue-200 rounded shadow-sm focus:ring-1 focus:ring-blue-500 outline-none placeholder:font-normal placeholder:text-slate-300 transition-shadow">
+                  </div>
+                </div>
               </div>
-           </div>
+
+              <!-- Custom Infinite Scroll View -->
+              <div *ngIf="selectedRodCount === 'custom'" class="flex-1 overflow-y-auto bg-white p-4 space-y-2 table-scrollbar border-b border-slate-100 max-h-[340px] lg:max-h-[42vh] animate-fade-in">
+                <div *ngFor="let sp of activeModel.spacings" class="flex items-center justify-between bg-slate-50 p-2.5 border border-slate-200 rounded-lg hover:shadow-sm transition-all duration-300 group">
+                  <span class="text-xs font-bold text-slate-600 group-hover:text-blue-700 transition-colors">Distance R{{sp.idx + 1}} to R{{(sp.idx + 1) % customRodCount + 1}}</span>
+                  <div class="relative w-28">
+                    <input type="number" [ngModel]="sp.value" (ngModelChange)="onSpacingChange(sp.idx, $event)" placeholder="mm" class="no-spinner w-full pl-3 pr-8 py-1.5 text-sm font-bold border border-slate-300 rounded-md focus:ring-1 focus:ring-blue-500 outline-none transition-shadow">
+                    <span class="absolute right-2 top-2 text-[10px] font-bold text-slate-400">mm</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Global Radius -->
+              <div class="p-3 border-t border-slate-200 bg-slate-50 flex items-center justify-between shrink-0 transition-all duration-300">
+                <span class="text-xs font-bold text-slate-600 uppercase tracking-widest">Radius</span>
+                <div class="flex items-center gap-2">
+                  <input type="number" [(ngModel)]="designRadius" class="no-spinner w-24 px-2 py-1.5 text-sm font-bold text-center border border-slate-300 rounded-md shadow-sm focus:border-blue-500 outline-none text-slate-800 bg-white transition-shadow">
+                  <span class="text-xs text-slate-500 font-bold">mm</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Side View Data Configuration -->
+            <div *ngIf="viewMode === 'side'" class="flex flex-col flex-1 min-h-0 bg-white animate-fade-in">
+              <div class="flex gap-3 p-3 border-b border-slate-200 shrink-0 bg-slate-50 items-center">
+                <div class="flex flex-col flex-1">
+                  <label class="text-[10px] font-bold text-slate-500 uppercase mb-1 tracking-wider">Number of Stirrups</label>
+                  <input type="number" [(ngModel)]="sideManualState.stirrupCount" (change)="onSideStirrupCountChange()" min="2" class="w-full px-2 py-1.5 text-sm border border-slate-300 rounded-md bg-white font-bold outline-none transition-shadow">
+                </div>
+              </div>
+
+              <!-- Stirrups Spacings Custom View -->
+              <div class="flex-1 overflow-y-auto bg-white p-4 space-y-2 table-scrollbar border-b border-slate-100 max-h-[340px] lg:max-h-[42vh]">
+                <div *ngFor="let sp of sideManualState.spacings_mm; let i = index" class="flex items-center justify-between bg-slate-50 p-2.5 border border-slate-200 rounded-lg hover:shadow-sm transition-all duration-300 group">
+                  <span class="text-xs font-bold text-slate-600 group-hover:text-blue-700 transition-colors">Spacing S{{i + 1}} to S{{i + 2}}</span>
+                  <div class="relative w-28">
+                    <input type="number" [ngModel]="sp.value" (ngModelChange)="onSideSpacingChange(i, $event)" placeholder="mm" class="no-spinner w-full pl-3 pr-8 py-1.5 text-sm font-bold border border-slate-300 rounded-md focus:ring-1 focus:ring-blue-500 outline-none transition-shadow">
+                    <span class="absolute right-2 top-2 text-[10px] font-bold text-slate-400">mm</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
       </div>
 
       <!-- Floating Execution Trigger Block -->
-      <div class="sticky bottom-0 z-40 bg-white/95 backdrop-blur-md rounded-xl shadow-xl border border-slate-200 p-4 flex flex-col sm:flex-row items-center justify-between gap-4 shrink-0 mt-3 transition-all duration-500">
-         <div class="flex items-center gap-3">
-             <div class="p-2 bg-blue-50 text-blue-600 rounded-lg shrink-0 transition-transform duration-300 hover:scale-105">
-                 <lucide-icon [img]="icons.Info" class="w-6 h-6"></lucide-icon>
-             </div>
-             <div>
-                 <h4 class="text-sm font-bold text-slate-800">Ready for Analysis</h4>
-                 <p class="text-xs text-slate-500 mt-0.5 max-w-2xl">Ensure rods are marked and scaled correctly. The engine will evaluate measurements against your {{ designInputMode === 'upload' ? 'uploaded' : 'manual' }} blueprint data.</p>
-             </div>
-         </div>
-         <button (click)="analyze()" [disabled]="isAnalyzing || isAutoDetecting || rodPoints.length < 2" class="w-full sm:w-auto btn btn-primary justify-center text-sm py-3 px-8 shadow-xl shadow-blue-900/10 hover:-translate-y-0.5 transition-all duration-300 rounded-xl shrink-0">
-            <span class="flex items-center gap-2 text-base font-bold tracking-wide"><lucide-icon [img]="icons.ScanLine" class="w-5 h-5"></lucide-icon> Run Analysis Engine</span>
-         </button>
+      <div class="sticky bottom-0 z-40 bg-white/95 backdrop-blur-md rounded-xl shadow-xl border border-slate-200 p-3 sm:p-4 flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4 shrink-0 mt-3 transition-all duration-500">
+        <div class="flex items-center gap-3 w-full sm:w-auto">
+          <div class="p-2 bg-blue-50 text-blue-600 rounded-lg shrink-0 transition-transform duration-300 hover:scale-105">
+            <lucide-icon [img]="icons.Info" class="w-5 h-5 sm:w-6 sm:h-6"></lucide-icon>
+          </div>
+          <div>
+            <h4 class="text-sm font-bold text-slate-800">Ready for Analysis</h4>
+            <p class="text-xs text-slate-500 mt-0.5 max-w-2xl">Ensure {{ viewMode === 'top' ? 'rods' : 'bars' }} are marked and scaled correctly. The engine will evaluate measurements against your {{ designInputMode === 'upload' ? 'uploaded' : 'manual' }} blueprint data.</p>
+          </div>
+        </div>
+        <button (click)="analyze()" [disabled]="isAnalyzing || isAutoDetecting || rodPoints.length < 2" class="w-full sm:w-auto btn btn-primary justify-center text-sm py-3 px-8 shadow-xl shadow-blue-900/10 hover:-translate-y-0.5 transition-all duration-300 rounded-xl shrink-0">
+          <span class="flex items-center gap-2 text-base font-bold tracking-wide"><lucide-icon [img]="icons.ScanLine" class="w-5 h-5"></lucide-icon> Run Analysis Engine</span>
+        </button>
       </div>
 
     </div>
@@ -421,164 +468,165 @@
     <!-- ========================================== -->
     <div *ngIf="result" class="flex flex-col gap-4 flex-1 lg:min-h-0 animate-fade-in transition-all duration-500">
       <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 shrink-0">
-        
-        <div *ngIf="result.quality_tier as tier" 
+
+        <div *ngIf="result.quality_tier as tier"
              class="flex-1 w-full lg:max-w-xl px-4 py-2.5 rounded-lg border shadow-sm flex items-center gap-3 transition-all duration-500 hover:shadow-md"
              [class.bg-green-50]="tier.color === 'green'" [class.border-green-200]="tier.color === 'green'"
              [class.bg-yellow-50]="tier.color === 'yellow'" [class.border-yellow-200]="tier.color === 'yellow'"
              [class.bg-red-50]="tier.color === 'red'" [class.border-red-200]="tier.color === 'red'">
-             <div class="p-1.5 rounded-full shrink-0 transition-transform duration-300 hover:scale-110"
-                  [class.bg-green-100]="tier.color === 'green'" [class.text-green-600]="tier.color === 'green'"
-                  [class.bg-yellow-100]="tier.color === 'yellow'" [class.text-yellow-600]="tier.color === 'yellow'"
-                  [class.bg-red-100]="tier.color === 'red'" [class.text-red-600]="tier.color === 'red'">
-                 <lucide-icon [img]="tier.color === 'green' ? icons.CheckCircle2 : icons.AlertCircle" class="w-5 h-5" />
-             </div>
-             <div>
-                 <h3 class="font-bold text-sm sm:text-base leading-tight transition-colors duration-300"
-                     [class.text-green-800]="tier.color === 'green'"
-                     [class.text-yellow-800]="tier.color === 'yellow'"
-                     [class.text-red-800]="tier.color === 'red'">
-                     {{ tier.color === 'green' ? 'Work is acceptable.' : (tier.color === 'yellow' ? 'Review Recommended.' : 'Improvement needed.') }} ({{ tier.label }})
-                 </h3>
-                 <p class="text-[11px] sm:text-xs mt-0.5 transition-colors duration-300"
-                    [class.text-green-700]="tier.color === 'green'"
-                    [class.text-yellow-700]="tier.color === 'yellow'"
-                    [class.text-red-700]="tier.color === 'red'">
-                     {{ tier.color === 'green' ? 'Similarity score meets the quality thresholds.' : (tier.color === 'yellow' ? 'Similarity score indicates a minor deviation.' : 'Similarity score has fallen below 80%.') }}
-                 </p>
-             </div>
+          <div class="p-1.5 rounded-full shrink-0 transition-transform duration-300 hover:scale-110"
+               [class.bg-green-100]="tier.color === 'green'" [class.text-green-600]="tier.color === 'green'"
+               [class.bg-yellow-100]="tier.color === 'yellow'" [class.text-yellow-600]="tier.color === 'yellow'"
+               [class.bg-red-100]="tier.color === 'red'" [class.text-red-600]="tier.color === 'red'">
+            <lucide-icon [img]="tier.color === 'green' ? icons.CheckCircle2 : icons.AlertCircle" class="w-5 h-5" />
+          </div>
+          <div>
+            <h3 class="font-bold text-sm sm:text-base leading-tight transition-colors duration-300"
+                [class.text-green-800]="tier.color === 'green'"
+                [class.text-yellow-800]="tier.color === 'yellow'"
+                [class.text-red-800]="tier.color === 'red'">
+              {{ tier.color === 'green' ? 'Work is acceptable.' : (tier.color === 'yellow' ? 'Review Recommended.' : 'Improvement needed.') }} ({{ tier.label }})
+            </h3>
+            <p class="text-[11px] sm:text-xs mt-0.5 transition-colors duration-300"
+               [class.text-green-700]="tier.color === 'green'"
+               [class.text-yellow-700]="tier.color === 'yellow'"
+               [class.text-red-700]="tier.color === 'red'">
+              {{ tier.color === 'green' ? 'Similarity score meets the quality thresholds.' : (tier.color === 'yellow' ? 'Similarity score indicates a minor deviation.' : 'Similarity score has fallen below 80%.') }}
+            </p>
+          </div>
         </div>
 
         <div class="flex flex-wrap lg:flex-nowrap items-center gap-2 w-full lg:w-auto shrink-0 animate-fade-in">
-          <button *ngIf="viewMode === 'top' && revitData" (click)="downloadRevitJson()" class="btn bg-orange-100 text-orange-700 hover:bg-orange-200 border border-orange-200 text-xs py-2 px-3 shadow-sm flex-1 lg:flex-none transition-all duration-300 hover:-translate-y-0.5">
-             <lucide-icon [img]="icons.FileJson" class="w-3.5 h-3.5" /> Rod Highlight
+          <button *ngIf="viewMode === 'top' && revitData" (click)="downloadRevitJson()" class="btn bg-orange-100 text-orange-700 hover:bg-orange-200 border border-orange-200 text-xs py-2 px-3 shadow-sm flex-1 lg:flex-none justify-center transition-all duration-300 hover:-translate-y-0.5">
+            <lucide-icon [img]="icons.FileJson" class="w-3.5 h-3.5" /> Rod Highlight
           </button>
-          <button *ngIf="viewMode === 'top'" (click)="downloadRodLinesJson()" class="btn bg-green-100 text-green-700 hover:bg-green-200 border border-green-200 text-xs py-2 px-3 shadow-sm flex-1 lg:flex-none transition-all duration-300 hover:-translate-y-0.5">
-             <lucide-icon [img]="icons.FileJson" class="w-3.5 h-3.5" /> Rod Lines
+          <button *ngIf="viewMode === 'top'" (click)="downloadRodLinesJson()" class="btn bg-green-100 text-green-700 hover:bg-green-200 border border-green-200 text-xs py-2 px-3 shadow-sm flex-1 lg:flex-none justify-center transition-all duration-300 hover:-translate-y-0.5">
+            <lucide-icon [img]="icons.FileJson" class="w-3.5 h-3.5" /> Rod Lines
           </button>
-          <button (click)="downloadCSV()" class="btn bg-blue-100 text-blue-700 hover:bg-blue-200 border border-blue-200 text-xs py-2 px-3 shadow-sm flex-1 lg:flex-none transition-all duration-300 hover:-translate-y-0.5">
-             <lucide-icon [img]="icons.FileJson" class="w-3.5 h-3.5" /> CSV
+          <button (click)="downloadCSV()" class="btn bg-blue-100 text-blue-700 hover:bg-blue-200 border border-blue-200 text-xs py-2 px-3 shadow-sm flex-1 lg:flex-none justify-center transition-all duration-300 hover:-translate-y-0.5">
+            <lucide-icon [img]="icons.FileJson" class="w-3.5 h-3.5" /> CSV
           </button>
           <button (click)="result = null" class="btn btn-outline bg-white text-xs py-2 px-3 shadow-sm hover:bg-slate-100 flex items-center justify-center flex-1 lg:flex-none transition-all duration-300">
-             <lucide-icon [img]="icons.Undo2" class="w-3.5 h-3.5" /> New Analysis
+            <lucide-icon [img]="icons.Undo2" class="w-3.5 h-3.5" /> New Analysis
           </button>
         </div>
       </div>
 
       <div class="flex flex-col lg:flex-row gap-4 flex-1 lg:min-h-0 animate-fade-in">
         <div class="w-full lg:w-1/3 flex flex-col gap-4 shrink-0">
-            <div class="card p-4 flex flex-col shadow-sm border-slate-200 shrink-0 relative bg-white w-full transition-shadow duration-300 hover:shadow-md">
-                <button (click)="toggleScoreModal()" class="absolute top-3 right-3 p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 transition-colors focus:outline-none" title="View Evaluation Methodology">
-                    <lucide-icon [img]="icons.Calculator" class="w-4 h-4 transition-transform duration-300 hover:rotate-12" />
-                </button>
-                <span class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Similarity Score</span>
-                
-                <div class="flex items-baseline gap-2 mb-2">
-                    <div class="text-5xl font-black tracking-tight transition-colors duration-500" 
-                         [class.text-green-600]="result.quality_tier?.color === 'green'"
-                         [class.text-yellow-500]="result.quality_tier?.color === 'yellow'"
-                         [class.text-red-600]="result.quality_tier?.color === 'red'">
-                        {{ result.score }}%
-                    </div>
-                </div>
+          <div class="card p-4 flex flex-col shadow-sm border-slate-200 shrink-0 relative bg-white w-full transition-shadow duration-300 hover:shadow-md">
+            <button (click)="toggleScoreModal()" class="absolute top-3 right-3 p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 transition-colors focus:outline-none" title="View Evaluation Methodology">
+              <lucide-icon [img]="icons.Calculator" class="w-4 h-4 transition-transform duration-300 hover:rotate-12" />
+            </button>
+            <span class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Similarity Score</span>
 
-                <div class="grid grid-cols-3 gap-2 pt-3 border-t border-slate-100 mt-1 animate-fade-in">
-                    <div *ngIf="result.score_count !== null" class="bg-slate-50 border border-slate-200 rounded-lg p-1.5 flex flex-col items-center hover:bg-slate-100 transition-colors duration-300">
-                        <span class="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Count</span>
-                        <span class="text-sm font-bold text-slate-700">{{ result.score_count }}%</span>
-                    </div>
-                    <div *ngIf="result.score_radius !== null" class="bg-slate-50 border border-slate-200 rounded-lg p-1.5 flex flex-col items-center hover:bg-slate-100 transition-colors duration-300">
-                        <span class="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Radius</span>
-                        <span class="text-sm font-bold text-slate-700">{{ result.score_radius }}%</span>
-                    </div>
-                    <div *ngIf="result.score_spacing !== null" class="bg-slate-50 border border-slate-200 rounded-lg p-1.5 flex flex-col items-center hover:bg-slate-100 transition-colors duration-300">
-                        <span class="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Spacing</span>
-                        <span class="text-sm font-bold text-slate-700">{{ result.score_spacing }}%</span>
-                    </div>
-                </div>
-
-                <div *ngIf="result.quality_tier?.color === 'red'" class="mt-3 pt-3 border-t border-red-100 flex flex-col gap-2 bg-red-50 p-3 rounded-xl border border-red-200 animate-fade-in transition-all duration-300">
-                    <div class="flex items-center gap-1.5 mb-1 text-red-700">
-                        <lucide-icon [img]="icons.AlertCircle" class="w-4 h-4"></lucide-icon>
-                        <span class="text-[10px] font-bold uppercase tracking-widest">Notify Authority</span>
-                    </div>
-                    <div *ngIf="!emailSent" class="flex flex-col gap-2 animate-fade-in">
-                        <div class="flex gap-2">
-                            <input type="text" [(ngModel)]="columnNumber" placeholder="Col No." class="w-16 px-2 py-1 text-xs border border-red-300 rounded-md focus:outline-none focus:ring-1 focus:ring-red-500 shadow-sm transition-shadow" [disabled]="isEmailSending">
-                            <input type="email" [(ngModel)]="authorityEmail" placeholder="Authority Email ID" class="flex-1 px-2 py-1 text-xs border border-red-300 rounded-md focus:outline-none focus:ring-1 focus:ring-red-500 shadow-sm transition-shadow" [disabled]="isEmailSending">
-                        </div>
-                        <button (click)="sendEmailReport()" [disabled]="isEmailSending" class="w-full bg-red-600 hover:bg-red-700 text-white text-xs px-3 py-1.5 rounded-lg font-medium transition-all duration-300 flex items-center justify-center gap-2 active:scale-95 shadow-sm disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed">
-                          <span *ngIf="isEmailSending" class="animate-spin h-3 w-3 border-2 border-white border-t-transparent rounded-full"></span>
-                          {{ isEmailSending ? 'Sending...' : 'Send Alert Report' }}
-                        </button>
-                    </div>
-                    <div *ngIf="emailSent" class="bg-green-100 text-green-800 border border-green-200 px-3 py-2 rounded-lg text-xs font-medium inline-flex items-center gap-2 w-full animate-fade-in">
-                        <lucide-icon [img]="icons.CheckCircle2" class="w-4 h-4 text-green-600 shrink-0" /> Report sent successfully!
-                    </div>
-                </div>
+            <div class="flex items-baseline gap-2 mb-2">
+              <div class="text-5xl font-black tracking-tight transition-colors duration-500"
+                   [class.text-green-600]="result.quality_tier?.color === 'green'"
+                   [class.text-yellow-500]="result.quality_tier?.color === 'yellow'"
+                   [class.text-red-600]="result.quality_tier?.color === 'red'">
+                {{ result.score }}%
+              </div>
             </div>
 
-            <div class="bg-slate-900 border border-slate-800 shadow-inner rounded-xl lg:flex-1 lg:min-h-0 relative overflow-hidden flex items-center justify-center transition-all duration-300 hover:shadow-lg group">
-                <button (click)="openImageInNewTab(result.annotated_image)" class="absolute top-3 right-3 z-10 bg-black/50 hover:bg-black/80 text-white px-3 py-2 rounded-lg backdrop-blur-md transition-all duration-300 opacity-0 group-hover:opacity-100 shadow-sm focus:outline-none flex items-center gap-2 text-xs font-medium border border-white/10" title="Open Image in New Tab">
-                    <lucide-icon [img]="icons.ExternalLink" class="w-4 h-4"></lucide-icon>
-                    <span class="hidden sm:inline">Open in New Tab</span>
-                </button>
-                <img [src]="result.annotated_image" class="w-full h-auto max-h-[60vh] lg:max-h-none lg:absolute lg:inset-0 lg:h-full object-contain block transition-transform duration-700 ease-in-out group-hover:scale-[1.02]">
+            <div class="grid grid-cols-3 gap-2 pt-3 border-t border-slate-100 mt-1 animate-fade-in">
+              <div *ngIf="result.score_count !== null" class="bg-slate-50 border border-slate-200 rounded-lg p-1.5 flex flex-col items-center hover:bg-slate-100 transition-colors duration-300">
+                <span class="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Count</span>
+                <span class="text-sm font-bold text-slate-700">{{ result.score_count }}%</span>
+              </div>
+              <div *ngIf="result.score_radius !== null" class="bg-slate-50 border border-slate-200 rounded-lg p-1.5 flex flex-col items-center hover:bg-slate-100 transition-colors duration-300">
+                <span class="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Radius</span>
+                <span class="text-sm font-bold text-slate-700">{{ result.score_radius }}%</span>
+              </div>
+              <div *ngIf="result.score_spacing !== null" class="bg-slate-50 border border-slate-200 rounded-lg p-1.5 flex flex-col items-center hover:bg-slate-100 transition-colors duration-300">
+                <span class="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Spacing</span>
+                <span class="text-sm font-bold text-slate-700">{{ result.score_spacing }}%</span>
+              </div>
             </div>
+
+            <div *ngIf="result.quality_tier?.color === 'red'" class="mt-3 pt-3 border-t border-red-100 flex flex-col gap-2 bg-red-50 p-3 rounded-xl border border-red-200 animate-fade-in transition-all duration-300">
+              <div class="flex items-center gap-1.5 mb-1 text-red-700">
+                <lucide-icon [img]="icons.AlertCircle" class="w-4 h-4"></lucide-icon>
+                <span class="text-[10px] font-bold uppercase tracking-widest">Notify Authority</span>
+              </div>
+              <div *ngIf="!emailSent" class="flex flex-col gap-2 animate-fade-in">
+                <div class="flex gap-2">
+                  <input type="text" [(ngModel)]="columnNumber" placeholder="Col No." class="w-20 px-2 py-1 text-xs border border-red-300 rounded-md focus:outline-none focus:ring-1 focus:ring-red-500 shadow-sm transition-shadow" [disabled]="isEmailSending">
+                  <input type="email" [(ngModel)]="authorityEmail" placeholder="Authority Email ID" class="flex-1 min-w-0 px-2 py-1 text-xs border border-red-300 rounded-md focus:outline-none focus:ring-1 focus:ring-red-500 shadow-sm transition-shadow" [disabled]="isEmailSending">
+                </div>
+                <div *ngIf="emailError" class="text-[11px] font-medium text-red-700">{{ emailError }}</div>
+                <button (click)="sendEmailReport()" [disabled]="isEmailSending || !columnNumber.trim() || !authorityEmail.trim()" class="w-full bg-red-600 hover:bg-red-700 text-white text-xs px-3 py-1.5 rounded-lg font-medium transition-all duration-300 flex items-center justify-center gap-2 active:scale-95 shadow-sm disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed">
+                  <span *ngIf="isEmailSending" class="animate-spin h-3 w-3 border-2 border-white border-t-transparent rounded-full"></span>
+                  {{ isEmailSending ? 'Sending...' : 'Send Alert Report' }}
+                </button>
+              </div>
+              <div *ngIf="emailSent" class="bg-green-100 text-green-800 border border-green-200 px-3 py-2 rounded-lg text-xs font-medium inline-flex items-center gap-2 w-full animate-fade-in">
+                <lucide-icon [img]="icons.CheckCircle2" class="w-4 h-4 text-green-600 shrink-0" /> Report sent successfully!
+              </div>
+            </div>
+          </div>
+
+          <div class="bg-slate-900 border border-slate-800 shadow-inner rounded-xl lg:flex-1 lg:min-h-0 relative overflow-hidden flex items-center justify-center transition-all duration-300 hover:shadow-lg group">
+            <button (click)="openImageInNewTab(result.annotated_image)" class="absolute top-3 right-3 z-10 bg-black/60 hover:bg-black/80 text-white px-3 py-2 rounded-lg backdrop-blur-md transition-all duration-300 opacity-90 lg:opacity-0 lg:group-hover:opacity-100 shadow-sm focus:outline-none flex items-center gap-2 text-xs font-medium border border-white/10" title="Open Image in New Tab">
+              <lucide-icon [img]="icons.ExternalLink" class="w-4 h-4"></lucide-icon>
+              <span class="hidden sm:inline">Open in New Tab</span>
+            </button>
+            <img [src]="result.annotated_image" class="w-full h-auto max-h-[60vh] lg:max-h-none lg:absolute lg:inset-0 lg:h-full object-contain block transition-transform duration-700 ease-in-out group-hover:scale-[1.02]">
+          </div>
         </div>
 
         <div class="w-full lg:w-2/3 flex flex-col gap-4 flex-1 lg:min-h-0">
-            <div class="card p-0 flex flex-col flex-1 lg:min-h-0 overflow-hidden shadow-sm border border-slate-200 bg-white h-96 lg:h-auto transition-all duration-300 hover:shadow-md rounded-xl">
-                <div class="bg-slate-100 px-4 py-3 border-b border-slate-200 flex justify-between items-center shrink-0">
-                    <h2 class="text-xs font-bold text-slate-600 uppercase tracking-widest flex items-center gap-2">
-                      <lucide-icon [img]="icons.CheckCircle2" class="w-4 h-4 text-slate-400" /> Compliance Report
-                    </h2>
-                </div>
-                <div class="overflow-y-auto overflow-x-auto flex-1 bg-white table-scrollbar relative">
-                    <table class="w-full text-sm text-left min-w-[500px]">
-                        <thead class="bg-white/95 backdrop-blur sticky top-0 z-10 text-slate-500 uppercase text-[10px] font-bold border-b border-slate-200">
-                            <tr>
-                                <th class="px-4 py-3 whitespace-nowrap">Parameter</th>
-                                <th class="px-4 py-3 whitespace-nowrap">Design Spec</th>
-                                <th class="px-4 py-3 whitespace-nowrap">Site Actual</th>
-                                <th class="px-4 py-3 whitespace-nowrap">Status</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-slate-100 bg-white">
-                            <tr *ngFor="let row of result.comparison_table; trackBy: trackByIndex" class="hover:bg-slate-50/80 transition-colors duration-300 ease-in-out group">
-                                <td class="px-4 py-2.5 font-medium text-slate-700 whitespace-nowrap group-hover:text-blue-700 transition-colors duration-300">{{ row.parameter }}</td>
-                                <td class="px-4 py-2.5 font-mono text-slate-500 text-xs">{{ row.design }}</td>
-                                <td class="px-4 py-2.5 font-mono text-slate-800 font-semibold text-xs">{{ row.actual }}</td>
-                                <td class="px-4 py-2.5 whitespace-nowrap">
-                                    <span [class]="'status-badge ' + getStatusClass(row.status)">{{ row.status }}</span>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
+          <div class="card p-0 flex flex-col flex-1 lg:min-h-0 overflow-hidden shadow-sm border border-slate-200 bg-white h-96 lg:h-auto transition-all duration-300 hover:shadow-md rounded-xl">
+            <div class="bg-slate-100 px-4 py-3 border-b border-slate-200 flex justify-between items-center shrink-0">
+              <h2 class="text-xs font-bold text-slate-600 uppercase tracking-widest flex items-center gap-2">
+                <lucide-icon [img]="icons.CheckCircle2" class="w-4 h-4 text-slate-400" /> Compliance Report
+              </h2>
             </div>
+            <div class="overflow-y-auto overflow-x-auto flex-1 bg-white table-scrollbar relative">
+              <table class="w-full text-sm text-left min-w-[500px]">
+                <thead class="bg-white/95 backdrop-blur sticky top-0 z-10 text-slate-500 uppercase text-[10px] font-bold border-b border-slate-200">
+                  <tr>
+                    <th class="px-4 py-3 whitespace-nowrap">Parameter</th>
+                    <th class="px-4 py-3 whitespace-nowrap">Design Spec</th>
+                    <th class="px-4 py-3 whitespace-nowrap">Site Actual</th>
+                    <th class="px-4 py-3 whitespace-nowrap">Status</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 bg-white">
+                  <tr *ngFor="let row of result.comparison_table; trackBy: trackByIndex" class="hover:bg-slate-50/80 transition-colors duration-300 ease-in-out group">
+                    <td class="px-4 py-2.5 font-medium text-slate-700 whitespace-nowrap group-hover:text-blue-700 transition-colors duration-300">{{ row.parameter }}</td>
+                    <td class="px-4 py-2.5 font-mono text-slate-500 text-xs">{{ row.design }}</td>
+                    <td class="px-4 py-2.5 font-mono text-slate-800 font-semibold text-xs">{{ row.actual }}</td>
+                    <td class="px-4 py-2.5 whitespace-nowrap">
+                      <span [class]="'status-badge ' + getStatusClass(row.status)">{{ row.status }}</span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
 
-            <div class="card p-2.5 shrink-0 bg-white shadow-sm border border-slate-200 flex items-center justify-between text-xs overflow-x-auto gap-4 rounded-xl transition-all duration-300 hover:shadow-md">
-                <div class="flex items-center gap-2 font-bold text-slate-500 shrink-0 uppercase tracking-widest pl-2">
-                    <lucide-icon [img]="icons.Timer" class="w-4 h-4"></lucide-icon> Execution Runtime
-                </div>
-                <div class="flex items-center gap-4 sm:gap-6 shrink-0 pr-2">
-                    <div class="flex flex-col text-right">
-                        <span class="text-[9px] text-slate-400 uppercase tracking-wider">Auto-Detection</span>
-                        <span class="font-mono font-medium text-slate-700">{{ (timers.autoDetectCancelled || !timers.autoDetectRun) ? 'NA' : (timers.autoDetect | number:'1.1-1') + 's' }}</span>
-                    </div>
-                    <div class="w-px h-6 bg-slate-200"></div>
-                    <div class="flex flex-col text-right">
-                        <span class="text-[9px] text-slate-400 uppercase tracking-wider">Design Extract</span>
-                        <span class="font-mono font-medium text-slate-700">{{ designInputMode === 'manual' ? 'NA' : (timers.ai | number:'1.1-1') + 's' }}</span>
-                    </div>
-                    <div class="w-px h-6 bg-slate-200"></div>
-                    <div class="flex flex-col text-right">
-                        <span class="text-[9px] text-slate-400 uppercase tracking-wider">Vision Engine</span>
-                        <span class="font-mono font-medium text-slate-700">{{ timers.cv | number:'1.1-1' }}s</span>
-                    </div>
-                </div>
+          <div class="card p-3 shrink-0 bg-white shadow-sm border border-slate-200 flex flex-col sm:flex-row items-stretch sm:items-center justify-between text-xs gap-2 sm:gap-4 rounded-xl transition-all duration-300 hover:shadow-md">
+            <div class="flex items-center gap-2 font-bold text-slate-500 shrink-0 uppercase tracking-widest sm:pl-1">
+              <lucide-icon [img]="icons.Timer" class="w-4 h-4"></lucide-icon> Execution Runtime
             </div>
+            <div class="flex items-center justify-between sm:justify-end gap-3 sm:gap-6 shrink-0 sm:pr-1">
+              <div class="flex flex-col sm:text-right">
+                <span class="text-[9px] text-slate-400 uppercase tracking-wider">Auto-Detection</span>
+                <span class="font-mono font-medium text-slate-700">{{ (timers.autoDetectCancelled || !timers.autoDetectRun) ? 'NA' : (timers.autoDetect | number:'1.1-1') + 's' }}</span>
+              </div>
+              <div class="w-px h-6 bg-slate-200"></div>
+              <div class="flex flex-col text-center sm:text-right">
+                <span class="text-[9px] text-slate-400 uppercase tracking-wider">Design Extract</span>
+                <span class="font-mono font-medium text-slate-700">{{ (designInputMode === 'manual' || !designImageFile) ? 'NA' : (timers.ai | number:'1.1-1') + 's' }}</span>
+              </div>
+              <div class="w-px h-6 bg-slate-200"></div>
+              <div class="flex flex-col text-right">
+                <span class="text-[9px] text-slate-400 uppercase tracking-wider">Vision Engine</span>
+                <span class="font-mono font-medium text-slate-700">{{ timers.cv | number:'1.1-1' }}s</span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -587,16 +635,16 @@
 
 <!-- Full screen Analysis Loading Overlay -->
 <div *ngIf="isAnalyzing" class="fixed inset-0 bg-slate-900/90 backdrop-blur-md z-[200] text-white animate-fade-in flex flex-col items-center justify-center transition-all duration-500">
-    <div class="animate-spin h-12 w-12 border-4 border-blue-500 border-t-transparent rounded-full mb-6 shrink-0"></div>
-    
-    <div *ngIf="timers.aiRunning" class="text-sm font-bold text-purple-300 uppercase tracking-widest text-center mb-2 animate-fade-in">AI Analyzing Blueprint...</div>
-    <div *ngIf="!isBackendWarmedUp && !timers.aiRunning" class="text-sm font-bold text-orange-300 uppercase tracking-widest text-center mb-2 animate-fade-in">Backend Waking Up...</div>
-    <div *ngIf="isBackendWarmedUp && !timers.aiRunning" class="text-sm font-bold text-blue-300 uppercase tracking-widest text-center mb-2 animate-fade-in">Vision Engine Processing...</div>
-    
-    <div class="font-mono text-4xl font-black text-blue-200 flex items-center justify-center gap-3">
-        <lucide-icon [img]="icons.Timer" class="w-8 h-8 opacity-70"></lucide-icon>
-        {{ (timers.aiRunning ? timers.ai : (!isBackendWarmedUp ? timers.backendWarmup : timers.cv)) | number:'1.1-1' }}s
-    </div>
+  <div class="animate-spin h-12 w-12 border-4 border-blue-500 border-t-transparent rounded-full mb-6 shrink-0"></div>
+
+  <div *ngIf="timers.aiRunning" class="text-sm font-bold text-purple-300 uppercase tracking-widest text-center mb-2 animate-fade-in">AI Analyzing Blueprint...</div>
+  <div *ngIf="!isBackendWarmedUp && !timers.aiRunning" class="text-sm font-bold text-orange-300 uppercase tracking-widest text-center mb-2 animate-fade-in">Backend Waking Up...</div>
+  <div *ngIf="isBackendWarmedUp && !timers.aiRunning" class="text-sm font-bold text-blue-300 uppercase tracking-widest text-center mb-2 animate-fade-in">Vision Engine Processing...</div>
+
+  <div class="font-mono text-4xl font-black text-blue-200 flex items-center justify-center gap-3">
+    <lucide-icon [img]="icons.Timer" class="w-8 h-8 opacity-70"></lucide-icon>
+    {{ (timers.aiRunning ? timers.ai : (!isBackendWarmedUp ? timers.backendWarmup : timers.cv)) | number:'1.1-1' }}s
+  </div>
 </div>
 
 <!-- Evaluation Methodology Modal -->
@@ -606,17 +654,17 @@
     <div class="bg-slate-50 px-6 py-4 flex items-center justify-between border-b border-slate-200 shrink-0">
       <div class="flex items-center gap-3">
         <lucide-icon [img]="icons.Calculator" class="w-5 h-5 text-slate-600" />
-        <h3 class="text-lg sm:text-xl font-bold text-slate-800">Evaluation Methodology & Tolerances</h3>
+        <h3 class="text-lg sm:text-xl font-bold text-slate-800">Evaluation Methodology &amp; Tolerances</h3>
       </div>
       <button (click)="toggleScoreModal()" class="p-2 rounded-lg hover:bg-slate-200 text-slate-500 transition-colors focus:outline-none">
         <lucide-icon [img]="icons.X" class="w-5 h-5" />
       </button>
     </div>
     <div class="p-6 md:p-8 overflow-y-auto flex-1 space-y-8 text-slate-700 text-sm sm:text-base">
-       <section>
+      <section>
         <h4 class="font-bold text-slate-900 border-b border-slate-200 pb-2 mb-4 text-lg">1. Final Similarity Score</h4>
         <p class="mb-4">The system computes a final similarity score based on dimensional and quantitative limits specified by the Indian Standard (IS) codes. The final score maps to the following quality matrix:</p>
-        
+
         <div class="overflow-x-auto border border-slate-200 rounded-lg shadow-sm mb-4 table-scrollbar">
           <table class="w-full text-left border-collapse min-w-[500px]">
             <thead>
@@ -627,11 +675,11 @@
               </tr>
             </thead>
             <tbody class="divide-y divide-slate-200 bg-white">
-              <tr class="hover:bg-slate-50 transition-colors"><td class="p-3 font-mono text-slate-800">> 95</td><td class="p-3 text-green-700 font-bold">Excellent</td><td class="p-3 text-slate-600">Acceptable, no action.</td></tr>
+              <tr class="hover:bg-slate-50 transition-colors"><td class="p-3 font-mono text-slate-800">&gt; 95</td><td class="p-3 text-green-700 font-bold">Excellent</td><td class="p-3 text-slate-600">Acceptable, no action.</td></tr>
               <tr class="hover:bg-slate-50 transition-colors"><td class="p-3 font-mono text-slate-800">90 – 95</td><td class="p-3 text-green-700 font-bold">Acceptable</td><td class="p-3 text-slate-600">Acceptable, no action.</td></tr>
               <tr class="hover:bg-slate-50 transition-colors"><td class="p-3 font-mono text-slate-800">80 – 89.9</td><td class="p-3 text-yellow-600 font-bold">Minor Deviation</td><td class="p-3 text-slate-600">Review Required. No email sent.</td></tr>
               <tr class="hover:bg-slate-50 transition-colors"><td class="p-3 font-mono text-slate-800">70 – 79.9</td><td class="p-3 text-red-600 font-bold">Major Deviation</td><td class="p-3 text-red-600 font-medium">Email Alert Triggered.</td></tr>
-              <tr class="hover:bg-slate-50 transition-colors"><td class="p-3 font-mono text-slate-800">< 70</td><td class="p-3 text-red-600 font-bold">Defective</td><td class="p-3 text-red-600 font-medium">Email Alert Triggered.</td></tr>
+              <tr class="hover:bg-slate-50 transition-colors"><td class="p-3 font-mono text-slate-800">&lt; 70</td><td class="p-3 text-red-600 font-bold">Defective</td><td class="p-3 text-red-600 font-medium">Email Alert Triggered.</td></tr>
             </tbody>
           </table>
         </div>
@@ -669,9 +717,9 @@
                 <td class="p-3 text-slate-600 align-top">IS 1786:2008<br><span class="text-xs text-slate-400">(Derived from unit mass variation)</span></td>
                 <td class="p-3 text-slate-600 align-top">
                   <ul class="list-disc list-inside space-y-1">
-                    <li><span class="font-mono bg-slate-50 px-1 rounded border border-slate-200">≤ 10 mm</span> diameter: ± 3.5%</li>
+                    <li><span class="font-mono bg-slate-50 px-1 rounded border border-slate-200">&le; 10 mm</span> diameter: ± 3.5%</li>
                     <li><span class="font-mono bg-slate-50 px-1 rounded border border-slate-200">12 – 16 mm</span> diameter: ± 2.5%</li>
-                    <li><span class="font-mono bg-slate-50 px-1 rounded border border-slate-200">> 16 mm</span> diameter: ± 2.0%</li>
+                    <li><span class="font-mono bg-slate-50 px-1 rounded border border-slate-200">&gt; 16 mm</span> diameter: ± 2.0%</li>
                   </ul>
                 </td>
               </tr>
@@ -680,8 +728,8 @@
                 <td class="p-3 text-slate-600 align-top">IS 456:2000<br><span class="text-xs text-slate-400">(Placement/Effective depth tolerance)</span></td>
                 <td class="p-3 text-slate-600 align-top">
                   <ul class="list-disc list-inside space-y-1">
-                    <li>Spacing <span class="font-mono bg-slate-50 px-1 rounded border border-slate-200">≤ 200 mm</span>: ± 10 mm</li>
-                    <li>Spacing <span class="font-mono bg-slate-50 px-1 rounded border border-slate-200">> 200 mm</span>: ± 15 mm</li>
+                    <li>Spacing <span class="font-mono bg-slate-50 px-1 rounded border border-slate-200">&le; 200 mm</span>: ± 10 mm</li>
+                    <li>Spacing <span class="font-mono bg-slate-50 px-1 rounded border border-slate-200">&gt; 200 mm</span>: ± 15 mm</li>
                   </ul>
                 </td>
               </tr>
@@ -690,8 +738,8 @@
                 <td class="p-3 text-slate-600 align-top">IS 456:2000<br><span class="text-xs text-slate-400">(Vertical pitch tolerance)</span></td>
                 <td class="p-3 text-slate-600 align-top">
                   <ul class="list-disc list-inside space-y-1">
-                    <li>Spacing <span class="font-mono bg-slate-50 px-1 rounded border border-slate-200">≤ 200 mm</span>: ± 10 mm</li>
-                    <li>Spacing <span class="font-mono bg-slate-50 px-1 rounded border border-slate-200">> 200 mm</span>: ± 15 mm</li>
+                    <li>Spacing <span class="font-mono bg-slate-50 px-1 rounded border border-slate-200">&le; 200 mm</span>: ± 10 mm</li>
+                    <li>Spacing <span class="font-mono bg-slate-50 px-1 rounded border border-slate-200">&gt; 200 mm</span>: ± 15 mm</li>
                   </ul>
                 </td>
               </tr>

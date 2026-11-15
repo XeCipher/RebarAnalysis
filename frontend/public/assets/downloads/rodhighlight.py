@@ -23,7 +23,7 @@ else:
     TARGET_RODS = data.get("rods", [])
     if "rod" in data and data["rod"] is not None:
         TARGET_RODS.append(data["rod"])
-    COLUMN_ID = data.get("column_id", "C8_Rect") 
+    COLUMN_ID = data.get("column_id", "C8_Rect")
     FRONTEND_POINTS = data.get("frontend_points", [])
 
     doc = DocumentManager.Instance.CurrentDBDocument
@@ -60,14 +60,14 @@ else:
         for rs in column_rebar:
             curves = list(rs.GetCenterlineCurves(False, False, False, MultiplanarOption.IncludeOnlyPlanarCurves, 0))
             if not curves: continue
-            
+
             p_start = curves[0].GetEndPoint(0)
             p_end = curves[0].GetEndPoint(1)
-            if abs(p_start.Z - p_end.Z) < 0.5: continue 
-                
+            if abs(p_start.Z - p_end.Z) < 0.5: continue
+
             base_point = curves[0].Evaluate(0.5, True)
             accessor = rs.GetShapeDrivenAccessor()
-            
+
             for b_idx in range(rs.Quantity):
                 transform = accessor.GetBarPositionTransform(b_idx)
                 tx = base_point.X + transform.Origin.X
@@ -87,7 +87,7 @@ else:
 
             for r in raw_rods:
                 r['nx'] = (r['x'] - min_rx) / rw
-                r['ny'] = (max_ry - r['y']) / rh 
+                r['ny'] = (max_ry - r['y']) / rh
 
             min_fx = min(p[0] for p in FRONTEND_POINTS)
             max_fx = max(p[0] for p in FRONTEND_POINTS)
@@ -99,7 +99,7 @@ else:
             norm_front = []
             for i, p in enumerate(FRONTEND_POINTS):
                 xf = (p[0] - min_fx) / fw
-                yf = (p[1] - min_fy) / fh 
+                yf = (p[1] - min_fy) / fh
                 norm_front.append({'nx': xf, 'ny': yf, 'original_index': i + 1})
 
             is_revit_vert = rh > rw * 1.15
@@ -123,7 +123,7 @@ else:
             cy_r = sum(r['ny'] for r in raw_rods) / len(raw_rods)
             for r in raw_rods:
                 r['angle'] = math.atan2(r['ny'] - cy_r, r['nx'] - cx_r)
-                
+
             cx_f = sum(p['nx'] for p in norm_front) / len(norm_front)
             cy_f = sum(p['ny'] for p in norm_front) / len(norm_front)
             for p in norm_front:
@@ -133,7 +133,7 @@ else:
             sorted_front = sorted(norm_front, key=lambda p: p['angle'])
 
             rod_mapping = {}
-            
+
             if len(sorted_front) == len(sorted_revit) and len(sorted_front) > 0:
                 N = len(sorted_front)
                 best_shift = 0
@@ -144,11 +144,11 @@ else:
                         f_pt = sorted_front[i]
                         r_pt = sorted_revit[(i + shift) % N]
                         total_dist += (f_pt['nx'] - r_pt['nx'])**2 + (f_pt['ny'] - r_pt['ny'])**2
-                    
+
                     if total_dist < best_dist:
                         best_dist = total_dist
                         best_shift = shift
-                
+
                 for i in range(N):
                     f_pt = sorted_front[i]
                     r_pt = sorted_revit[(i + best_shift) % N]
@@ -164,8 +164,9 @@ else:
                         if dist < best_dist:
                             best_dist = dist
                             best_r = r_idx
-                    rod_mapping[fp['original_index']] = raw_rods[best_r]
-                    if best_r in avail: avail.remove(best_r)
+                    if best_r != -1:
+                        rod_mapping[fp['original_index']] = raw_rods[best_r]
+                        avail.remove(best_r)
 
             view_bb = active_view.get_BoundingBox(None)
             cz_lines = view_bb.Max.Z + 0.1
