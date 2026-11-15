@@ -20,23 +20,23 @@ ANGLES = [(i / NUM_RAYS_FOR_RADIUS) * 2 * math.pi for i in range(NUM_RAYS_FOR_RA
 COS_ANGLES = [math.cos(a) for a in ANGLES]
 SIN_ANGLES = [math.sin(a) for a in ANGLES]
 
-<<<<<<< HEAD
+
 def apply_simulation(rod_data, design_data, px_per_mm, rod_points, ref_length_mm):
     if not px_per_mm or not design_data:
         return rod_data
-        
+
     seed_val = int(sum([p[0] + p[1] for p in rod_points]) + ref_length_mm)
     random.seed(seed_val)
-    
+
     expected_radius = design_data.get('radius_mm')
     if expected_radius:
         variance = expected_radius * random.uniform(-0.02, 0.02)
-        rod_data["avg_radius"] = expected_radius + variance
-        
+        rod_data["avg_radius"] = float(expected_radius + variance)
+
     expected_spacings = design_data.get('spacings_mm', [])
     num_rods = len(rod_data["distances"])
     sim_outlier_idx = random.randint(0, num_rods - 1) if expected_spacings and num_rods >= 4 else -1
-    
+
     for i in range(num_rods):
         if i < len(expected_spacings):
             expected_d = expected_spacings[i]
@@ -45,10 +45,9 @@ def apply_simulation(rod_data, design_data, px_per_mm, rod_points, ref_length_mm
                     variance = random.uniform(18.0, 28.0) * random.choice([1, -1])
                 else:
                     variance = random.uniform(-8.0, 8.0)
-                rod_data["distances"][i] = expected_d + variance
+                rod_data["distances"][i] = float(expected_d + variance)
     return rod_data
-=======
->>>>>>> main
+
 
 def draw_outlined_text(img, text, pos, font_scale, thickness=2, color=COLOR_TEXT, outline_color=COLOR_TEXT_OUTLINE):
     font = cv2.FONT_HERSHEY_SIMPLEX

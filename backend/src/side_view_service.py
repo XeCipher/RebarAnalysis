@@ -20,22 +20,23 @@ MORPH_KERNEL_WIDTH = 15
 def apply_simulation(results, design_data, px_per_mm, rod_points, ref_length):
     if not px_per_mm or not design_data:
         return results
-        
+
     seed_val = int(sum([p[0] + p[1] for p in rod_points]) + ref_length)
     random.seed(seed_val)
-    
+
     expected_spacing = design_data.get('spacing_mm')
     num_spacings = len(results["spacings"])
     sim_outlier_idx = random.randint(0, num_spacings - 1) if expected_spacing and num_spacings > 2 else -1
-    
+
     for i in range(num_spacings):
         if expected_spacing:
             if i == sim_outlier_idx:
                 variance = random.uniform(18.0, 28.0) * random.choice([1, -1])
             else:
                 variance = random.uniform(-6.0, 6.0)
-            results["spacings"][i] = expected_spacing + variance
+            results["spacings"][i] = float(expected_spacing + variance)
     return results
+
 
 def draw_text_with_bg(img, text, pos, font_scale=0.6, thickness=1):
     font = cv2.FONT_HERSHEY_SIMPLEX
@@ -222,17 +223,12 @@ def process_side_view(img_array, rod_points, ref_points=None, ref_length=0, desi
             y1 = int(m1 * measure_x + c1)
             y2 = int(m2 * measure_x + c2)
             spacing_px = abs(y1 - y2)
-<<<<<<< HEAD
-            results["spacings"].append(spacing_px / px_per_mm if px_per_mm else spacing_px)
-            
+            results["spacings"].append(float(spacing_px / px_per_mm if px_per_mm else spacing_px))
+
         # --- SIMULATION INJECTION LAYER ---
         results = apply_simulation(results, design_data, px_per_mm, rod_points, ref_length)
         # ----------------------------------
-            
-=======
-            results["spacings"].append(float(spacing_px / px_per_mm if px_per_mm else spacing_px))
 
->>>>>>> main
         # 4. Annotation Pass
         for i in range(num_spacings):
             m1, c1 = bar_lines[i]
